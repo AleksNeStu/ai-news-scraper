@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Union, Any
 import numpy as np
 from openai import OpenAI
 from tqdm import tqdm
-
+import time
 from src.config import OPENAI_API_KEY, EMBEDDING_MODEL
 from src.scraper import ScrapedArticle
 from src.summarizer import ArticleSummarizer
