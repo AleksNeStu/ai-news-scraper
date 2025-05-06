@@ -1,0 +1,125 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# VSCode settings and internals
+.vscode/
+.history/
+*.code-workspace
+.vscode-test/
+.vscode-insiders/
+
+# JetBrains IDE settings
+.idea/
+
+# Virtual environment
+venv/
+.env/
+.venv/
+env/
+ENV/
+
+# Environment variables / Secrets
+.env.*
+*.env
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Profiling data
+.prof
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# dotenv
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs and debug output
+logs/
+*.log
+
+# Coverage reports
+.coverage
+
+# macOS / Windows system files
+.DS_Store
+ehthumbs.db
+Icon?
+Thumbs.db
+
+# Python egg info
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+parts/
+bin/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+
+# PEP 582; used by python local packages
+__pypackages__/
+
+# Other editor backup files
+*~ 
+*.swp
+*.swo
+
+# VSCode server (remote dev)
+.vscode-server/
+.vscode-remote/
