@@ -21,6 +21,7 @@ lxml = {version = ">=4.9.0", extras = ["html_clean"]}
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.0.0"
 pytest-cov = ">=3.0.0"
+responses = "^0.25.7"
 
 [tool.poetry.group.optional]
 optional = true
