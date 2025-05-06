@@ -592,12 +592,14 @@ class ArticleScraper:
         
         # Remove boilerplate text often found in articles
         patterns_to_remove = [
+            r'Related Articles',
             r'Share this article',
             r'Share on Facebook',
             r'Share on Twitter',
             r'Share via Email',
             r'Advertisement',
             r'Click to follow',
+            r'Follow us',
             r'Subscribe to our newsletter',
             r'Terms of [Ss]ervice',
             r'Privacy [Pp]olicy',
