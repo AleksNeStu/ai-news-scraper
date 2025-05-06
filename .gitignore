@@ -123,3 +123,8 @@ __pypackages__/
 # VSCode server (remote dev)
 .vscode-server/
 .vscode-remote/
+
+
+# Me
+dev/
+tmp/
