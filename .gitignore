@@ -24,8 +24,7 @@ env/
 ENV/
 
 # Environment variables / Secrets
-.env.*
-*.env
+.env
 
 # PyInstaller
 *.manifest

@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "ai-news-scraper"
+version = "0.1.0"
+description = "A Python application that scrapes news articles, uses GenAI for summarization and topic extraction, and provides semantic search capabilities."
+authors = ["AI Developer"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<4.0"
+newspaper3k = ">=0.2.8"
+beautifulsoup4 = ">=4.10.0"
+requests = ">=2.27.1"
+openai = ">=1.3.0"
+python-dotenv = ">=0.20.0"
+tqdm = ">=4.65.0"
+faiss-cpu = ">=1.7.0"
+numpy = ">=1.22.0"
+lxml = {version = ">=4.9.0", extras = ["html_clean"]}
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.0.0"
+pytest-cov = ">=3.0.0"
+
+[tool.poetry.group.optional]
+optional = true
+
+[tool.poetry.group.optional.dependencies]
+qdrant-client = ">=1.1.1"
+pinecone-client = ">=2.2.1"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
