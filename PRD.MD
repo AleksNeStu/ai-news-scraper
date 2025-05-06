@@ -4,11 +4,11 @@ The following table outlines the detailed functional requirements of the News Sc
 
 | Requirement ID | Description                                      | User Story                                                                                                           | Expected Behavior/Outcome                                                                                                                                         |
 |----------------|--------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| FR001          | Extracting News Articles                        | As a user, I want the system to fetch full news articles from provided URLs so that I can process and store them.   | The system should scrape the article's headline and full text and return structured data for each URL provided.                                                   |
-| FR002          | Summarizing News Articles                       | As a user, I want the system to summarize the articles so I can quickly understand the key points of each one.      | The system should use a GenAI model to generate concise, informative summaries for each scraped article.                                                          |
-| FR003          | Identifying Topics in Articles                  | As a user, I want the system to identify main topics of each article so I can categorize and search them effectively.| The system should extract and list key topics or keywords relevant to each article using a GenAI tool.                                                            |
-| FR004          | Storing Data in a Vector Database               | As a developer, I want to store articles, summaries, and topics in a vector DB to enable fast semantic search.      | The system should generate embeddings and save them along with metadata (URL, headline, summary, topics) in a vector database (e.g., FAISS, Pinecone, Qdrant).    |
-| FR005          | Semantic Search Feature                         | As a user, I want to search articles semantically using natural language queries so I can find relevant content.     | The system should convert user queries to embeddings, perform similarity searches in the vector DB, and return the top relevant articles.                         |
+| FR001          | Extracting News Articles                        | As a user, I want the system to fetch full news articles from provided URLs so that I can process and store them.   | The system should scrape the article's headline and full text and return structured data for each URL provided. Implement robust error handling with retries, logging, and skip invalid URLs.                                                   |
+| FR002          | Summarizing News Articles                       | As a user, I want the system to summarize the articles so I can quickly understand the key points of each one.      | The system should use a GenAI model to generate concise, informative summaries (100-300 words) for each scraped article.                                                          |
+| FR003          | Identifying Topics in Articles                  | As a user, I want the system to identify main topics of each article so I can categorize and search them effectively.| The system should extract and list key topics or keywords (3-10 per article) relevant to each article using a GenAI tool.                                                            |
+| FR004          | Storing Data in a Vector Database               | As a developer, I want to store articles, summaries, and topics in a vector DB to enable fast semantic search.      | The system should generate embeddings (using models like text-embedding-ada-002) and save them along with metadata (URL, headline, summary, topics) in a vector database (e.g., FAISS, Pinecone, Qdrant).    |
+| FR005          | Semantic Search Feature                         | As a user, I want to search articles semantically using natural language queries so I can find relevant content.     | The system should convert user queries to embeddings, perform similarity searches in the vector DB, and return the top relevant articles ranked by similarity.                         |
 | FR006          | Handling Synonyms and Context in Search         | As a user, I want the search to understand synonyms and context so that I get meaningful results.                   | The semantic search should match conceptually similar queries and article content (e.g., "AI" and "Artificial Intelligence" are treated as the same topic).       |
 | FR007          | Robust Error Handling for Scraping              | As a developer, I want the system to handle scraping errors gracefully so that the pipeline is stable.              | The system should implement retries, log errors, and skip invalid or unreachable URLs while continuing processing.                                                 |
 | FR008          | API Key Management and Security                 | As a developer, I want to manage API keys securely so the system is safe from unauthorized use.                     | The system should load API keys from environment variables and ensure they are not hardcoded or exposed in logs.                                                   |
@@ -31,3 +31,24 @@ The following table outlines the detailed functional requirements of the News Sc
 | TR008          | Configuration Management                          | Environment variables via python-dotenv for sensitive data                                                             |
 | TR009          | Code Quality                                      | Adherence to PEP8, use of type hints, comprehensive docstrings                                                         |
 | TR010          | Error Handling                                    | Robust exception handling, graceful degradation, and meaningful error messages                                          |
+
+## Project Structure
+
+```
+src/
+  ├── scraper.py      # Article scraping logic
+  ├── summarizer.py   # GenAI summarization implementation
+  ├── topics.py       # Topic extraction functionality
+  ├── embedder.py     # Embedding generation code
+  ├── vector_store.py # Vector DB interaction logic
+  ├── search.py       # Semantic search implementation
+  └── main.py         # Pipeline orchestration
+tests/                # Unit and integration tests
+```
+
+## Evaluation Criteria
+
+- Effectiveness of GenAI integration for summarization and topic identification
+- Quality and clarity of code and documentation
+- Performance of the semantic search functionality
+- Robustness of error handling and edge case management
