@@ -123,6 +123,9 @@ __pypackages__/
 # VSCode server (remote dev)
 .vscode-server/
 .vscode-remote/
+# Ignore only Copilot instructions, keep workflows
+.github/copilot-instructions.md
+
 
 
 # Me
