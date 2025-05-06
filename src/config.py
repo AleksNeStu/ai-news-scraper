@@ -2,11 +2,36 @@
 Configuration and environment setup for the AI News Scraper application.
 """
 import os
+import warnings
+import importlib.util
 from typing import Optional, Literal
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Suppress specific deprecation warnings from libraries
+def suppress_external_library_warnings():
+    """
+    Suppress specific deprecation warnings from external libraries 
+    like FAISS, SWIG, etc.
+    """
+    # Suppress numpy core deprecation warnings used by FAISS
+    warnings.filterwarnings(
+        "ignore", 
+        message="numpy.core._multiarray_umath is deprecated", 
+        category=DeprecationWarning
+    )
+    
+    # Suppress SWIG-related warnings about missing __module__ attribute
+    warnings.filterwarnings(
+        "ignore",
+        message="builtin type .* has no __module__ attribute",
+        category=DeprecationWarning
+    )
+
+# Call this function to suppress warnings
+suppress_external_library_warnings()
 
 # OpenAI Configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

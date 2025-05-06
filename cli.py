@@ -17,8 +17,11 @@ import json
 import sys
 import logging
 
+from src.config import validate_config, suppress_external_library_warnings
 from src.main import NewsPipeline
-from src.config import validate_config
+
+# Suppress warnings from external libraries
+suppress_external_library_warnings()
 
 
 def setup_logging():

@@ -5,6 +5,10 @@ These tests validate the functionality of the article scraper,
 including its ability to extract content from various news websites.
 """
 
+# Import config first to suppress warnings
+from src.config import suppress_external_library_warnings
+suppress_external_library_warnings()
+
 import unittest
 from unittest.mock import patch, MagicMock
 import responses

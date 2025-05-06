@@ -2,6 +2,10 @@
 Unit tests for the vector_store module.
 """
 
+# Import config first to suppress warnings
+from src.config import suppress_external_library_warnings
+suppress_external_library_warnings()
+
 import os
 import tempfile
 import unittest

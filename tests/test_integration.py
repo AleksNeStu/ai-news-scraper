@@ -5,6 +5,10 @@ This test file demonstrates how the different components work together.
 It uses mocked external services to avoid actual API calls during testing.
 """
 
+# Import config first to suppress warnings
+from src.config import suppress_external_library_warnings
+suppress_external_library_warnings()
+
 import unittest
 from unittest.mock import patch, MagicMock
 import tempfile
@@ -83,10 +87,52 @@ class TestPipelineIntegration(unittest.TestCase):
             os.remove(os.path.join(self.temp_dir, f))
         os.rmdir(self.temp_dir)
     
-    def test_end_to_end_pipeline(self):
+    @patch('src.scraper.ArticleScraper')
+    @patch('src.summarizer.ArticleSummarizer')
+    @patch('src.topics.TopicExtractor')
+    @patch('src.embedder.ArticleEmbedder')
+    @patch('src.vector_store.FAISSVectorStore')  
+    @patch('src.search.SemanticSearch')
+    def test_end_to_end_pipeline(self, MockSearch, MockStore, MockEmbedder, 
+                                MockTopics, MockSummarizer, MockScraper):
         """Test the entire pipeline from scraping to search."""
-        # Initialize the pipeline
-        pipeline = NewsPipeline()
+        # Configure mocks
+        mock_scraper = MockScraper.return_value
+        mock_store = MockStore.return_value
+        mock_search = MockSearch.return_value
+        
+        # Setup mock articles
+        mock_articles = [
+            MagicMock(url="https://example.com/article1", headline="Article 1", text="Content 1"),
+            MagicMock(url="https://example.com/article2", headline="Article 2", text="Content 2"),
+        ]
+        mock_scraper.scrape_urls.return_value = mock_articles
+        
+        # Setup mock search results
+        mock_search_results = [
+            {"url": "https://example.com/article1", "headline": "Article 1", "similarity": 0.95},
+            {"url": "https://example.com/article2", "headline": "Article 2", "similarity": 0.85}
+        ]
+        mock_search.search.return_value = mock_search_results
+        
+        # Setup mock store results
+        mock_store.store_embeddings.return_value = True
+        mock_store.get_all_articles.return_value = mock_search_results.copy()
+        mock_store.clear.return_value = True
+        
+        # Set up a side effect for clear() to empty the results
+        def clear_articles():
+            mock_store.get_all_articles.return_value = []
+            return True
+            
+        mock_store.clear.side_effect = clear_articles
+        
+        # Initialize the pipeline with a mocked embedder to ensure our test doesn't hit real API
+        with patch('src.main.get_vector_store', return_value=mock_store), \
+             patch('src.main.ArticleScraper', return_value=mock_scraper), \
+             patch('src.main.SemanticSearch', return_value=mock_search):
+             
+            pipeline = NewsPipeline(offline_mode=True)  # Use offline mode to avoid API calls
         
         # Process sample URLs
         urls = ["https://example.com/article1", "https://example.com/article2"]
@@ -97,7 +143,7 @@ class TestPipelineIntegration(unittest.TestCase):
         self.assertEqual(result["processed_count"], 2)
         
         # Perform a search
-        search_results = pipeline.search_articles("test query")
+        search_results = pipeline.search_articles("test query", limit=2)
         
         # Verify we got search results
         self.assertEqual(len(search_results), 2)

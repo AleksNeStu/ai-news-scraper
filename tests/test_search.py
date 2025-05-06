@@ -2,6 +2,10 @@
 Unit tests for the search module.
 """
 
+# Import config first to suppress warnings
+from src.config import suppress_external_library_warnings
+suppress_external_library_warnings()
+
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -35,7 +39,8 @@ class TestSemanticSearch(unittest.TestCase):
                 "summary": "This is a summary of test article 1 with some keywords.",
                 "source_domain": "example.com",
                 "publish_date": "2023-01-01",
-                "similarity": 0.95
+                "similarity": 0.95,
+                "embedding": np.random.rand(1536).astype(np.float32).tolist()
             },
             {
                 "id": 2,
@@ -44,7 +49,8 @@ class TestSemanticSearch(unittest.TestCase):
                 "summary": "This is a summary of test article 2 with different keywords.",
                 "source_domain": "example.com",
                 "publish_date": "2023-01-02",
-                "similarity": 0.85
+                "similarity": 0.85,
+                "embedding": np.random.rand(1536).astype(np.float32).tolist()
             }
         ]
     
