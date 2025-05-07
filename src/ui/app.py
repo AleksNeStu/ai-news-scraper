@@ -194,17 +194,15 @@ def render_settings_page(save_callback):
     render_settings_page(save_callback)
 
 
-def execute():
-    """Execute the Streamlit application."""
-    main()
-
 
 if __name__ == "__main__":
-    # Check if the script is being run directly or via subprocess
-    if len(sys.argv) > 1 and sys.argv[1] == "run":
-        # Execute directly when run with 'run' argument
-        execute()
-    else:
-        # Re-run the script with Streamlit to ensure proper ScriptRunContext
-        filename = Path(__file__).resolve()
-        subprocess.run([sys.executable, "-m", "streamlit", "run", str(filename), "--", "run"])
+    main()
+
+    # # Check if the script is being run directly or via subprocess
+    # if len(sys.argv) > 1 and sys.argv[1] == "run":
+    #     # Execute directly when run with 'run' argument
+    #     main()
+    # else:
+    #     # Re-run the script with Streamlit to ensure proper ScriptRunContext
+    #     filename = Path(__file__).resolve()
+    #     subprocess.run([sys.executable, "-m", "streamlit", "run", str(filename), "--", "run"])
