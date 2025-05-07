@@ -79,6 +79,19 @@ class VectorStore(ABC):
             List[Dict[str, Any]]: List of all stored articles with their embeddings and metadata.
         """
         pass
+        
+    @abstractmethod
+    def get_article_by_id(self, article_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve a specific article by its ID.
+        
+        Args:
+            article_id: The unique identifier of the article
+            
+        Returns:
+            Dictionary containing article data or None if not found
+        """
+        pass
     
     @abstractmethod
     def get_all_metadata(self) -> List[Dict[str, Any]]:
@@ -299,6 +312,40 @@ class FAISSVectorStore(VectorStore):
         except Exception as e:
             logger.error(f"Error retrieving metadata from FAISS: {str(e)}")
             return []
+            
+    def get_article_by_id(self, article_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve a specific article by its ID.
+        
+        Args:
+            article_id: The unique identifier of the article
+            
+        Returns:
+            Dictionary containing article data or None if not found
+        """
+        try:
+            # Convert article_id to the appropriate type if needed
+            # (since we might have different id types in different implementations)
+            if not isinstance(article_id, str):
+                article_id = str(article_id)
+                
+            # Check if we have metadata for this ID
+            if article_id in self.metadata:
+                article_data = {"id": article_id}
+                
+                # Add all metadata fields
+                for key, value in self.metadata[article_id].items():
+                    if key not in ["embedding", "title_embedding", "summary_embedding"]:
+                        article_data[key] = value
+                
+                return article_data
+            else:
+                logger.warning(f"Article with ID {article_id} not found")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error retrieving article by ID from FAISS: {str(e)}")
+            return None
     
     def clear(self) -> bool:
         """
@@ -553,6 +600,38 @@ class QdrantVectorStore(VectorStore):
         except Exception as e:
             logger.error(f"Error retrieving metadata from Qdrant: {str(e)}")
             return []
+            
+    def get_article_by_id(self, article_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve a specific article by its ID.
+        
+        Args:
+            article_id: The unique identifier of the article
+            
+        Returns:
+            Dictionary containing article data or None if not found
+        """
+        try:
+            # Get the point with the specific ID
+            points = self.client.retrieve(
+                collection_name=self.collection_name,
+                ids=[article_id]
+            )
+            
+            if points and len(points) > 0:
+                point = points[0]  # Get the first (and only) point
+                article_data = {
+                    "id": point.id,
+                    **point.payload
+                }
+                return article_data
+            else:
+                logger.warning(f"Article with ID {article_id} not found in Qdrant")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error retrieving article by ID from Qdrant: {str(e)}")
+            return None
     
     def clear(self) -> bool:
         """
@@ -796,6 +875,40 @@ class PineconeVectorStore(VectorStore):
         except Exception as e:
             logger.error(f"Error retrieving metadata from Pinecone: {str(e)}")
             return []
+            
+    def get_article_by_id(self, article_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve a specific article by its ID.
+        
+        Args:
+            article_id: The unique identifier of the article
+            
+        Returns:
+            Dictionary containing article data or None if not found
+        """
+        try:
+            # Make sure article_id is a string (Pinecone requires string IDs)
+            article_id = str(article_id)
+            
+            # Fetch the specific vector by ID
+            result = self.index.fetch(ids=[article_id])
+            
+            if result and result.vectors and article_id in result.vectors:
+                vector = result.vectors[article_id]
+                
+                # Combine the ID with the metadata
+                article_data = {
+                    "id": article_id,
+                    **vector.metadata
+                }
+                return article_data
+            else:
+                logger.warning(f"Article with ID {article_id} not found in Pinecone")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error retrieving article by ID from Pinecone: {str(e)}")
+            return None
     
     def clear(self) -> bool:
         """

@@ -69,9 +69,6 @@ def render_search_results(results: List[Dict[Any, Any]]):
             if 'similarity' in article:
                 st.markdown(f"**Relevance Score:** {article['similarity']:.2f}")
             
-            st.markdown("#### Summary")
-            st.markdown(article.get('summary', '*No summary available*'))
-            
             st.markdown("#### Topics")
             topics = article.get('topics', [])
             
@@ -81,21 +78,103 @@ def render_search_results(results: List[Dict[Any, Any]]):
             else:
                 st.markdown(', '.join(f"**{topic}**" for topic in topics if topic and topic != 'None'))
             
-            # Button to view full article text
-            if st.button("View Full Text", key=f"article_{i}"):
-                st.markdown("---")
-                st.markdown("### Full Article Text")
-                
-                # Get article text - handle both direct text and potentially nested structures
+            # Show the article details in tabs for better organization
+            article_tabs = st.tabs(["📝 Summary", "📄 Full Text", "🔍 Metadata"])
+            
+            with article_tabs[0]:
+                # Summary view
+                summary = article.get('summary', 'No summary available')
+                if summary and summary.strip():
+                    st.markdown(f"### Summary\n{summary}")
+                else:
+                    st.info("No summary available for this article.")
+            
+            with article_tabs[1]:
+                # Full text view with better formatting
                 article_text = article.get('text', None)
                 
-                # Display the article text if available
+                # Display the article text if available with a container for better styling
                 if article_text and article_text.strip():
-                    st.markdown(article_text)
+                    st.markdown("### Full Article Text")
+                    with st.container():
+                        st.markdown(article_text)
                 else:
-                    # If text is not in the main object, try to fetch it from original document
-                    st.error("Full text not available in the search results.")
-                    st.info("This might be because the article was not fully indexed or the text field was not included in the search results.")
+                    # Try to fetch the text using document ID if available
+                    doc_id = article.get('id', None)
+                    if doc_id and 'vector_store' in st.session_state and st.session_state.vector_store:
+                        try:
+                            # Attempt to get complete article data
+                            st.info("Attempting to retrieve full text from database...")
+                            complete_article = st.session_state.vector_store.get_article_by_id(doc_id)
+                            if complete_article and 'text' in complete_article and complete_article['text']:
+                                st.markdown("### Full Article Text")
+                                with st.container():
+                                    st.markdown(complete_article['text'])
+                            else:
+                                st.error("Full text not available in the database.")
+                        except Exception as e:
+                            st.error(f"Error retrieving full text: {str(e)}")
+                    else:
+                        st.error("Full text not available in the search results.")
+                        st.info("This might be because the article was not fully indexed or the text field was not included in the search results.")
+            
+            with article_tabs[2]:
+                # Metadata view with better formatting
+                st.markdown("### Article Metadata")
+                
+                # Format timestamp if available
+                timestamp = article.get('timestamp', 'Unknown')
+                if timestamp and timestamp != 'Unknown':
+                    try:
+                        import datetime
+                        # Convert timestamp to readable format if it's a numeric value
+                        if isinstance(timestamp, (int, float)):
+                            timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                    except:
+                        pass  # Keep original if conversion fails
+                
+                # Calculate word count
+                text = article.get('text', '')
+                word_count = len(text.split()) if text else 0
+                
+                # Create a more readable display with columns
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("**Basic Information**")
+                    st.markdown(f"**Headline:** {article.get('headline', 'Untitled')}")
+                    st.markdown(f"**Source Domain:** {article.get('source_domain', 'Unknown')}")
+                    st.markdown(f"**Published:** {timestamp}")
+                    st.markdown(f"**Word Count:** {word_count}")
+                    
+                    # Format similarity score if available
+                    similarity = article.get('similarity', None)
+                    if similarity is not None:
+                        if isinstance(similarity, dict) and 'score' in similarity:
+                            similarity = similarity['score']
+                        st.markdown(f"**Relevance Score:** {similarity:.4f}")
+                
+                with col2:
+                    st.markdown("**Topics & Tags**")
+                    topics = article.get('topics', [])
+                    if topics:
+                        for topic in topics:
+                            if topic and topic != 'None':
+                                st.markdown(f"- {topic}")
+                    else:
+                        st.markdown("*No topics available*")
+                
+                # Add JSON data display directly in the tab (not using expander)
+                st.markdown("**Raw Data (JSON)**")
+                st.json({
+                    "headline": article.get('headline', 'Untitled'),
+                    "source_domain": article.get('source_domain', 'Unknown'),
+                    "url": article.get('url', 'Unknown'),
+                    "timestamp": timestamp,
+                    "topics": article.get('topics', []),
+                    "word_count": word_count,
+                    "similarity_score": article.get('similarity', 'N/A')
+                })
 
 
 def render_visualization(results: List[Dict[Any, Any]]):

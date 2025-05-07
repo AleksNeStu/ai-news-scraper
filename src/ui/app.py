@@ -83,8 +83,16 @@ if "pipeline" not in st.session_state:
     st.session_state.articles = []
     st.session_state.search_results = []
 
-def initialize_vector_store():
-    """Initialize the vector store and search engine."""
+def initialize_vector_store(show_errors=True):
+    """
+    Initialize the vector store and search engine.
+    
+    Args:
+        show_errors: Whether to display error messages in the UI
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
     config = st.session_state.pipeline.config
     try:
         vector_store = get_vector_store()
@@ -93,7 +101,8 @@ def initialize_vector_store():
         st.session_state.search_engine = search_engine
         return True
     except Exception as e:
-        st.error(f"Error initializing vector store: {str(e)}")
+        if show_errors:
+            st.error(f"Error initializing vector store: {str(e)}")
         return False
 
 def main():
@@ -141,12 +150,19 @@ def main():
     
     # Initialize vector store if needed
     if st.session_state.vector_store is None:
-        with st.sidebar.status("Loading vector database..."):
-            success = initialize_vector_store()
-            if success:
-                st.sidebar.success("Vector database loaded!")
-            else:
-                st.sidebar.error("Failed to load vector database!")
+        # Track if this is a refresh or initial load
+        if "db_initialized" not in st.session_state:
+            with st.sidebar.status("Loading vector database...") as status:
+                success = initialize_vector_store()
+                if success:
+                    status.update(label="Vector database loaded successfully!", state="complete")
+                    # Mark as initialized to avoid showing message again
+                    st.session_state.db_initialized = True
+                else:
+                    status.update(label="Failed to load vector database!", state="error")
+        else:
+            # Silent reload on page refresh
+            initialize_vector_store(show_errors=False)
     
     # Retrieve articles for display if not already loaded
     if not st.session_state.articles and st.session_state.vector_store is not None:

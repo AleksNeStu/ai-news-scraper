@@ -68,14 +68,28 @@ def render_home_page(article_count: int, articles: List[Dict[str, Any]]):
                     })
                 ])
             
-            # Create chart
+            # Create chart with better formatting
             chart = alt.Chart(sources_df).mark_bar().encode(
                 x=alt.X('Count:Q', title='Number of Articles'),
                 y=alt.Y('Source:N', title='Source Domain', sort='-x'),
-                tooltip=['Source', 'Count']
+                tooltip=['Source', 'Count'],
+                text=alt.Text('Count:Q', format='d')  # Add text labels showing count values
             ).properties(
                 title='Article Sources',
                 height=min(300, len(sources_df) * 30)
+            ).mark_bar(
+                cornerRadiusBottomRight=3,
+                cornerRadiusTopRight=3
+            ) + alt.Chart(sources_df).mark_text(
+                align='left',
+                baseline='middle',
+                dx=3,  # Small offset from the end of the bars
+                fontSize=12,
+                fontWeight='bold'
+            ).encode(
+                x=alt.X('Count:Q'),
+                y=alt.Y('Source:N', sort='-x'),
+                text='Count:Q'
             )
             
             st.altair_chart(chart, use_container_width=True)
@@ -104,14 +118,28 @@ def render_home_page(article_count: int, articles: List[Dict[str, Any]]):
             if len(topics_df) > 10:
                 topics_df = topics_df.head(10)
             
-            # Create chart
+            # Create chart with better formatting
             chart = alt.Chart(topics_df).mark_bar().encode(
                 x=alt.X('Count:Q', title='Number of Articles'),
                 y=alt.Y('Topic:N', title='Topic', sort='-x'),
-                tooltip=['Topic', 'Count']
+                tooltip=['Topic', 'Count'],
+                text=alt.Text('Count:Q', format='d')  # Add text labels showing count values
             ).properties(
                 title='Popular Topics',
                 height=min(300, len(topics_df) * 30)
+            ).mark_bar(
+                cornerRadiusBottomRight=3,
+                cornerRadiusTopRight=3
+            ) + alt.Chart(topics_df).mark_text(
+                align='left',
+                baseline='middle',
+                dx=3,  # Small offset from the end of the bars
+                fontSize=12,
+                fontWeight='bold'
+            ).encode(
+                x=alt.X('Count:Q'),
+                y=alt.Y('Topic:N', sort='-x'),
+                text='Count:Q'
             )
             
             st.altair_chart(chart, use_container_width=True)
@@ -131,6 +159,93 @@ def render_home_page(article_count: int, articles: List[Dict[str, Any]]):
                 st.write(f"**Source:** {article.get('url', 'Unknown')}")
                 st.write(f"**Summary:** {article.get('summary', 'No summary available')}")
                 st.write("**Topics:** " + ', '.join(article.get('topics', ['None'])))
+                
+                # Show the article details in tabs for better organization
+                article_tabs = st.tabs(["📝 Summary", "📄 Full Text", "🔍 Metadata"])
+                
+                with article_tabs[0]:
+                    # Summary view
+                    summary = article.get('summary', 'No summary available')
+                    if summary and summary.strip():
+                        st.markdown(f"### Summary\n{summary}")
+                    else:
+                        st.info("No summary available for this article.")
+                
+                with article_tabs[1]:
+                    # Display the full text of the article
+                    article_text = article.get('text', '')
+                    if article_text and article_text.strip():
+                        st.markdown("### Full Article Text")
+                        with st.container():
+                            st.markdown(article_text)
+                    else:
+                        # Try to fetch the text using document ID if available
+                        doc_id = article.get('id', None)
+                        if doc_id and 'vector_store' in st.session_state and st.session_state.vector_store:
+                            try:
+                                # Attempt to get complete article data
+                                st.info("Attempting to retrieve full text from database...")
+                                complete_article = st.session_state.vector_store.get_article_by_id(doc_id)
+                                if complete_article and 'text' in complete_article and complete_article['text']:
+                                    st.markdown("### Full Article Text")
+                                    with st.container():
+                                        st.markdown(complete_article['text'])
+                                else:
+                                    st.error("Full text not available in the database.")
+                            except Exception as e:
+                                st.error(f"Error retrieving full text: {str(e)}")
+                        else:
+                            st.error("Full text not available for this article.")
+                
+                with article_tabs[2]:
+                    # Display additional metadata with better formatting
+                    st.markdown("### Article Metadata")
+                    
+                    # Format timestamp if available
+                    timestamp = article.get('timestamp', 'Unknown')
+                    if timestamp and timestamp != 'Unknown':
+                        try:
+                            import datetime
+                            # Convert timestamp to readable format if it's a numeric value
+                            if isinstance(timestamp, (int, float)):
+                                timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                        except:
+                            pass  # Keep original if conversion fails
+                    
+                    # Calculate word count
+                    text = article.get('text', '')
+                    word_count = len(text.split()) if text else 0
+                    
+                    # Create a more readable display with columns
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("**Basic Information**")
+                        st.markdown(f"**Headline:** {article.get('headline', 'Untitled')}")
+                        st.markdown(f"**Source Domain:** {article.get('source_domain', 'Unknown')}")
+                        st.markdown(f"**Published:** {timestamp}")
+                        st.markdown(f"**Word Count:** {word_count}")
+                    
+                    with col2:
+                        st.markdown("**Topics & Tags**")
+                        topics = article.get('topics', [])
+                        if topics:
+                            for topic in topics:
+                                if topic and topic != 'None':
+                                    st.markdown(f"- {topic}")
+                        else:
+                            st.markdown("*No topics available*")
+                    
+                    # Add JSON data display directly in the tab (not using expander)
+                    st.markdown("**Raw Data (JSON)**")
+                    st.json({
+                        "headline": article.get('headline', 'Untitled'),
+                        "source_domain": article.get('source_domain', 'Unknown'),
+                        "url": article.get('url', 'Unknown'),
+                        "timestamp": timestamp,
+                        "topics": article.get('topics', []),
+                        "word_count": word_count
+                    })
                 
     else:
         st.warning("Your database is empty. Start by scraping some articles!")

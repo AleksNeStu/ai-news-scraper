@@ -150,20 +150,44 @@ def render_settings_page(save_settings_callback: Callable[[Dict[str, Any]], None
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("Clear Database", type="secondary"):
-            if st.session_state.get('vector_store'):
-                confirm = st.checkbox("Confirm deletion of all articles? This cannot be undone.")
-                if confirm and st.button("Yes, delete everything", type="secondary"):
-                    try:
-                        success = st.session_state.vector_store.clear()
-                        if success:
-                            st.success("Database cleared successfully!")
-                        else:
-                            st.error("Failed to clear database.")
-                    except Exception as e:
-                        st.error(f"Error clearing database: {str(e)}")
-            else:
-                st.error("Vector database not initialized.")
+        # Initialize state for database clearing confirmation
+        if "show_clear_confirm" not in st.session_state:
+            st.session_state.show_clear_confirm = False
+        
+        # Clear Database button
+        if not st.session_state.show_clear_confirm and st.button("Clear Database", type="secondary"):
+            st.session_state.show_clear_confirm = True
+        
+        # Show confirmation UI if needed
+        if st.session_state.show_clear_confirm:
+            st.warning("⚠️ You are about to delete all articles from the database.")
+            st.info("This action cannot be undone.")
+            
+            confirm_col1, confirm_col2 = st.columns(2)
+            with confirm_col1:
+                if st.button("Yes, clear everything", type="primary"):
+                    if st.session_state.get('vector_store'):
+                        try:
+                            success = st.session_state.vector_store.clear()
+                            if success:
+                                st.success("✅ Database cleared successfully!")
+                                # Reset session state to update UI
+                                st.session_state.articles = []
+                                st.session_state.search_results = []
+                                st.session_state.show_clear_confirm = False
+                                # This forces a page refresh to show the empty database
+                                st.rerun()
+                            else:
+                                st.error("❌ Failed to clear database.")
+                        except Exception as e:
+                            st.error(f"❌ Error clearing database: {str(e)}")
+                    else:
+                        st.error("Vector database not initialized.")
+            
+            with confirm_col2:
+                if st.button("No, cancel", type="secondary"):
+                    st.session_state.show_clear_confirm = False
+                    st.rerun()
     
     with col2:
         if st.button("Export Database", type="secondary"):
