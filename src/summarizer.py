@@ -8,20 +8,34 @@ the specified length constraints.
 
 import logging
 import json
-from typing import Dict, Any, Optional
+import re
+import nltk
+from typing import Dict, Any, Optional, List
 
 import openai
 from openai import OpenAI
 from tqdm import tqdm
 
-from src.config import OPENAI_API_KEY, COMPLETION_MODEL, SUMMARY_MIN_TOKENS, SUMMARY_MAX_TOKENS
+from src.config import (
+    OPENAI_API_KEY, COMPLETION_MODEL, SUMMARY_MIN_TOKENS, 
+    SUMMARY_MAX_TOKENS, OFFLINE_MODE
+)
 from src.scraper import ScrapedArticle
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Initialize OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Initialize OpenAI client if we have API key and not in offline mode
+client = None
+if OPENAI_API_KEY and not OFFLINE_MODE:
+    client = OpenAI(api_key=OPENAI_API_KEY)
+
+# Initialize NLTK for offline summarization
+try:
+    nltk.download('punkt', quiet=True)
+    nltk.download('stopwords', quiet=True)
+except Exception as e:
+    logger.warning(f"Error downloading NLTK data: {str(e)}")
 
 
 class ArticleSummarizer:
@@ -29,7 +43,8 @@ class ArticleSummarizer:
     
     def __init__(self, model: str = COMPLETION_MODEL, 
                  min_tokens: int = SUMMARY_MIN_TOKENS,
-                 max_tokens: int = SUMMARY_MAX_TOKENS):
+                 max_tokens: int = SUMMARY_MAX_TOKENS,
+                 offline_mode: bool = OFFLINE_MODE):
         """
         Initialize the ArticleSummarizer.
         
@@ -37,10 +52,12 @@ class ArticleSummarizer:
             model: The OpenAI model to use for summarization
             min_tokens: Minimum desired token length for summaries
             max_tokens: Maximum desired token length for summaries
+            offline_mode: Whether to use offline summarization
         """
         self.model = model
         self.min_tokens = min_tokens
         self.max_tokens = max_tokens
+        self.offline_mode = offline_mode
         
     def summarize(self, article: ScrapedArticle) -> str:
         """
@@ -52,7 +69,16 @@ class ArticleSummarizer:
         Returns:
             str: A concise summary of the article
         """
+        # Use offline summarization if in offline mode
+        if self.offline_mode:
+            return self._generate_offline_summary(article)
+            
+        # Otherwise use the OpenAI API
         try:
+            if not client:
+                logger.warning("OpenAI client not initialized, falling back to offline summarization")
+                return self._generate_offline_summary(article)
+                
             # Build the prompt for summarization
             prompt = self._build_summary_prompt(article)
             
@@ -75,7 +101,107 @@ class ArticleSummarizer:
         
         except Exception as e:
             logger.error(f"Error generating summary for article '{article.headline}': {str(e)}")
-            return ""
+            # Fall back to offline summarization
+            logger.info("Falling back to offline summarization")
+            return self._generate_offline_summary(article)
+    
+    def _generate_offline_summary(self, article: ScrapedArticle) -> str:
+        """
+        Generate a summary using offline techniques (extractive summarization).
+        
+        Args:
+            article: ScrapedArticle object containing the article content
+            
+        Returns:
+            str: A summary of the article using extractive summarization
+        """
+        try:
+            # Use extractive summarization (selecting the most important sentences)
+            from nltk.tokenize import sent_tokenize
+            from nltk.corpus import stopwords
+            from nltk.stem import PorterStemmer
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            
+            # Fallback for missing NLTK data
+            stop_words = set()
+            try:
+                stop_words = set(stopwords.words('english'))
+            except:
+                stop_words = {"a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for", "with"}
+            
+            # Extract text from article
+            text = article.text
+            headline = article.headline
+            
+            # Tokenize sentences
+            sentences = sent_tokenize(text)
+            if len(sentences) <= 3:
+                # Too short to summarize meaningfully
+                if len(text) > 200:
+                    return text[:200] + "..."
+                return text
+            
+            # Calculate sentence scores based on TF-IDF
+            vectorizer = TfidfVectorizer(stop_words=list(stop_words))
+            try:
+                tfidf_matrix = vectorizer.fit_transform(sentences)
+            except:
+                # Fallback if sklearn fails
+                return self._simple_extractive_summary(text, headline)
+                
+            # Calculate sentence scores
+            sentence_scores = []
+            for i, sentence in enumerate(sentences):
+                score = sum(tfidf_matrix[i].toarray()[0])
+                words = len(sentence.split())
+                if words > 10:  # Ignore very short sentences
+                    sentence_scores.append((score, i, sentence))
+            
+            # Sort by score and select top sentences
+            sentence_scores.sort(reverse=True)
+            top_sentences = sentence_scores[:min(5, len(sentence_scores))]
+            
+            # Sort selected sentences by original position
+            top_sentences.sort(key=lambda x: x[1])
+            
+            # Combine sentences into summary
+            summary = " ".join([s[2] for s in top_sentences])
+            
+            # Add headline if not included
+            if headline and headline.strip() not in summary:
+                summary = headline + ". " + summary
+                
+            logger.info(f"Successfully generated offline summary for article: '{article.headline}'")
+            return summary
+            
+        except Exception as e:
+            logger.error(f"Error generating offline summary: {str(e)}")
+            # Last resort fallback
+            return self._simple_extractive_summary(article.text, article.headline)
+    
+    def _simple_extractive_summary(self, text: str, headline: Optional[str] = None) -> str:
+        """
+        Generate a simple extractive summary by taking the first few sentences.
+        
+        Args:
+            text: Article text
+            headline: Article headline
+            
+        Returns:
+            str: Simple summary
+        """
+        # Split text into sentences using regex (fallback if NLTK fails)
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        
+        # Take first few sentences
+        top_sentences = sentences[:min(3, len(sentences))]
+        summary = " ".join(top_sentences)
+        
+        # Add headline if not included
+        if headline and headline.strip() not in summary:
+            summary = headline + ". " + summary
+            
+        return summary
     
     def _build_summary_prompt(self, article: ScrapedArticle) -> str:
         """

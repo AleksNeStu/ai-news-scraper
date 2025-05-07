@@ -10,18 +10,23 @@ import argparse
 import logging
 import sys
 import json
+import re
 from typing import List, Dict, Any, Optional
 import time
 from dataclasses import asdict
+from pathlib import Path
 
-from src.config import validate_config
+from src.config import Config, suppress_external_library_warnings
 from src.scraper import ArticleScraper, ScrapedArticle
 from src.summarizer import ArticleSummarizer, EnhancedArticleSummarizer
 from src.topics import TopicExtractor, EnhancedTopicExtractor
 from src.embedder import ArticleEmbedder
-from src.vector_store import get_vector_store
-from src.search import SemanticSearch
+from src.vector_store import VectorStore, get_vector_store
+from src.search import SemanticSearchEngine
 
+
+# Suppress warnings from external libraries
+suppress_external_library_warnings()
 
 # Configure logging
 logging.basicConfig(
@@ -61,330 +66,197 @@ def read_urls_from_file(file_path: str) -> List[str]:
         return []
 
 
-class NewsPipeline:
+class NewsScraperPipeline:
     """Class for orchestrating the entire news processing pipeline."""
     
-    def __init__(self, use_enhanced: bool = False, offline_mode: bool = False):
+    def __init__(self, config: Optional[Config] = None):
         """
-        Initialize the NewsPipeline.
+        Initialize the NewsScraperPipeline.
         
         Args:
-            use_enhanced: Whether to use enhanced versions of summarizer and topic extractor.
-            offline_mode: Whether to run in offline mode (skip API calls).
+            config: Configuration object. If None, a default configuration is used.
         """
-        # Save the offline mode setting
-        self.offline_mode = offline_mode
+        # Initialize configuration
+        self.config = config if config else Config()
+        self.offline_mode = self.config.offline_mode
         
-        # In offline mode, we can skip API config validation
-        if not offline_mode and not validate_config():
-            raise ValueError("Invalid configuration. Please check your .env file.")
-            
         # Initialize components
-        self.scraper = ArticleScraper()
-        
-        if use_enhanced and not offline_mode:
-            self.summarizer = EnhancedArticleSummarizer()
-            self.topic_extractor = EnhancedTopicExtractor()
-        else:
-            self.summarizer = ArticleSummarizer()
-            self.topic_extractor = TopicExtractor()
-            
-        self.embedder = ArticleEmbedder()
+        self.scraper = ArticleScraper(max_retries=self.config.max_retry_attempts)
+        self.summarizer = ArticleSummarizer(offline_mode=self.offline_mode)
+        self.topic_extractor = TopicExtractor(offline_mode=self.offline_mode)
+        self.embedder = ArticleEmbedder(offline_mode=self.offline_mode)
         self.vector_store = get_vector_store()
-        self.search = SemanticSearch(vector_store=self.vector_store, embedder=self.embedder)
+        self.search_engine = SemanticSearchEngine(vector_store=self.vector_store, embedder=self.embedder)
         
-        logger.info(f"News pipeline initialized (offline mode: {offline_mode})")
+        logger.info(f"News pipeline initialized (offline mode: {self.offline_mode})")
     
-    def process_urls(self, urls: List[str]) -> Dict[str, Any]:
+    def set_offline_mode(self, offline_mode: bool):
+        """
+        Set whether the pipeline should run in offline mode.
+        
+        Args:
+            offline_mode: Whether to use offline mode.
+        """
+        self.offline_mode = offline_mode
+        self.config.offline_mode = offline_mode
+        
+        # Update all components with new mode
+        self.summarizer.offline_mode = offline_mode
+        self.topic_extractor.offline_mode = offline_mode
+        self.embedder.set_offline_mode(offline_mode)
+        
+        logger.info(f"Pipeline offline mode set to: {offline_mode}")
+    
+    def process_url(self, url: str, summarize: bool = True, extract_topics: bool = True) -> Dict[str, Any]:
+        """
+        Process a single URL through the pipeline.
+        
+        Args:
+            url: URL to process.
+            summarize: Whether to generate a summary.
+            extract_topics: Whether to extract topics.
+            
+        Returns:
+            Dict[str, Any]: Results of the processing.
+        """
+        try:
+            # Step 1: Scrape the article
+            article = self.scraper.scrape_url(url)
+            if not article:
+                logger.warning(f"Failed to scrape article from {url}")
+                return {"url": url, "status": "failed", "reason": "Scraping failed"}
+            
+            result = {
+                "url": url,
+                "headline": article.headline,
+                "source_domain": article.source_domain,
+                "publish_date": article.publish_date,
+                "status": "success"
+            }
+            
+            # Step 2: Summarize if requested
+            if summarize:
+                summary = self.summarizer.summarize(article)
+                result["summary"] = summary
+            
+            # Step 3: Extract topics if requested
+            if extract_topics:
+                topics = self.topic_extractor.extract_topics(article)
+                result["topics"] = topics
+            
+            # Step 4: Generate embeddings and store in vector database
+            try:
+                # Create embeddings
+                embedded_article = self.embedder.embed_article(
+                    article,
+                    include_summary=summarize and "summary" in result,
+                    summary=result.get("summary")
+                )
+                
+                # Add topics to the embedded article
+                if extract_topics and "topics" in result:
+                    embedded_article["topics"] = result["topics"]
+                
+                # Add the full text
+                embedded_article["text"] = article.text
+                
+                # Store in vector database
+                self.vector_store.store_embeddings([embedded_article])
+                result["stored"] = True
+                
+            except Exception as e:
+                logger.error(f"Error storing article in vector database: {str(e)}")
+                result["stored"] = False
+                result["error"] = str(e)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error processing URL {url}: {str(e)}")
+            return {"url": url, "status": "failed", "reason": str(e)}
+    
+    def process_urls(self, urls: List[str], summarize: bool = True, extract_topics: bool = True) -> Dict[str, Any]:
         """
         Process a list of URLs through the entire pipeline.
         
         Args:
             urls: List of URLs to process.
+            summarize: Whether to generate summaries.
+            extract_topics: Whether to extract topics.
             
         Returns:
             Dict[str, Any]: Results of the processing.
         """
         start_time = time.time()
+        results = []
         
-        # Step 1: Scrape articles
-        logger.info(f"Scraping {len(urls)} articles")
-        articles = self.scraper.scrape_urls(urls)
-        logger.info(f"Successfully scraped {len(articles)} articles")
+        for url in urls:
+            result = self.process_url(url, summarize, extract_topics)
+            results.append(result)
         
-        if not articles:
-            logger.error("No articles were scraped. Aborting pipeline.")
-            return {"error": "No articles were scraped", "urls": urls}
+        # Prepare final results
+        successful = sum(1 for result in results if result.get("status") == "success")
+        failed = len(results) - successful
         
-        # Check if running in offline mode
-        if self.offline_mode:
-            logger.info("Running in offline mode - skipping API calls for summarization, topic extraction, and embedding")
-            
-            # Create basic entries without using external APIs
-            articles_data = []
-            for article in articles:
-                # Extract keywords from the text as basic topics
-                basic_topics = self._extract_basic_topics(article.text)
-                
-                # Create a basic summary from the first few paragraphs
-                basic_summary = self._create_basic_summary(article.text)
-                
-                article_data = {
-                    "url": article.url,
-                    "headline": article.headline,
-                    "text": article.text[:2000] + "..." if len(article.text) > 2000 else article.text,
-                    "summary": basic_summary,
-                    "topics": basic_topics,
-                    "source_domain": article.source_domain,
-                    "publish_date": article.publish_date,
-                    "authors": article.authors,
-                    "offline_processed": True
-                }
-                articles_data.append(article_data)
-            
-            # Store the articles without embeddings
-            logger.info("Storing articles without embeddings (offline mode)")
-            success = self.vector_store.store_articles_without_embeddings(articles_data)
-            
-            # Prepare results
-            elapsed_time = time.time() - start_time
-            
-            results = {
-                "processed_count": len(articles),
-                "total_urls": len(urls),
-                "elapsed_seconds": elapsed_time,
-                "success": success,
-                "mode": "offline"
-            }
-            
-            logger.info(f"Offline pipeline completed in {elapsed_time:.2f} seconds")
-            return results
-        
-        # Standard online processing path
-        # Step 2: Generate summaries
-        logger.info("Generating summaries")
-        summaries = {}
-        try:
-            summaries = self.summarizer.summarize_articles(articles)
-            if not summaries:
-                logger.warning("Failed to generate any summaries. Using article titles as fallback.")
-        except Exception as e:
-            logger.error(f"Error during summarization: {str(e)}")
-            logger.info("Using article titles as fallback summaries")
-        
-        # Use fallback summaries if needed
-        if not summaries:
-            summaries = {article.url: f"Summary unavailable: {article.headline}" for article in articles}
-        
-        # Step 3: Extract topics
-        logger.info("Extracting topics")
-        article_topics = {}
-        try:
-            article_topics = self.topic_extractor.extract_topics_for_articles(articles)
-            if not article_topics:
-                logger.warning("Failed to extract topics. Using fallback topics.")
-        except Exception as e:
-            logger.error(f"Error during topic extraction: {str(e)}")
-            logger.info("Using fallback topics")
-        
-        # Use fallback topics if needed
-        if not article_topics:
-            article_topics = {article.url: ["news", "article"] for article in articles}
-        
-        # Step 4: Create embeddings
-        logger.info("Creating embeddings")
-        try:
-            embedded_articles = self.embedder.embed_articles(articles, summaries=summaries)
-            
-            # Add topics to embedded articles
-            for article_data in embedded_articles:
-                url = article_data.get("url")
-                if url in article_topics:
-                    article_data["topics"] = article_topics[url]
-            
-            # Step 5: Store in vector database
-            logger.info("Storing embeddings in vector database")
-            success = self.vector_store.store_embeddings(embedded_articles)
-            
-            if not success:
-                logger.error("Failed to store embeddings in vector database")
-        except Exception as e:
-            logger.error(f"Error during embedding or storage: {str(e)}")
-            success = False
-            
-            # Create basic entries without embeddings if API fails
-            embedded_articles = []
-            for article in articles:
-                article_data = {
-                    "url": article.url,
-                    "headline": article.headline,
-                    "text": article.text[:1000] + "..." if len(article.text) > 1000 else article.text,
-                    "summary": summaries.get(article.url, "Summary unavailable"),
-                    "topics": article_topics.get(article.url, ["news", "article"]),
-                    "embedding_error": "API authentication failed. Using text-only storage."
-                }
-                embedded_articles.append(article_data)
-            
-            # Try to store the articles without embeddings
-            try:
-                success = self.vector_store.store_articles_without_embeddings(embedded_articles)
-            except Exception as ex:
-                logger.error(f"Failed to store articles without embeddings: {str(ex)}")
-                success = False
-        
-        # Prepare results
         elapsed_time = time.time() - start_time
-        
-        results = {
-            "processed_count": len(articles),
-            "total_urls": len(urls),
-            "elapsed_seconds": elapsed_time,
-            "success": success,
-            "mode": "online"
+        summary = {
+            "total": len(urls),
+            "successful": successful,
+            "failed": failed,
+            "elapsed_time_seconds": elapsed_time,
+            "offline_mode": self.offline_mode
         }
         
-        logger.info(f"Pipeline completed in {elapsed_time:.2f} seconds")
-        return results
-    
-    def search_articles(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """
-        Search for articles using the semantic search.
-        
-        Args:
-            query: Search query.
-            limit: Maximum number of results to return.
-            
-        Returns:
-            List[Dict[str, Any]]: Search results.
-        """
-        logger.info(f"Searching for: '{query}'")
-        
-        if self.offline_mode:
-            logger.info("Using text-based search in offline mode")
-            results = self.search.search(query, limit=limit, offline_mode=True)
-        else:
-            results = self.search.search(query, limit=limit)
-            
-        logger.info(f"Found {len(results)} matching articles")
-        return results
+        logger.info(f"Processing completed: {successful} succeeded, {failed} failed, in {elapsed_time:.2f} seconds")
+        return {"summary": summary, "results": results}
     
     def get_all_articles(self) -> List[Dict[str, Any]]:
         """
-        Get all articles stored in the vector database.
+        Retrieve all articles stored in the vector database.
         
         Returns:
-            List[Dict[str, Any]]: All stored articles.
+            List[Dict[str, Any]]: List of all articles with their metadata.
         """
-        return self.vector_store.get_all_articles()
+        try:
+            logger.info("Retrieving all articles from the vector store")
+            return self.vector_store.get_all_articles()
+        except Exception as e:
+            logger.error(f"Error retrieving articles: {str(e)}")
+            return []
+    
+    def search_articles(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Search for articles matching the query.
+        
+        Args:
+            query: Search query text
+            limit: Maximum number of results to return
+            
+        Returns:
+            List[Dict[str, Any]]: List of matching articles
+        """
+        try:
+            logger.info(f"Searching for articles matching query: '{query}'")
+            return self.search_engine.search(query, limit=limit, offline_mode=self.offline_mode)
+        except Exception as e:
+            logger.error(f"Error searching for articles: {str(e)}")
+            return []
     
     def clear_database(self) -> bool:
         """
-        Clear the vector database.
+        Clear all articles from the vector database.
         
         Returns:
-            bool: True if successful, False otherwise.
-        """
-        return self.vector_store.clear()
-    
-    def _extract_basic_topics(self, text: str, max_topics: int = 5) -> List[str]:
-        """
-        Extract basic topics from text using frequency analysis (no API calls).
-        
-        Args:
-            text: Article text to analyze.
-            max_topics: Maximum number of topics to extract.
-            
-        Returns:
-            List of extracted topics.
-        """
-        # Define common stop words to filter out
-        stop_words = {
-            "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", 
-            "are", "as", "at", "be", "because", "been", "before", "being", "below", "between", 
-            "both", "but", "by", "could", "did", "do", "does", "doing", "down", "during", "each", 
-            "few", "for", "from", "further", "had", "has", "have", "having", "he", "he'd", "he'll", 
-            "he's", "her", "here", "here's", "hers", "herself", "him", "himself", "his", "how", 
-            "how's", "i", "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "it", "it's", "its", 
-            "itself", "let's", "me", "more", "most", "my", "myself", "nor", "of", "on", "once", "only", 
-            "or", "other", "ought", "our", "ours", "ourselves", "out", "over", "own", "same", "she", 
-            "she'd", "she'll", "she's", "should", "so", "some", "such", "than", "that", "that's", 
-            "the", "their", "theirs", "them", "themselves", "then", "there", "there's", "these", 
-            "they", "they'd", "they'll", "they're", "they've", "this", "those", "through", "to", 
-            "too", "under", "until", "up", "very", "was", "we", "we'd", "we'll", "we're", "we've", 
-            "were", "what", "what's", "when", "when's", "where", "where's", "which", "while", "who", 
-            "who's", "whom", "why", "why's", "with", "would", "you", "you'd", "you'll", "you're", "you've", 
-            "your", "yours", "yourself", "yourselves", "said", "says", "also", "like", "just", "now"
-        }
-        
-        try:
-            # Tokenize the text
-            text = text.lower()
-            
-            # Remove punctuation
-            import re
-            text = re.sub(r'[^\w\s]', ' ', text)
-            
-            # Split into words
-            words = text.split()
-            
-            # Filter out stop words and short words
-            filtered_words = [word for word in words if word not in stop_words and len(word) > 3]
-            
-            # Count word frequencies
-            from collections import Counter
-            word_counts = Counter(filtered_words)
-            
-            # Get the most common words
-            common_words = word_counts.most_common(max_topics)
-            
-            # Return just the words
-            return [word for word, _ in common_words] if common_words else ["news", "article"]
-            
-        except Exception as e:
-            logger.error(f"Error extracting basic topics: {str(e)}")
-            return ["news", "article"]
-            
-    def _create_basic_summary(self, text: str, max_length: int = 200) -> str:
-        """
-        Create a basic summary from article text (no API calls).
-        
-        Args:
-            text: Article text to summarize.
-            max_length: Maximum length of the summary in characters.
-            
-        Returns:
-            Basic summary string.
+            bool: True if successful, False otherwise
         """
         try:
-            # Split the text into paragraphs
-            paragraphs = text.split('\n\n')
-            
-            # Use the first paragraph(s) as a summary
-            summary = ""
-            for para in paragraphs:
-                # Skip very short paragraphs
-                if len(para.strip()) < 40:
-                    continue
-                    
-                # Add paragraph to summary
-                if len(summary) > 0:
-                    summary += " "
-                summary += para.strip()
-                
-                # Stop if we've reached the maximum length
-                if len(summary) >= max_length:
-                    break
-                    
-            # Truncate if needed and add ellipsis
-            if len(summary) > max_length:
-                summary = summary[:max_length].strip() + "..."
-                
-            return summary if summary else "Summary unavailable"
-            
+            logger.info("Clearing vector database")
+            self.vector_store.clear()
+            return True
         except Exception as e:
-            logger.error(f"Error creating basic summary: {str(e)}")
-            return "Summary unavailable"
-    
+            logger.error(f"Error clearing database: {str(e)}")
+            return False
+        
 
 def main():
     """Main entry point for the command line interface."""
@@ -432,7 +304,7 @@ def main():
             return
         
         # Create pipeline with appropriate settings
-        pipeline = NewsPipeline(use_enhanced=args.enhanced, offline_mode=args.offline)
+        pipeline = NewsScraperPipeline(config=Config(offline_mode=args.offline))
         logger.info(f"Running pipeline with {'offline' if args.offline else 'online'} mode")
         
         # Process the URLs
@@ -440,17 +312,17 @@ def main():
         print(json.dumps(results, indent=2))
         
     elif args.command == "search":
-        pipeline = NewsPipeline(offline_mode=args.offline)
+        pipeline = NewsScraperPipeline(config=Config(offline_mode=args.offline))
         results = pipeline.search_articles(args.query, limit=args.limit)
         print(json.dumps(results, indent=2))
         
     elif args.command == "list":
-        pipeline = NewsPipeline()
+        pipeline = NewsScraperPipeline()
         articles = pipeline.get_all_articles()
         print(json.dumps(articles, indent=2))
         
     elif args.command == "clear":
-        pipeline = NewsPipeline()
+        pipeline = NewsScraperPipeline()
         success = pipeline.clear_database()
         print(f"Database cleared: {success}")
         

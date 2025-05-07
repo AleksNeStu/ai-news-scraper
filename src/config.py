@@ -4,7 +4,8 @@ Configuration and environment setup for the AI News Scraper application.
 import os
 import warnings
 import importlib.util
-from typing import Optional, Literal
+from typing import Optional, Literal, Union
+from dataclasses import dataclass
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -39,6 +40,10 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-ada-002")
 COMPLETION_MODEL = os.getenv("COMPLETION_MODEL", "gpt-3.5-turbo")
 SUMMARY_MAX_TOKENS = int(os.getenv("SUMMARY_MAX_TOKENS", 300))
 SUMMARY_MIN_TOKENS = int(os.getenv("SUMMARY_MIN_TOKENS", 100))
+
+# Offline mode configuration
+OFFLINE_MODE = os.getenv("OFFLINE_MODE", "False").lower() in ["true", "1", "yes"]
+LOCAL_EMBEDDING_MODEL = os.getenv("LOCAL_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 # Vector Database Configuration
 VECTOR_DB_TYPE: Literal["FAISS", "QDRANT", "PINECONE"] = os.getenv("VECTOR_DB_TYPE", "FAISS")
@@ -90,3 +95,68 @@ def validate_config() -> bool:
         return False
         
     return True
+
+
+@dataclass
+class Config:
+    """Configuration class for AI News Scraper application."""
+    
+    # OpenAI API settings
+    openai_api_key: str = OPENAI_API_KEY
+    embedding_model: str = EMBEDDING_MODEL
+    completion_model: str = COMPLETION_MODEL
+    summary_max_tokens: int = SUMMARY_MAX_TOKENS
+    summary_min_tokens: int = SUMMARY_MIN_TOKENS
+    
+    # Offline mode settings
+    offline_mode: bool = OFFLINE_MODE
+    local_embedding_model: str = LOCAL_EMBEDDING_MODEL
+    
+    # Vector database settings
+    vector_db_type: str = VECTOR_DB_TYPE.lower()
+    vector_db_path: str = FAISS_INDEX_PATH
+    
+    # Application settings
+    max_retry_attempts: int = MAX_RETRY_ATTEMPTS
+    log_level: str = LOG_LEVEL
+    
+    def __post_init__(self):
+        """Validate configuration after initialization."""
+        # Create directory for vector store if it doesn't exist (for FAISS)
+        if self.vector_db_type.upper() == "FAISS":
+            os.makedirs(os.path.dirname(self.vector_db_path), exist_ok=True)
+    
+    def to_dict(self) -> dict:
+        """Convert configuration to a dictionary."""
+        return {
+            "openai_api_key": "***" if self.openai_api_key else None,  # Mask API key
+            "embedding_model": self.embedding_model,
+            "completion_model": self.completion_model,
+            "summary_max_tokens": self.summary_max_tokens,
+            "summary_min_tokens": self.summary_min_tokens,
+            "offline_mode": self.offline_mode,
+            "local_embedding_model": self.local_embedding_model,
+            "vector_db_type": self.vector_db_type,
+            "vector_db_path": self.vector_db_path,
+            "max_retry_attempts": self.max_retry_attempts,
+            "log_level": self.log_level
+        }
+    
+    def validate(self) -> bool:
+        """
+        Validate the configuration.
+        
+        Returns:
+            bool: True if configuration is valid, False otherwise.
+        """
+        # Skip API key validation in offline mode
+        if not self.offline_mode and not self.openai_api_key:
+            print("Error: OpenAI API key is not set and offline_mode is False")
+            return False
+        
+        # Check vector database configuration
+        if self.vector_db_type.upper() not in ["FAISS", "QDRANT", "PINECONE"]:
+            print(f"Error: Unknown vector database type: {self.vector_db_type}")
+            return False
+        
+        return True

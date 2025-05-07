@@ -7,33 +7,58 @@ vector embeddings that can be used for semantic similarity search.
 
 import logging
 from typing import Dict, List, Optional, Union, Any
-
+import os
 import numpy as np
 from openai import OpenAI
 from tqdm import tqdm
 import time
-from src.config import OPENAI_API_KEY, EMBEDDING_MODEL
+
+from src.config import (
+    OPENAI_API_KEY, EMBEDDING_MODEL, 
+    OFFLINE_MODE, LOCAL_EMBEDDING_MODEL
+)
 from src.scraper import ScrapedArticle
 from src.summarizer import ArticleSummarizer
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Initialize OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Initialize OpenAI client (only if not in offline mode)
+client = None
+if not OFFLINE_MODE and OPENAI_API_KEY:
+    client = OpenAI(api_key=OPENAI_API_KEY)
+
+# For offline mode, initialize sentence-transformers if available
+local_embedder = None
+if OFFLINE_MODE:
+    try:
+        from sentence_transformers import SentenceTransformer
+        local_embedder = SentenceTransformer(LOCAL_EMBEDDING_MODEL)
+        logger.info(f"Initialized local embedding model: {LOCAL_EMBEDDING_MODEL}")
+    except ImportError:
+        logger.warning("sentence-transformers not available for offline embeddings")
+    except Exception as e:
+        logger.error(f"Error initializing local embedding model: {str(e)}")
 
 
 class ArticleEmbedder:
-    """Class for creating embeddings of news articles using OpenAI's embedding models."""
+    """Class for creating embeddings of news articles using embedding models."""
     
-    def __init__(self, model: str = EMBEDDING_MODEL):
+    def __init__(self, model: str = EMBEDDING_MODEL, offline_mode: bool = OFFLINE_MODE):
         """
         Initialize the ArticleEmbedder.
         
         Args:
-            model: The OpenAI embedding model to use.
+            model: The embedding model to use (OpenAI model name or local model path).
+            offline_mode: Whether to use local embedding models (offline mode).
         """
         self.model = model
+        self.offline_mode = offline_mode
+        self.embedding_dimension = 1536  # Default for OpenAI embeddings
+        
+        # For offline mode, use a different embedding dimension
+        if self.offline_mode and local_embedder is not None:
+            self.embedding_dimension = local_embedder.get_sentence_embedding_dimension()
     
     def create_embedding(self, text: str) -> List[float]:
         """
@@ -45,20 +70,87 @@ class ArticleEmbedder:
         Returns:
             List[float]: Vector embedding of the text.
         """
-        try:
-            # Call the OpenAI API to get the embedding
-            response = client.embeddings.create(
-                model=self.model,
-                input=text
-            )
+        # Use local embedding model in offline mode
+        if self.offline_mode:
+            return self._create_local_embedding(text)
+        else:
+            return self._create_openai_embedding(text)
+    
+    def _create_local_embedding(self, text: str) -> List[float]:
+        """
+        Create an embedding using local models for offline mode.
+        
+        Args:
+            text: The text to embed.
             
-            embedding = response.data[0].embedding
-            return embedding
+        Returns:
+            List[float]: Vector embedding of the text.
+        """
+        try:
+            if local_embedder is None:
+                logger.warning("Local embedder not available, using random embedding")
+                return self._create_random_embedding()
+                
+            # Limit text length to avoid memory issues with local models
+            if len(text) > 5000:
+                text = text[:5000]
+                
+            # Generate embedding using sentence-transformers
+            embedding = local_embedder.encode(text)
+            return embedding.tolist()
             
         except Exception as e:
-            logger.error(f"Error creating embedding: {str(e)}")
-            # Return empty embedding as fallback
-            return [0.0] * 1536  # Default embedding dimension for text-embedding-ada-002
+            logger.error(f"Error creating local embedding: {str(e)}")
+            return self._create_random_embedding()
+    
+    def _create_random_embedding(self) -> List[float]:
+        """
+        Create a random embedding as fallback when other methods fail.
+        
+        Returns:
+            List[float]: Random vector embedding of the appropriate dimension.
+        """
+        # Generate a normalized random vector of the right dimension
+        random_embedding = np.random.rand(self.embedding_dimension).astype(np.float32)
+        random_embedding = random_embedding / np.linalg.norm(random_embedding)
+        return random_embedding.tolist()
+    
+    def _create_openai_embedding(self, text: str) -> List[float]:
+        """
+        Create an embedding using OpenAI API.
+        
+        Args:
+            text: The text to embed.
+            
+        Returns:
+            List[float]: Vector embedding of the text.
+        """
+        if not client:
+            logger.error("OpenAI client not initialized")
+            return self._create_random_embedding()
+        
+        # Limit text length according to OpenAI's token limits
+        if len(text) > 8000:
+            text = text[:8000]
+            
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = client.embeddings.create(
+                    input=text,
+                    model=self.model
+                )
+                return response.data[0].embedding
+                
+            except Exception as e:
+                logger.error(f"Error creating OpenAI embedding (attempt {attempt+1}/{max_retries}): {str(e)}")
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt
+                    logger.info(f"Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    logger.warning("Falling back to random embedding")
+                    return self._create_random_embedding()
     
     def embed_article(self, article: ScrapedArticle, 
                       include_summary: bool = False,
@@ -214,3 +306,18 @@ class ArticleEmbedder:
                 else:
                     # After all retries failed, return None
                     return None
+    
+    def set_offline_mode(self, offline: bool = True):
+        """
+        Set whether to use offline mode for embeddings.
+        
+        Args:
+            offline: True to use offline mode, False to use online API.
+        """
+        self.offline_mode = offline
+        
+        # Update embedding dimension if switching modes
+        if self.offline_mode and local_embedder is not None:
+            self.embedding_dimension = local_embedder.get_sentence_embedding_dimension()
+        else:
+            self.embedding_dimension = 1536  # Default for OpenAI embeddings
