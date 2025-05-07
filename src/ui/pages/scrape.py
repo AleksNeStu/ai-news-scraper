@@ -35,18 +35,24 @@ def render_scrape_page(process_urls_callback):
         st.info("Select from these sample news articles to try out the application")
         sample_urls = {
             "Technology": [
-                "https://techcrunch.com/2023/02/13/openai-releases-tool-to-detect-ai-generated-text/",
-                "https://www.theverge.com/2023/2/7/23587454/microsoft-bing-edge-chatgpt-ai",
-                "https://www.wired.com/story/ai-is-about-to-make-social-media-marketing-really-annoying/"
+                "https://www.theguardian.com/technology/2025/may/07/amazon-makes-fundamental-leap-forward-in-robotics-with-device-having-sense-of-touch",
+                "https://blog.google/technology/ai/google-ai-updates-april-2025/",
+                "https://www.forbes.com/councils/forbestechcouncil/2025/02/03/top-10-technology-trends-for-2025/"
             ],
             "World News": [
-                "https://www.bbc.com/news/world-middle-east-67037529",
-                "https://www.reuters.com/world/europe/russian-forces-secure-foothold-eastern-ukraine-vuhledar-2023-02-14/",
-                "https://apnews.com/article/g20-india-tensions-ukraine-war-66270f8ae9d852919f1973fde5a8608e"
+                "https://apnews.com/article/05ad77483111bf49ffa14b390f550585",
+                "https://www.ft.com/content/49e38ee8-f37e-47da-8ee4-1631175d2224",
+                "https://www.theguardian.com/business/live/2025/may/06/trade-war-china-service-sector-uk-eurozone-ford-tariffs-bp-shell-oil-business-live-news"
             ],
             "Science": [
-                "https://www.scientificamerican.com/article/nasa-webb-telescope-reveals-new-features-in-jupiters-great-red-spot/",
-                "https://www.nature.com/articles/d41586-023-00509-z"
+                "https://time.com/7283206/what-trump-proposed-nasa-budget-cuts-mean-for-space-science/",
+                "https://www.ft.com/content/ccbbcb4a-992f-426b-ae63-97f2770b1655",
+                "https://www.reuters.com/sustainability/climate-energy/why-we-need-scientists-now-more-than-ever-2025-05-07/"
+            ],
+            "AI & Innovation": [
+                "https://www.barrons.com/articles/crowdstrike-stock-layoffs-job-cuts-b55c736d",
+                "https://www.anthropic.com/news/ai-for-science-program",
+                "https://www.techradar.com/pro/live/google-cloud-next-2025-all-the-news-and-updates-as-it-happens"
             ]
         }
         
