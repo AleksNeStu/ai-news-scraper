@@ -65,9 +65,24 @@ def render_search_results(results: List[Dict[Any, Any]]):
         with st.expander(f"**{article.get('headline', 'Untitled Article')}**"):
             st.markdown(f"**Source:** [{article.get('url', 'Unknown URL')}]({article.get('url', '#')})")
             
-            # Display similarity score if available
+            # Display similarity score if available with improved formatting
             if 'similarity' in article:
-                st.markdown(f"**Relevance Score:** {article['similarity']:.2f}")
+                similarity_value = article['similarity']
+                if isinstance(similarity_value, dict) and 'score' in similarity_value:
+                    similarity_value = similarity_value['score']
+                
+                # Display the similarity score with better visual indicator
+                st.markdown(f"**Relevance Score:** {similarity_value:.4f}")
+                
+                # Add visual indicator of match quality
+                if similarity_value > 0.9:
+                    st.success("🎯 Excellent match")
+                elif similarity_value > 0.7:
+                    st.info("✅ Good match")
+                elif similarity_value > 0.5:
+                    st.warning("⚠️ Fair match")
+                else:
+                    st.error("⚠️ Weak match")
             
             st.markdown("#### Topics")
             topics = article.get('topics', [])
@@ -137,20 +152,57 @@ def render_search_results(results: List[Dict[Any, Any]]):
                 # Metadata view with better formatting
                 st.markdown("### Article Metadata")
                 
-                # Format timestamp if available
-                timestamp = article.get('timestamp', None)
-                formatted_timestamp = 'Unknown'
+                # Better timestamp handling with new fields
+                import datetime
                 
-                if timestamp:
+                # Check for article_posted (publication date)
+                article_posted = article.get('article_posted', None)
+                article_posted_formatted = 'Unknown'
+                
+                if article_posted:
                     try:
-                        import datetime
-                        # Convert timestamp to readable format if it's a numeric value
-                        if isinstance(timestamp, (int, float)) and timestamp > 0:
-                            formatted_timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-                        elif isinstance(timestamp, str) and timestamp != 'Unknown':
-                            formatted_timestamp = timestamp
-                    except Exception as e:
-                        st.caption(f"Error formatting timestamp: {str(e)}")
+                        if isinstance(article_posted, str) and article_posted != 'Unknown':
+                            article_posted_formatted = article_posted
+                        # Format consistently if possible
+                        if article_posted_formatted.startswith('20') and 'T' in article_posted_formatted:
+                            # Try to make ISO format more readable
+                            dt = datetime.datetime.fromisoformat(article_posted_formatted.replace('Z', '+00:00'))
+                            article_posted_formatted = dt.strftime('%Y-%m-%d %H:%M:%S')
+                    except Exception:
+                        pass
+                
+                # Check for article_indexed (when added to database)
+                article_indexed = article.get('article_indexed', None)
+                article_indexed_formatted = 'Unknown'
+                
+                if article_indexed:
+                    try:
+                        if isinstance(article_indexed, str) and article_indexed != 'Unknown':
+                            article_indexed_formatted = article_indexed
+                        # Format consistently if possible
+                        if article_indexed_formatted.startswith('20') and 'T' in article_indexed_formatted:
+                            # Try to make ISO format more readable
+                            dt = datetime.datetime.fromisoformat(article_indexed_formatted.replace('Z', '+00:00'))
+                            article_indexed_formatted = dt.strftime('%Y-%m-%d %H:%M:%S')
+                    except Exception:
+                        pass
+                
+                # Fallback to old timestamp field if new fields aren't available
+                if article_posted_formatted == 'Unknown' and article_indexed_formatted == 'Unknown':
+                    timestamp = article.get('timestamp', None)
+                    formatted_timestamp = 'Unknown'
+                    
+                    if timestamp:
+                        try:
+                            # Convert timestamp to readable format if it's a numeric value
+                            if isinstance(timestamp, (int, float)) and timestamp > 0:
+                                formatted_timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                            elif isinstance(timestamp, str) and timestamp != 'Unknown':
+                                formatted_timestamp = timestamp
+                        except Exception as e:
+                            st.caption(f"Error formatting timestamp: {str(e)}")
+                else:
+                    formatted_timestamp = article_posted_formatted
                 
                 # Get the text for word count - try to get it from complete article if missing
                 text = article.get('text', '')
@@ -175,9 +227,10 @@ def render_search_results(results: List[Dict[Any, Any]]):
                     st.markdown("**Basic Information**")
                     st.markdown(f"**Headline:** {article.get('headline', 'Untitled')}")
                     st.markdown(f"**Source Domain:** {article.get('source_domain', 'Unknown')}")
-                    st.markdown(f"**Published:** {formatted_timestamp}")
+                    st.markdown(f"**Published:** {article_posted_formatted}")
+                    st.markdown(f"**Indexed:** {article_indexed_formatted}")
                     st.markdown(f"**Word Count:** {word_count}")
-                    
+                
                     # Format similarity score if available
                     similarity = article.get('similarity', None)
                     if similarity is not None:
@@ -219,7 +272,9 @@ def render_search_results(results: List[Dict[Any, Any]]):
                     "headline": article.get('headline', 'Untitled'),
                     "source_domain": article.get('source_domain', 'Unknown'),
                     "url": article.get('url', 'Unknown'),
-                    "timestamp": timestamp,
+                    "article_posted": article_posted,
+                    "article_indexed": article_indexed,
+                    "timestamp": article.get('timestamp', None),
                     "topics": article.get('topics', []),
                     "word_count": word_count,
                     "similarity_score": article.get('similarity', 'N/A')
@@ -334,52 +389,14 @@ def render_visualization(results: List[Dict[Any, Any]]):
             if len(topics_df) > 15:
                 topics_df = topics_df.head(15)
             
-            # Create horizontal bar chart
+            # Create bar chart for topics
             topic_chart = alt.Chart(topics_df).mark_bar().encode(
-                x=alt.X('Count:Q', title='Frequency'),
+                x=alt.X('Count:Q', title='Number of Articles'),
                 y=alt.Y('Topic:N', title='Topic', sort='-x'),
-                color=alt.Color('Count:Q', scale=alt.Scale(scheme='viridis')),
                 tooltip=['Topic', 'Count']
             ).properties(
-                title='Most Common Topics',
-                height=min(400, len(topics_df) * 30)
+                title='Common Topics in Search Results',
+                height=min(400, len(topics_df) * 25)
             )
             
             st.altair_chart(topic_chart, use_container_width=True)
-            
-            # Topic co-occurrence matrix (if there are enough topics)
-            if len(topic_counts) >= 4:
-                st.subheader("Topic Relationships")
-                st.write("This visualization shows which topics tend to appear together in the same articles.")
-                
-                # Create co-occurrence matrix
-                from itertools import combinations
-                
-                topic_pairs = []
-                for article in results:
-                    article_topics = article.get('topics', [])
-                    if len(article_topics) >= 2:
-                        for t1, t2 in combinations(article_topics, 2):
-                            topic_pairs.append((t1, t2))
-                
-                # Count pairs
-                pair_counts = Counter(topic_pairs)
-                
-                # Convert to DataFrame for visualization
-                if pair_counts:
-                    pairs_df = pd.DataFrame([
-                        {'Topic1': t1, 'Topic2': t2, 'Count': count} 
-                        for (t1, t2), count in pair_counts.most_common(20)
-                    ])
-                    
-                    # Create network graph visualization
-                    st.text("Top topic pairs that appear together in articles")
-                    st.dataframe(
-                        pairs_df,
-                        column_config={
-                            "Topic1": st.column_config.TextColumn("Topic 1"),
-                            "Topic2": st.column_config.TextColumn("Topic 2"),
-                            "Count": st.column_config.NumberColumn("Co-occurrences")
-                        },
-                        hide_index=True
-                    )

@@ -14,6 +14,24 @@ def render_scrape_page(process_urls_callback):
     """
     st.title("🌐 Scrape New Articles")
     
+    # Display mode information specific to scraping functionality
+    if st.session_state.offline_mode:
+        st.warning("""
+        ### 🔌 Scraping in Offline Mode
+        - Articles will be scraped but with limited processing
+        - Summaries will use simplified algorithms instead of OpenAI
+        - Topic extraction will be basic and less accurate
+        - Article timestamps will be preserved but AI features limited
+        """)
+    else:
+        st.success("""
+        ### 🌐 Scraping in Online Mode 
+        - Full AI-powered processing available
+        - High-quality summaries generated via OpenAI
+        - Accurate topic extraction and classification
+        - Complete metadata processing for better search
+        """)
+    
     # Input method selection
     input_method = st.radio("Input method:", ["Enter URLs", "Upload URL file", "Sample URLs"])
     

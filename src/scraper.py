@@ -33,6 +33,8 @@ class ScrapedArticle:
     authors: List[str] = None
     source_domain: Optional[str] = None
     image_url: Optional[str] = None
+    article_posted: Optional[str] = None  # Publication date in ISO format
+    article_indexed: Optional[str] = None  # When the article was scraped/indexed in ISO format
     
     def __post_init__(self):
         """Initialize default values for optional fields."""
@@ -43,6 +45,10 @@ class ScrapedArticle:
         if self.source_domain is None and self.url:
             parsed_url = urlparse(self.url)
             self.source_domain = parsed_url.netloc
+            
+        # Set article_posted from publish_date if available
+        if self.publish_date and not self.article_posted:
+            self.article_posted = self.publish_date
 
 
 class ArticleScraper:

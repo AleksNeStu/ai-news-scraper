@@ -131,13 +131,41 @@ class NewsScraperPipeline:
                 article.text = f"No text content could be extracted from {url}."
                 logger.warning(f"No text content extracted from {url}")
                 
+            # Get current time in ISO format
+            current_time_iso = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
+            
+            # Set article_indexed to current time
+            article.article_indexed = current_time_iso
+            
+            # Set article_posted from publish_date if available, otherwise default to current time
+            if not article.article_posted:
+                try:
+                    if article.publish_date:
+                        # Try to parse the existing publish_date to a consistent format
+                        import datetime
+                        if isinstance(article.publish_date, (int, float)):
+                            article.article_posted = datetime.datetime.fromtimestamp(article.publish_date).strftime("%Y-%m-%dT%H:%M:%S")
+                        elif isinstance(article.publish_date, str) and article.publish_date.strip():
+                            # Try to keep the original date but in consistent format
+                            # This is a placeholder - in a real implementation, you'd use a proper date parser
+                            article.article_posted = article.publish_date
+                        else:
+                            article.article_posted = current_time_iso
+                    else:
+                        article.article_posted = current_time_iso
+                except Exception:
+                    # If any parsing errors, default to current time
+                    article.article_posted = current_time_iso
+            
             result = {
                 "url": url,
                 "headline": article.headline or "Untitled Article",  # Ensure headline is not empty
                 "source_domain": article.source_domain or "Unknown Domain",
-                "publish_date": article.publish_date,
+                "publish_date": article.publish_date,  # Keep original for backward compatibility
+                "article_posted": article.article_posted,  # ISO format date when the article was published
+                "article_indexed": article.article_indexed,  # ISO format date when the article was indexed
                 "status": "success",
-                "timestamp": int(time.time())  # Add a timestamp if none exists
+                "timestamp": int(time.time())  # Keep this for backward compatibility
             }
             
             # Step 2: Summarize if requested

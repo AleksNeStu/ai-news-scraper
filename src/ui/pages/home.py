@@ -18,6 +18,28 @@ def render_home_page(article_count: int, articles: List[Dict[str, Any]]):
     """
     st.title("📰 AI News Scraper & Semantic Search")
     
+    # Display current mode information
+    if st.session_state.offline_mode:
+        st.warning("""
+        ### 🔌 Currently in OFFLINE Mode
+        - Using local models for embeddings
+        - Summarization and topic extraction use simplified algorithms
+        - Search capabilities are limited to previously indexed content
+        - No API calls will be made to external services
+        
+        Switch to Online Mode in the sidebar for enhanced features.
+        """)
+    else:
+        st.success("""
+        ### 🌐 Currently in ONLINE Mode
+        - Using OpenAI for high-quality embeddings and AI features
+        - Full summarization and advanced topic extraction available
+        - Enhanced semantic search capabilities
+        - Ensures best results but requires internet and API keys
+        
+        Switch to Offline Mode in the sidebar if you don't have internet access.
+        """)
+    
     st.markdown("""
     Welcome to the AI News Scraper & Semantic Search application! This tool allows you to:
     

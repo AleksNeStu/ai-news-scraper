@@ -11,6 +11,23 @@ def render_search_page():
     """Render the search page."""
     st.title("🔍 Search Articles")
     
+    # Display mode information specific to search functionality
+    if st.session_state.offline_mode:
+        st.info("""
+        ### 🔌 Search in Offline Mode
+        - Using local sentence transformer models for search embeddings
+        - Search quality may be reduced compared to Online Mode
+        - Only previously indexed articles will be searchable
+        - Performance might be slower on large collections
+        """)
+    else:
+        st.success("""
+        ### 🌐 Search in Online Mode
+        - Using OpenAI embeddings for high-quality semantic search
+        - Better understanding of complex queries and nuanced meanings
+        - Improved search relevance and accuracy
+        """)
+        
     if st.session_state.vector_store is None:
         st.error("Vector database not initialized. Please check your settings.")
         return

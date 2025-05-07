@@ -100,12 +100,33 @@ def render_settings_page(save_settings_callback: Callable[[Dict[str, Any]], None
     # Offline Mode settings
     st.subheader("Offline Mode")
     with st.expander("Offline Configuration", expanded=True):
+        # Enhanced information about offline mode
         st.markdown("""
-        When offline mode is enabled:
-        - The application will use local models for embeddings
-        - AI-powered summarization and topic extraction will use local alternatives
-        - Only previously scraped and processed articles will be searchable
+        ### About Online/Offline Mode
+        
+        **Online Mode** *(Default)*:
+        - Uses OpenAI API for embeddings, summaries, and topic extraction
+        - Provides highest quality results and semantic understanding
+        - Requires internet connection and valid API key
+        - API usage may incur costs based on OpenAI pricing
+        
+        **Offline Mode**:
+        - Uses local models for all operations (no internet required)
+        - Processes articles with Sentence Transformers for embeddings
+        - Relies on local algorithms for summaries and topics
+        - Reduced quality but works without external dependencies
+        - Ideal for air-gapped environments or when API is unavailable
+        
+        **When to use Offline Mode**:
+        - No internet connection available
+        - OpenAI API is down or unavailable
+        - You've reached API usage limits
+        - Processing sensitive content that shouldn't be sent to external APIs
+        - Testing or development environments
         """)
+        
+        current_mode = "OFFLINE" if st.session_state.offline_mode else "ONLINE"
+        st.info(f"**Current Mode**: {current_mode}")
         
         offline_model = st.selectbox(
             "Local Embedding Model",
@@ -131,10 +152,11 @@ def render_settings_page(save_settings_callback: Callable[[Dict[str, Any]], None
         settings["max_retry_attempts"] = int(max_retry)
         settings_changed = True
         
-        completion_model = st.text_input(
+        completion_model = st.selectbox(
             "OpenAI Completion Model",
-            value=os.environ.get("COMPLETION_MODEL", "gpt-3.5-turbo"),
-            help="The OpenAI model to use for summarization and topic extraction"
+            options=["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo-16k", "gpt-4-32k"],
+            index=0,
+            help="The OpenAI model to use for summarization and topic extraction. More capable models (like GPT-4) will provide better summaries and topic extraction but cost more tokens and may be slower."
         )
         settings["completion_model"] = completion_model
         settings_changed = True
@@ -199,23 +221,18 @@ def render_settings_page(save_settings_callback: Callable[[Dict[str, Any]], None
                     from datetime import datetime
                     
                     # Convert to JSON
-                    for article in articles:
-                        # Remove embedding fields which are too large
-                        article.pop('embedding', None)
-                        article.pop('title_embedding', None)
-                        article.pop('summary_embedding', None)
+                    articles_json = json.dumps(articles, indent=2, default=str)
                     
-                    # Create JSON
-                    articles_json = json.dumps(articles, indent=2)
+                    # Generate timestamp for filename
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    filename = f"news_articles_{timestamp}.json"
                     
-                    # Create a download link
+                    # Create download button
                     b64 = base64.b64encode(articles_json.encode()).decode()
-                    
-                    filename = f"news_articles_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-                    href = f'<a href="data:application/json;base64,{b64}" download="{filename}">Download JSON</a>'
+                    href = f'<a href="data:file/json;base64,{b64}" download="{filename}">Download JSON</a>'
                     st.markdown(href, unsafe_allow_html=True)
-                    
+                    st.success(f"✅ {len(articles)} articles exported! Click the link above to download.")
                 except Exception as e:
-                    st.error(f"Error exporting database: {str(e)}")
+                    st.error(f"❌ Error exporting database: {str(e)}")
             else:
                 st.error("Vector database not initialized.")

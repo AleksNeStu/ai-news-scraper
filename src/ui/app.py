@@ -131,18 +131,38 @@ def main():
     # Sidebar navigation
     page = st.sidebar.radio("Navigation", ["Home", "Search", "Scrape Articles", "Settings"])
     
-    # Check for offline mode
-    offline_mode = st.sidebar.checkbox("Offline Mode", value=st.session_state.offline_mode)
-    if offline_mode != st.session_state.offline_mode:
-        st.session_state.offline_mode = offline_mode
-        st.session_state.pipeline.set_offline_mode(offline_mode)
-        st.rerun()
+    # Online/Offline Mode controls with detailed information
+    with st.sidebar.expander("🔌 Online/Offline Mode Settings", expanded=True):
+        st.markdown("""
+        ### Mode Settings
+        
+        **Online Mode**: 
+        - Uses OpenAI API for high-quality embeddings & AI features
+        - Requires internet connection & API key
+        - Provides better search results and summaries
+        
+        **Offline Mode**: 
+        - Uses local models for all operations
+        - Works without internet connection
+        - Limited AI capabilities but still functional
+        """)
+        
+        offline_mode = st.checkbox(
+            "Enable Offline Mode", 
+            value=st.session_state.offline_mode,
+            help="Switch between online (OpenAI-powered) and offline (local models) modes"
+        )
+        
+        if offline_mode != st.session_state.offline_mode:
+            st.session_state.offline_mode = offline_mode
+            st.session_state.pipeline.set_offline_mode(offline_mode)
+            st.rerun()
     
     # Status indicator for offline mode
     if st.session_state.offline_mode:
-        st.sidebar.info("🔌 Offline Mode Active")
+        st.sidebar.info("🔌 **OFFLINE MODE ACTIVE**: Using local models, limited AI capabilities")
     else:
-        st.sidebar.success("🌐 Online Mode Active")
+        st.sidebar.success("🌐 **ONLINE MODE ACTIVE**: Using OpenAI for enhanced features")
     
     # Display version information at the bottom of the sidebar
     st.sidebar.divider()
