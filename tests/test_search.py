@@ -11,11 +11,11 @@ from unittest.mock import patch, MagicMock
 
 import numpy as np
 
-from src.search import SemanticSearch
+from src.search import SemanticSearchEngine
 
 
 class TestSemanticSearch(unittest.TestCase):
-    """Test the SemanticSearch class."""
+    """Test the SemanticSearchEngine class."""
     
     def setUp(self):
         """Set up test environment before each test."""
@@ -24,7 +24,7 @@ class TestSemanticSearch(unittest.TestCase):
         self.mock_embedder = MagicMock()
         
         # Create search instance with mocks
-        self.search = SemanticSearch(
+        self.search = SemanticSearchEngine(
             vector_store=self.mock_vector_store,
             embedder=self.mock_embedder
         )

@@ -16,12 +16,12 @@ from src.vector_store import get_vector_store, VectorStore
 logger = logging.getLogger(__name__)
 
 
-class SemanticSearch:
+class SemanticSearchEngine:
     """Class for performing semantic search on stored news articles."""
     
     def __init__(self, vector_store: Optional[VectorStore] = None, embedder: Optional[ArticleEmbedder] = None):
         """
-        Initialize the SemanticSearch.
+        Initialize the SemanticSearchEngine.
         
         Args:
             vector_store: Optional vector store instance. If not provided, the default is used.
@@ -29,6 +29,7 @@ class SemanticSearch:
         """
         self.vector_store = vector_store if vector_store else get_vector_store()
         self.embedder = embedder if embedder else ArticleEmbedder()
+        self._initialize_text_search()
     
     def search(self, query: str, limit: int = 5, 
                filter_criteria: Optional[Dict[str, Any]] = None,
@@ -165,19 +166,33 @@ class SemanticSearch:
         formatted_results = []
         
         for result in results:
+            # Handle different result structures (payload vs. direct fields)
+            if "payload" in result:
+                # New structure with payload
+                metadata = result["payload"]
+                similarity = result.get("score", 0.0)
+            else:
+                # Old structure with direct fields
+                metadata = result
+                similarity = result.get("similarity", 0.0)
+            
             # Create a new result with only the fields we want to display
             formatted = {
-                "url": result.get("url", ""),
-                "headline": result.get("headline", ""),
-                "source_domain": result.get("source_domain", ""),
-                "publish_date": result.get("publish_date", ""),
-                "similarity_score": result.get("similarity", 0.0),
+                "url": metadata.get("url", ""),
+                "headline": metadata.get("headline", ""),
+                "source_domain": metadata.get("source_domain", ""),
+                "publish_date": metadata.get("publish_date", ""),
+                "similarity_score": similarity,
             }
             
             # Add summary if available
-            if "summary" in result:
+            if "payload" in result and "summary" in result["payload"]:
                 # Highlight query terms in summary
-                highlighted_summary = self._highlight_query_terms(result["summary"], query)
+                highlighted_summary = self._highlight_query_terms(result["payload"]["summary"], query)
+                formatted["summary"] = highlighted_summary
+            elif "summary" in metadata:
+                # Highlight query terms in summary
+                highlighted_summary = self._highlight_query_terms(metadata["summary"], query)
                 formatted["summary"] = highlighted_summary
             
             formatted_results.append(formatted)
@@ -272,8 +287,8 @@ class SemanticSearch:
             List[Dict[str, Any]]: List of matching articles based on text matching.
         """
         try:
-            # Get all articles
-            all_articles = self.vector_store.get_all_articles()
+            # Get all articles with metadata
+            all_articles = self.vector_store.get_all_metadata()
             if not all_articles:
                 logger.warning("No articles found in storage for text search")
                 return []
@@ -287,11 +302,27 @@ class SemanticSearch:
             # Score each article based on term frequency
             scored_articles = []
             for article in all_articles:
+                # Handle different data structures
+                if isinstance(article, dict) and "payload" in article:
+                    # New structure with payload
+                    metadata = article["payload"]
+                else:
+                    # Old structure with direct fields
+                    metadata = article
+                
                 score = 0
-                title = article.get("headline", "").lower()
-                text = article.get("text", "").lower()
-                summary = article.get("summary", "").lower()
-                topics = [t.lower() for t in article.get("topics", [])]
+                
+                # Get text fields safely
+                title = metadata.get("headline", "")
+                text = metadata.get("text", "")
+                summary = metadata.get("summary", "")
+                topics = metadata.get("topics", [])
+                
+                # Make sure we have strings, not other data types
+                title = str(title).lower() if title else ""
+                text = str(text).lower() if text else ""
+                summary = str(summary).lower() if summary else ""
+                topics = [str(t).lower() for t in topics if t]
                 
                 # Check for term matches in title (higher weight)
                 for term in query_terms:
@@ -312,9 +343,17 @@ class SemanticSearch:
                 
                 # Only include articles with at least one match
                 if score > 0:
-                    article_copy = article.copy()
-                    article_copy["similarity"] = score / (len(query_terms) * 4)  # Normalize score
-                    scored_articles.append(article_copy)
+                    # Create a result with just the fields we need
+                    result = {
+                        "url": metadata.get("url", ""),
+                        "headline": metadata.get("headline", ""),
+                        "source_domain": metadata.get("source_domain", ""),
+                        "publish_date": metadata.get("publish_date", ""),
+                        "summary": metadata.get("summary", ""),
+                        "topics": metadata.get("topics", []),
+                        "similarity": score / (len(query_terms) * 4)  # Normalize score
+                    }
+                    scored_articles.append(result)
             
             # Sort by score
             scored_articles.sort(key=lambda x: x["similarity"], reverse=True)
@@ -326,3 +365,227 @@ class SemanticSearch:
         except Exception as e:
             logger.error(f"Error during text-based search: {str(e)}")
             return []
+    
+    def _initialize_text_search(self):
+        """Initialize components needed for text-based search."""
+        try:
+            import nltk
+            from nltk.tokenize import word_tokenize
+            from nltk.corpus import stopwords
+            
+            # Download necessary NLTK data
+            nltk.download('punkt', quiet=True)
+            nltk.download('stopwords', quiet=True)
+            
+            self.tokenize = word_tokenize
+            self.stopwords = set(stopwords.words('english'))
+            logger.info("Text search components initialized successfully")
+        except ImportError:
+            logger.warning("NLTK not available. Text search will use basic tokenization.")
+            # Fallback tokenizer
+            self.tokenize = lambda text: text.lower().split()
+            self.stopwords = {"a", "an", "the", "and", "or", "but", "in", "on", "at", 
+                             "to", "for", "with", "by", "about", "as", "of", "is", 
+                             "are", "was", "were", "be", "been", "being", "have", "has"}
+    
+    def text_search(self, query: str, limit: int = 5, 
+                   threshold: float = 0.0, exact_match: bool = False,
+                   case_match: bool = False, match_all: bool = False,
+                   filter_criteria: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        Perform text-based search without using embeddings.
+        
+        Args:
+            query: Text query to search for.
+            limit: Maximum number of results to return.
+            threshold: Minimum relevance score to include in results (0-1).
+            exact_match: If True, search for exact phrases.
+            case_match: If True, perform case-sensitive search.
+            match_all: If True, require all query terms to be present.
+            filter_criteria: Optional criteria to filter results (e.g., by date, source).
+            
+        Returns:
+            List[Dict[str, Any]]: List of matching articles with relevance scores.
+        """
+        logger.info(f"Performing text-based search for: '{query}'")
+        
+        # Get all articles from the vector store
+        all_articles = self.vector_store.get_all_metadata()
+        if not all_articles:
+            logger.warning("No articles found in vector store for text search")
+            return []
+        
+        # Apply filters if provided
+        if filter_criteria:
+            all_articles = self._apply_filters(all_articles, filter_criteria)
+            if not all_articles:
+                logger.info("No articles remain after applying filters")
+                return []
+        
+        # Tokenize and normalize the query
+        query_tokens = self._normalize_text(query)
+        if not query_tokens:
+            logger.warning("Query produced no meaningful tokens after normalization")
+            return []
+        
+        # Calculate relevance for each article
+        results = []
+        for article in all_articles:
+            score = self._calculate_text_relevance(article, query_tokens)
+            
+            if score >= threshold:
+                # Create a copy of the article with the relevance score
+                result = dict(article)
+                result['similarity'] = score
+                results.append(result)
+        
+        # Sort by relevance (descending) and limit results
+        results.sort(key=lambda x: x['similarity'], reverse=True)
+        return results[:limit]
+    
+    def _normalize_text(self, text: str) -> List[str]:
+        """
+        Normalize text by tokenizing, lowercasing, and removing stopwords.
+        
+        Args:
+            text: Text to normalize.
+            
+        Returns:
+            List[str]: List of normalized tokens.
+        """
+        if not text:
+            return []
+            
+        # Tokenize
+        tokens = self.tokenize(text.lower())
+        
+        # Remove stopwords and non-alphabetic tokens
+        return [token for token in tokens 
+                if token.isalpha() and token not in self.stopwords]
+    
+    def _calculate_text_relevance(self, article: Dict[str, Any], 
+                                 query_tokens: List[str]) -> float:
+        """
+        Calculate relevance score between article and query.
+        
+        Args:
+            article: Article data.
+            query_tokens: Preprocessed query tokens.
+            
+        Returns:
+            float: Relevance score between 0 and 1.
+        """
+        if not query_tokens:
+            return 0.0
+        
+        # Handle different data structures
+        if isinstance(article, dict) and "payload" in article:
+            # New structure with payload
+            metadata = article["payload"]
+        else:
+            # Old structure with direct fields
+            metadata = article
+            
+        # Prepare article text fields
+        text_fields = []
+        
+        # Add headline with higher weight
+        if 'headline' in metadata and metadata['headline'] and isinstance(metadata['headline'], str):
+            headline_tokens = self._normalize_text(metadata['headline'])
+            text_fields.extend(headline_tokens * 3)  # Triple weight for headline
+        
+        # Add summary with medium weight
+        if 'summary' in metadata and metadata['summary'] and isinstance(metadata['summary'], str):
+            summary_tokens = self._normalize_text(metadata['summary'])
+            text_fields.extend(summary_tokens * 2)  # Double weight for summary
+        
+        # Add topics with high weight
+        if 'topics' in metadata and metadata['topics']:
+            for topic in metadata['topics']:
+                if isinstance(topic, str):
+                    topic_tokens = self._normalize_text(topic)
+                    text_fields.extend(topic_tokens * 4)  # Quadruple weight for topics
+        
+        # Add full text with normal weight
+        if 'text' in metadata and metadata['text'] and isinstance(metadata['text'], str):
+            # Only use first 1000 characters to avoid performance issues
+            text_preview = metadata['text'][:1000]
+            text_tokens = self._normalize_text(text_preview)
+            text_fields.extend(text_tokens)
+        
+        if not text_fields:
+            return 0.0
+        
+        # Count token matches
+        matches = sum(1 for token in query_tokens if token in text_fields)
+        
+        # Calculate score as ratio of matches to query tokens
+        return matches / len(query_tokens)
+    
+    def hybrid_search(self, query: str, limit: int = 5, 
+                     threshold: float = 0.5, blend: float = 0.5,
+                     filter_criteria: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        Perform hybrid search combining semantic and text-based approaches.
+        
+        Args:
+            query: Query string.
+            limit: Maximum number of results to return.
+            threshold: Minimum combined score to include in results.
+            blend: Blend factor between semantic (1.0) and text-based (0.0).
+            filter_criteria: Optional criteria to filter results (e.g., by date, source).
+            
+        Returns:
+            List[Dict[str, Any]]: List of matching articles with combined scores.
+        """
+        logger.info(f"Performing hybrid search with blend {blend} for: '{query}'")
+        
+        # Get semantic search results (no limit since we'll combine and rerank)
+        semantic_results = self.search(query, limit=limit*2, filter_criteria=filter_criteria)
+        
+        # Get text search results (no limit for same reason)
+        text_results = self.text_search(query, limit=limit*2, filter_criteria=filter_criteria)
+        
+        # Create a mapping of URL to combined result
+        combined_results = {}
+        
+        # Process semantic results
+        for result in semantic_results:
+            url = result.get('url')
+            if url:
+                combined_results[url] = {
+                    'article': result,
+                    'semantic_score': result.get('similarity', 0.0),
+                    'text_score': 0.0
+                }
+        
+        # Process text results
+        for result in text_results:
+            url = result.get('url')
+            if url:
+                if url in combined_results:
+                    # Update existing entry with text score
+                    combined_results[url]['text_score'] = result.get('similarity', 0.0)
+                else:
+                    # Create new entry
+                    combined_results[url] = {
+                        'article': result,
+                        'semantic_score': 0.0,
+                        'text_score': result.get('similarity', 0.0)
+                    }
+        
+        # Calculate combined scores and prepare final results
+        final_results = []
+        for url, data in combined_results.items():
+            # Calculate blended score
+            combined_score = (blend * data['semantic_score'] + 
+                             (1 - blend) * data['text_score'])
+            
+            if combined_score >= threshold:
+                result = dict(data['article'])
+                result['similarity'] = combined_score
+                final_results.append(result)
+        
+        # Sort by combined score (descending) and limit results
+        final_results.sort(key=lambda x: x.get('similarity', 0), reverse=True)
+        return final_results[:limit]

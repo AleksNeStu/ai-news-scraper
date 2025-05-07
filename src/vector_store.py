@@ -49,33 +49,20 @@ class VectorStore(ABC):
         Store article embeddings in the vector database.
         
         Args:
-            embedded_articles: List of dictionaries containing article embeddings and metadata.
+            embedded_articles: List of articles with their embeddings.
             
         Returns:
-            bool: True if storage was successful, False otherwise.
-        """
-        pass
-    
-    @abstractmethod
-    def store_articles_without_embeddings(self, articles: List[Dict[str, Any]]) -> bool:
-        """
-        Store articles in the database without embeddings (fallback method for offline mode).
-        
-        Args:
-            articles: List of article dictionaries.
-            
-        Returns:
-            bool: True if successful, False otherwise.
+            bool: True if storing was successful, False otherwise.
         """
         pass
     
     @abstractmethod
     def search(self, query_embedding: List[float], limit: int = 5) -> List[Dict[str, Any]]:
         """
-        Search for articles similar to the query embedding.
+        Search for similar articles in the vector database.
         
         Args:
-            query_embedding: Vector embedding of the search query.
+            query_embedding: Embedding vector of the query.
             limit: Maximum number of results to return.
             
         Returns:
@@ -90,6 +77,16 @@ class VectorStore(ABC):
         
         Returns:
             List[Dict[str, Any]]: List of all stored articles with their embeddings and metadata.
+        """
+        pass
+    
+    @abstractmethod
+    def get_all_metadata(self) -> List[Dict[str, Any]]:
+        """
+        Retrieve metadata for all stored articles without embeddings.
+        
+        Returns:
+            List[Dict[str, Any]]: List of all stored article metadata.
         """
         pass
     
@@ -266,6 +263,40 @@ class FAISSVectorStore(VectorStore):
             return [{"id": k, **v} for k, v in self.metadata.items()]
         except Exception as e:
             logger.error(f"Error retrieving articles from FAISS: {str(e)}")
+            return []
+            
+    def get_all_metadata(self) -> List[Dict[str, Any]]:
+        """
+        Retrieve metadata for all stored articles without embeddings.
+        
+        Returns:
+            List[Dict[str, Any]]: List of all stored article metadata.
+        """
+        try:
+            # Return metadata without the embedding fields
+            articles = []
+            for article_id, metadata in self.metadata.items():
+                # Copy metadata without embedding fields
+                clean_metadata = {k: v for k, v in metadata.items() 
+                               if k not in ["embedding", "title_embedding", "summary_embedding"]}
+                articles.append({"id": article_id, **clean_metadata})
+            return articles
+        except Exception as e:
+            logger.error(f"Error retrieving metadata from FAISS: {str(e)}")
+            return []
+    
+    def get_all_metadata(self) -> List[Dict[str, Any]]:
+        """
+        Retrieve metadata for all stored articles without embeddings.
+        
+        Returns:
+            List[Dict[str, Any]]: List of all stored article metadata.
+        """
+        try:
+            # Return metadata directly
+            return [v for v in self.metadata.values()]
+        except Exception as e:
+            logger.error(f"Error retrieving metadata from FAISS: {str(e)}")
             return []
     
     def clear(self) -> bool:
@@ -493,6 +524,35 @@ class QdrantVectorStore(VectorStore):
             logger.error(f"Error retrieving articles from Qdrant: {str(e)}")
             return []
     
+    def get_all_metadata(self) -> List[Dict[str, Any]]:
+        """
+        Retrieve metadata for all stored articles without embeddings.
+        
+        Returns:
+            List[Dict[str, Any]]: List of all stored article metadata.
+        """
+        try:
+            # For Qdrant, metadata is stored in the payload of each point
+            # We need to scroll through all points to collect metadata
+            scroll_result = self.client.scroll(
+                collection_name=self.collection_name,
+                limit=10000  # Use a large limit, may need pagination for very large collections
+            )
+            
+            results = []
+            for point in scroll_result[0]:
+                metadata = {
+                    "id": point.id,
+                    **point.payload
+                }
+                results.append(metadata)
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error retrieving metadata from Qdrant: {str(e)}")
+            return []
+    
     def clear(self) -> bool:
         """
         Clear all data from the Qdrant store.
@@ -705,6 +765,35 @@ class PineconeVectorStore(VectorStore):
             
         except Exception as e:
             logger.error(f"Error retrieving articles from Pinecone: {str(e)}")
+            return []
+    
+    def get_all_metadata(self) -> List[Dict[str, Any]]:
+        """
+        Retrieve metadata for all stored articles without embeddings.
+        
+        Returns:
+            List[Dict[str, Any]]: List of all stored article metadata.
+        """
+        try:
+            # For Pinecone, we can only retrieve metadata for specific IDs
+            # We need to maintain a separate list of all IDs (not efficient, but works)
+            all_ids = self.index.describe_index_stats().vector_count
+            logger.info(f"Total vectors in Pinecone index: {all_ids}")
+            
+            # Fetch metadata for all IDs
+            metadata = []
+            for id in all_ids:
+                try:
+                    result = self.index.fetch(ids=[id])
+                    if result and result.vectors:
+                        metadata.append(result.vectors[0].metadata)
+                except Exception as e:
+                    logger.warning(f"Error fetching metadata for id {id}: {str(e)}")
+            
+            return metadata
+            
+        except Exception as e:
+            logger.error(f"Error retrieving metadata from Pinecone: {str(e)}")
             return []
     
     def clear(self) -> bool:
