@@ -33,6 +33,40 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Hide the redundant navigation elements in top left using CSS
+hide_streamlit_elements = """
+<style>
+    /* Hide redundant navigation elements */
+    .stApp > header {
+        display: none !important;
+    }
+    
+    div[data-testid="stToolbar"] {
+        display: none !important;
+    }
+    
+    /* Hide the top-left corner app links */
+    div[data-testid="stAppViewContainer"] > div[data-testid="collapsedControl"] {
+        display: none !important;
+    }
+    
+    div[data-testid="stVerticalBlock"] > div.appview-container div.stSelectbox label {
+        display: none !important;
+    }
+    
+    /* Hide empty forms and redundant text */
+    label[data-testid="stWidgetLabel"] {
+        visibility: visible !important;
+    }
+    
+    /* Hide Streamlit branding */
+    footer {
+        visibility: hidden;
+    }
+</style>
+"""
+st.markdown(hide_streamlit_elements, unsafe_allow_html=True)
+
 # Initialize session state for storing application state
 if "pipeline" not in st.session_state:
     config = Config()
@@ -59,6 +93,25 @@ def initialize_vector_store():
 def main():
     """Main application function."""
     st.sidebar.title("📰 AI News Scraper")
+    
+    # Enhanced sidebar styling
+    st.sidebar.markdown("""
+    <style>
+        div[data-testid="stSidebar"] .css-16idsys {
+            font-weight: bold;
+        }
+        div[data-testid="stRadio"] > label {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        div[data-testid="stRadio"] > div {
+            margin-top: 5px;
+            margin-bottom: 15px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
     
     # Sidebar navigation
     page = st.sidebar.radio("Navigation", ["Home", "Search", "Scrape Articles", "Settings"])
