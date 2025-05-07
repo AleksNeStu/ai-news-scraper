@@ -112,6 +112,16 @@ class VectorStore(ABC):
             bool: True if clearing was successful, False otherwise.
         """
         pass
+        
+    @abstractmethod
+    def reset_index(self) -> bool:
+        """
+        Reset the vector store index to an empty state.
+        
+        Returns:
+            bool: True if reset was successful, False otherwise.
+        """
+        pass
 
 
 class FAISSVectorStore(VectorStore):
@@ -369,19 +379,43 @@ class FAISSVectorStore(VectorStore):
             bool: True if clearing was successful, False otherwise.
         """
         try:
-            # Create a new index
+            # Use the reset_index method to create a new empty index
+            return self.reset_index()
+        except Exception as e:
+            logger.error(f"Error clearing FAISS index: {str(e)}")
+            return False
+            
+    def reset_index(self) -> bool:
+        """
+        Reset the FAISS index and metadata by creating a new empty index 
+        and removing existing files.
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Create a new empty index
             self._create_new_index()
             
-            # Save the empty index and metadata
+            # Delete existing files if they exist (to avoid loading old data on restart)
+            if os.path.exists(self.index_file):
+                os.remove(self.index_file)
+                logger.info(f"Deleted existing index file: {self.index_file}")
+            
+            if os.path.exists(self.metadata_file):
+                os.remove(self.metadata_file)
+                logger.info(f"Deleted existing metadata file: {self.metadata_file}")
+            
+            # Save the new empty index and metadata
             faiss.write_index(self.index, self.index_file)
             with open(self.metadata_file, 'wb') as f:
                 pickle.dump(self.metadata, f)
             
-            logger.info("Cleared FAISS index")
+            logger.info("Reset FAISS index to empty state")
             return True
             
         except Exception as e:
-            logger.error(f"Error clearing FAISS index: {str(e)}")
+            logger.error(f"Error resetting FAISS index: {str(e)}")
             return False
 
     def store_articles_without_embeddings(self, articles: List[Dict[str, Any]]) -> bool:
@@ -417,6 +451,23 @@ class FAISSVectorStore(VectorStore):
                 
         except Exception as e:
             logger.error(f"Error storing articles without embeddings: {str(e)}")
+            return False
+
+    def reset_index(self):
+        """Reset the index and metadata to an empty state."""
+        try:
+            # Create a new empty index
+            self._create_new_index()
+            
+            # Save the empty index and metadata
+            faiss.write_index(self.index, self.index_file)
+            with open(self.metadata_file, 'wb') as f:
+                pickle.dump(self.metadata, f)
+                
+            logger.info("FAISS index has been reset")
+            return True
+        except Exception as e:
+            logger.error(f"Error resetting FAISS index: {str(e)}")
             return False
 
 
@@ -655,6 +706,20 @@ class QdrantVectorStore(VectorStore):
             bool: True if clearing was successful, False otherwise.
         """
         try:
+            # Use reset_index method for consistent implementation
+            return self.reset_index()
+        except Exception as e:
+            logger.error(f"Error clearing Qdrant collection: {str(e)}")
+            return False
+
+    def reset_index(self) -> bool:
+        """
+        Reset the Qdrant collection by deleting and recreating it.
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
             # Delete the collection
             self.client.delete_collection(collection_name=self.collection_name)
             
@@ -667,46 +732,11 @@ class QdrantVectorStore(VectorStore):
                 )
             )
             
-            logger.info("Cleared Qdrant collection")
+            logger.info("Reset Qdrant collection to empty state")
             return True
             
         except Exception as e:
-            logger.error(f"Error clearing Qdrant collection: {str(e)}")
-            return False
-
-    def store_articles_without_embeddings(self, articles: List[Dict[str, Any]]) -> bool:
-        """
-        Store articles in Qdrant without embeddings (fallback method).
-        
-        Args:
-            articles: List of article dictionaries.
-            
-        Returns:
-            bool: True if successful, False otherwise.
-        """
-        try:
-            # For Qdrant, we'll use random vectors as placeholders
-            if not articles:
-                logger.warning("No articles to store")
-                return False
-                
-            # Generate random embeddings as placeholders
-            import numpy as np
-            dimension = 1536  # Default for OpenAI embeddings
-            
-            for article in articles:
-                # Create a random embedding vector (normalized)
-                random_embedding = np.random.rand(dimension).astype(np.float32)
-                random_embedding = random_embedding / np.linalg.norm(random_embedding)
-                
-                # Add the random embedding to the article
-                article["embedding"] = random_embedding
-                    
-            # Now use the regular store method
-            return self.store_embeddings(articles)
-                
-        except Exception as e:
-            logger.error(f"Error storing articles without embeddings in Qdrant: {str(e)}")
+            logger.error(f"Error resetting Qdrant collection: {str(e)}")
             return False
 
 
@@ -932,49 +962,28 @@ class PineconeVectorStore(VectorStore):
             bool: True if clearing was successful, False otherwise.
         """
         try:
-            # Delete all vectors (but keep the index)
-            self.index.delete(delete_all=True)
-            
-            logger.info("Cleared Pinecone index")
-            return True
-            
+            # Use reset_index method for consistent implementation
+            return self.reset_index()            
         except Exception as e:
             logger.error(f"Error clearing Pinecone index: {str(e)}")
             return False
-
-    def store_articles_without_embeddings(self, articles: List[Dict[str, Any]]) -> bool:
-        """
-        Store articles in Pinecone without embeddings (fallback method).
-        
-        Args:
-            articles: List of article dictionaries.
             
+    def reset_index(self) -> bool:
+        """
+        Reset the Pinecone index by deleting all vectors.
+        
         Returns:
-            bool: True if successful, False otherwise.
+            bool: True if successful, False otherwise
         """
         try:
-            # For Pinecone, we'll use random vectors as placeholders
-            if not articles:
-                logger.warning("No articles to store")
-                return False
-                
-            # Generate random embeddings as placeholders
-            import numpy as np
-            dimension = 1536  # Default for OpenAI embeddings
+            # Delete all vectors (but keep the index)
+            self.index.delete(delete_all=True)
             
-            for article in articles:
-                # Create a random embedding vector (normalized)
-                random_embedding = np.random.rand(dimension).astype(np.float32)
-                random_embedding = random_embedding / np.linalg.norm(random_embedding)
-                
-                # Add the random embedding to the article
-                article["embedding"] = random_embedding
-                    
-            # Now use the regular store method
-            return self.store_embeddings(articles)
-                
+            logger.info("Reset Pinecone index to empty state")
+            return True
+            
         except Exception as e:
-            logger.error(f"Error storing articles without embeddings in Pinecone: {str(e)}")
+            logger.error(f"Error resetting Pinecone index: {str(e)}")
             return False
 
 

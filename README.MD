@@ -21,6 +21,7 @@ This project creates a Python application that:
 ### 2️⃣ GenAI Processing
 - Generates **concise summaries** (100-300 words)
 - Identifies **3-10 key topics** per article
+- Uses **predefined topic categories** for consistent classification
 - Uses **OpenAI GPT models** for advanced text analysis
 - Provides **offline mode** with local model fallbacks
 

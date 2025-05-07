@@ -164,10 +164,14 @@ def main():
             # Silent reload on page refresh
             initialize_vector_store(show_errors=False)
     
-    # Retrieve articles for display if not already loaded
-    if not st.session_state.articles and st.session_state.vector_store is not None:
+    # Retrieve/refresh articles for display
+    # Always refresh to ensure we have latest data - fixes the counting issue
+    if st.session_state.vector_store is not None:
         try:
-            st.session_state.articles = st.session_state.vector_store.get_all_articles()
+            articles = st.session_state.vector_store.get_all_articles()
+            # Only update if we actually got articles or if the count changed
+            if articles or len(articles) != len(st.session_state.get('articles', [])): 
+                st.session_state.articles = articles
         except Exception as e:
             st.sidebar.error(f"Error retrieving articles: {str(e)}")
     
@@ -192,12 +196,38 @@ def process_urls(urls, summarize=True, extract_topics=True):
         progress_bar = st.progress(0)
         
         try:
+            # First, check if the user wants to clear existing articles
+            # Only ask if there are existing articles
+            if st.session_state.articles and len(st.session_state.articles) > 0:
+                clear_existing = st.radio(
+                    "Would you like to clear existing articles before adding new ones?",
+                    ["Yes", "No"],
+                    index=1  # Default to No
+                )
+                
+                if clear_existing == "Yes":
+                    # Clear the vector store
+                    if st.session_state.vector_store:
+                        success = st.session_state.vector_store.clear()
+                        if success:
+                            st.success("Successfully cleared existing articles")
+                            # Clear the articles list in session state too
+                            st.session_state.articles = []
+                        else:
+                            st.error("Failed to clear existing articles")
+                    
+            # Process the URLs
             for i, url in enumerate(urls):
                 st.write(f"Processing: {url}")
                 st.session_state.pipeline.process_url(
                     url, summarize=summarize, extract_topics=extract_topics
                 )
                 progress_bar.progress((i + 1) / len(urls))
+            
+            # Refresh articles list after processing
+            if st.session_state.vector_store:
+                st.session_state.articles = st.session_state.vector_store.get_all_articles()
+                st.success(f"Successfully processed {len(urls)} URLs. Database now contains {len(st.session_state.articles)} articles.")
             
             # Refresh the vector store
             initialize_vector_store()

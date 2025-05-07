@@ -120,7 +120,48 @@ class TestFAISSVectorStore(unittest.TestCase):
         
         # Verify the store is empty
         self.assertEqual(self.vector_store.index.ntotal, 0)
+    
+    def test_reset_index(self):
+        """Test that reset_index properly clears the store and creates a new empty index."""
+        # Create a test article with embedding
+        article = self._create_test_article()
         
+        # Store it in the vector store
+        success = self.vector_store.store_embeddings([article])
+        self.assertTrue(success)
+        
+        # Get initial count of articles
+        initial_articles = self.vector_store.get_all_articles()
+        initial_count = len(initial_articles)
+        self.assertGreater(initial_count, 0)
+        
+        # Now reset the index
+        success = self.vector_store.reset_index()
+        self.assertTrue(success)
+        
+        # Get articles after reset
+        after_reset_articles = self.vector_store.get_all_articles()
+        after_reset_count = len(after_reset_articles)
+        
+        # Verify that the index is empty
+        self.assertEqual(after_reset_count, 0)
+    
+    def _create_test_article(self, article_id=None):
+        """Create a test article with embedding."""
+        if article_id is None:
+            article_id = len(self.test_articles) + 1
+            
+        return {
+            "id": article_id,
+            "url": f"https://example.com/article{article_id}",
+            "headline": f"Test Article {article_id}",
+            "text": f"This is the content of test article {article_id}",
+            "source_domain": "example.com",
+            "publish_date": "2023-01-01",
+            "embedding": np.random.rand(1536).astype(np.float32),  # Random embedding
+            "topics": ["Technology", "AI", "Testing"]
+        }
+
 
 # Conditional mock imports for Qdrant/Pinecone tests
 try:
