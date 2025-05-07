@@ -260,7 +260,22 @@ class FAISSVectorStore(VectorStore):
             List[Dict[str, Any]]: List of all stored articles with their metadata.
         """
         try:
-            return [{"id": k, **v} for k, v in self.metadata.items()]
+            articles = []
+            for article_id, metadata in self.metadata.items():
+                article_copy = {"id": article_id}
+                
+                # Add all metadata fields
+                for key, value in metadata.items():
+                    if key not in ["embedding", "title_embedding", "summary_embedding"]:
+                        article_copy[key] = value
+                
+                # Ensure 'text' field is present
+                if 'text' not in article_copy:
+                    logger.warning(f"Article {article_id} missing text field")
+                
+                articles.append(article_copy)
+                
+            return articles
         except Exception as e:
             logger.error(f"Error retrieving articles from FAISS: {str(e)}")
             return []
@@ -281,20 +296,6 @@ class FAISSVectorStore(VectorStore):
                                if k not in ["embedding", "title_embedding", "summary_embedding"]}
                 articles.append({"id": article_id, **clean_metadata})
             return articles
-        except Exception as e:
-            logger.error(f"Error retrieving metadata from FAISS: {str(e)}")
-            return []
-    
-    def get_all_metadata(self) -> List[Dict[str, Any]]:
-        """
-        Retrieve metadata for all stored articles without embeddings.
-        
-        Returns:
-            List[Dict[str, Any]]: List of all stored article metadata.
-        """
-        try:
-            # Return metadata directly
-            return [v for v in self.metadata.values()]
         except Exception as e:
             logger.error(f"Error retrieving metadata from FAISS: {str(e)}")
             return []

@@ -22,12 +22,24 @@ def render_search_results(results: List[Dict[Any, Any]]):
     # Group results by topics
     topics_to_articles = {}
     for article in results:
-        for topic in article.get('topics', ['Uncategorized']):
-            if not topic or topic == '':
-                topic = 'Uncategorized'
-            if topic not in topics_to_articles:
-                topics_to_articles[topic] = []
-            topics_to_articles[topic].append(article)
+        # Get topics, ensure it's a list, and handle None values
+        topics = article.get('topics', [])
+        
+        # If topics is None or empty, use 'Uncategorized'
+        if not topics:
+            if 'Uncategorized' not in topics_to_articles:
+                topics_to_articles['Uncategorized'] = []
+            topics_to_articles['Uncategorized'].append(article)
+            # Make sure we set a default empty list for topics if it's None
+            article['topics'] = ['Uncategorized']
+        else:
+            # Process each topic
+            for topic in topics:
+                if not topic or topic == '' or topic == 'None':
+                    topic = 'Uncategorized'
+                if topic not in topics_to_articles:
+                    topics_to_articles[topic] = []
+                topics_to_articles[topic].append(article)
     
     # Create topic filter
     all_topics = list(topics_to_articles.keys())
@@ -61,14 +73,29 @@ def render_search_results(results: List[Dict[Any, Any]]):
             st.markdown(article.get('summary', '*No summary available*'))
             
             st.markdown("#### Topics")
-            topics = article.get('topics', ['None'])
-            st.markdown(', '.join(f"**{topic}**" for topic in topics))
+            topics = article.get('topics', [])
+            
+            # Ensure topics is always a list and handle empty or None values
+            if not topics or (len(topics) == 1 and (topics[0] == '' or topics[0] == 'None' or topics[0] is None)):
+                st.markdown("*No topics available*")
+            else:
+                st.markdown(', '.join(f"**{topic}**" for topic in topics if topic and topic != 'None'))
             
             # Button to view full article text
             if st.button("View Full Text", key=f"article_{i}"):
                 st.markdown("---")
                 st.markdown("### Full Article Text")
-                st.markdown(article.get('text', '*Full text not available*'))
+                
+                # Get article text - handle both direct text and potentially nested structures
+                article_text = article.get('text', None)
+                
+                # Display the article text if available
+                if article_text and article_text.strip():
+                    st.markdown(article_text)
+                else:
+                    # If text is not in the main object, try to fetch it from original document
+                    st.error("Full text not available in the search results.")
+                    st.info("This might be because the article was not fully indexed or the text field was not included in the search results.")
 
 
 def render_visualization(results: List[Dict[Any, Any]]):
