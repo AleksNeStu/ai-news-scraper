@@ -45,6 +45,11 @@ hide_streamlit_elements = """
         display: none !important;
     }
     
+    /* Hide the sidebar navigation links that duplicate the radio button functionality */
+    ul[data-testid="stSidebarNavItems"] {
+        display: none !important;
+    }
+    
     /* Hide the top-left corner app links */
     div[data-testid="stAppViewContainer"] > div[data-testid="collapsedControl"] {
         display: none !important;
