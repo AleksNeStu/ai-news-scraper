@@ -126,23 +126,46 @@ class NewsScraperPipeline:
                 logger.warning(f"Failed to scrape article from {url}")
                 return {"url": url, "status": "failed", "reason": "Scraping failed"}
             
+            # Ensure we have valid text content
+            if not article.text or not article.text.strip():
+                article.text = f"No text content could be extracted from {url}."
+                logger.warning(f"No text content extracted from {url}")
+                
             result = {
                 "url": url,
-                "headline": article.headline,
-                "source_domain": article.source_domain,
+                "headline": article.headline or "Untitled Article",  # Ensure headline is not empty
+                "source_domain": article.source_domain or "Unknown Domain",
                 "publish_date": article.publish_date,
-                "status": "success"
+                "status": "success",
+                "timestamp": int(time.time())  # Add a timestamp if none exists
             }
             
             # Step 2: Summarize if requested
             if summarize:
-                summary = self.summarizer.summarize(article)
-                result["summary"] = summary
+                try:
+                    summary = self.summarizer.summarize(article)
+                    result["summary"] = summary if summary and summary.strip() else "No summary available."
+                except Exception as e:
+                    logger.error(f"Error generating summary for {url}: {str(e)}")
+                    result["summary"] = "Error generating summary."
+                    result["summary_error"] = str(e)
+            else:
+                # Add a default summary even if not requested
+                result["summary"] = "Summary generation was not requested."
             
             # Step 3: Extract topics if requested
             if extract_topics:
-                topics = self.topic_extractor.extract_topics(article)
-                result["topics"] = topics
+                try:
+                    topics = self.topic_extractor.extract_topics(article)
+                    # Ensure we have at least one topic
+                    result["topics"] = topics if topics and len(topics) > 0 else ["Uncategorized"]
+                except Exception as e:
+                    logger.error(f"Error extracting topics for {url}: {str(e)}")
+                    result["topics"] = ["Uncategorized"]
+                    result["topics_error"] = str(e)
+            else:
+                # Add default topics if extraction was not requested
+                result["topics"] = ["Uncategorized"]
             
             # Step 4: Generate embeddings and store in vector database
             try:
@@ -153,12 +176,24 @@ class NewsScraperPipeline:
                     summary=result.get("summary")
                 )
                 
-                # Add topics to the embedded article
-                if extract_topics and "topics" in result:
+                # Add topics to the embedded article (with default if missing)
+                if extract_topics and "topics" in result and result["topics"]:
                     embedded_article["topics"] = result["topics"]
+                else:
+                    # Make sure we always have topics, even if extraction failed
+                    embedded_article["topics"] = ["Uncategorized"]
                 
-                # Add the full text
-                embedded_article["text"] = article.text
+                # Add the full text (ensure it's not empty)
+                if article.text and article.text.strip():
+                    embedded_article["text"] = article.text
+                else:
+                    embedded_article["text"] = "Full text could not be extracted from this article."
+                    
+                # Ensure summary is present (with default if missing)
+                if summarize and "summary" in result and result["summary"]:
+                    embedded_article["summary"] = result["summary"]
+                else:
+                    embedded_article["summary"] = "No summary available for this article."
                 
                 # Store in vector database
                 self.vector_store.store_embeddings([embedded_article])

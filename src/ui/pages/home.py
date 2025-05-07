@@ -164,16 +164,32 @@ def render_home_page(article_count: int, articles: List[Dict[str, Any]]):
                 article_tabs = st.tabs(["📝 Summary", "📄 Full Text", "🔍 Metadata"])
                 
                 with article_tabs[0]:
-                    # Summary view
-                    summary = article.get('summary', 'No summary available')
+                    # Summary view - with improved fallback
+                    summary = article.get('summary', '')
                     if summary and summary.strip():
                         st.markdown(f"### Summary\n{summary}")
                     else:
-                        st.info("No summary available for this article.")
+                        # Try to fetch the summary from the database
+                        doc_id = article.get('id', None)
+                        if doc_id and 'vector_store' in st.session_state and st.session_state.vector_store:
+                            try:
+                                # Get the full article data
+                                complete_article = st.session_state.vector_store.get_article_by_id(doc_id)
+                                if complete_article and 'summary' in complete_article and complete_article['summary'].strip():
+                                    st.markdown(f"### Summary\n{complete_article['summary']}")
+                                else:
+                                    st.info("💡 No summary available for this article.")
+                            except Exception as e:
+                                st.info("💡 No summary available for this article.")
+                                st.caption(f"Error retrieving summary: {str(e)}")
+                        else:
+                            st.info("💡 No summary available for this article.")
                 
                 with article_tabs[1]:
-                    # Display the full text of the article
+                    # Full text view with better formatting
                     article_text = article.get('text', '')
+                    
+                    # Display the article text if available with a container for better styling
                     if article_text and article_text.strip():
                         st.markdown("### Full Article Text")
                         with st.container():
@@ -182,39 +198,56 @@ def render_home_page(article_count: int, articles: List[Dict[str, Any]]):
                         # Try to fetch the text using document ID if available
                         doc_id = article.get('id', None)
                         if doc_id and 'vector_store' in st.session_state and st.session_state.vector_store:
-                            try:
-                                # Attempt to get complete article data
-                                st.info("Attempting to retrieve full text from database...")
-                                complete_article = st.session_state.vector_store.get_article_by_id(doc_id)
-                                if complete_article and 'text' in complete_article and complete_article['text']:
-                                    st.markdown("### Full Article Text")
-                                    with st.container():
-                                        st.markdown(complete_article['text'])
-                                else:
-                                    st.error("Full text not available in the database.")
-                            except Exception as e:
-                                st.error(f"Error retrieving full text: {str(e)}")
+                            with st.spinner("Retrieving full text from database..."):
+                                try:
+                                    # Attempt to get complete article data
+                                    complete_article = st.session_state.vector_store.get_article_by_id(doc_id)
+                                    if complete_article and 'text' in complete_article and complete_article['text'].strip():
+                                        st.markdown("### Full Article Text")
+                                        with st.container():
+                                            st.markdown(complete_article['text'])
+                                    else:
+                                        st.warning("📄 Full text not available for this article.")
+                                except Exception as e:
+                                    st.warning("📄 Full text not available for this article.")
+                                    st.caption(f"Error: {str(e)}")
                         else:
-                            st.error("Full text not available for this article.")
+                            st.warning("📄 Full text not available for this article.")
                 
                 with article_tabs[2]:
                     # Display additional metadata with better formatting
                     st.markdown("### Article Metadata")
                     
                     # Format timestamp if available
-                    timestamp = article.get('timestamp', 'Unknown')
-                    if timestamp and timestamp != 'Unknown':
+                    timestamp = article.get('timestamp', None)
+                    formatted_timestamp = 'Unknown'
+                    
+                    if timestamp:
                         try:
                             import datetime
                             # Convert timestamp to readable format if it's a numeric value
-                            if isinstance(timestamp, (int, float)):
-                                timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-                        except:
-                            pass  # Keep original if conversion fails
+                            if isinstance(timestamp, (int, float)) and timestamp > 0:
+                                formatted_timestamp = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                            elif isinstance(timestamp, str) and timestamp != 'Unknown':
+                                formatted_timestamp = timestamp
+                        except Exception as e:
+                            st.caption(f"Error formatting timestamp: {str(e)}")
                     
-                    # Calculate word count
+                    # Get the text for word count - try to get it from complete article if missing
                     text = article.get('text', '')
-                    word_count = len(text.split()) if text else 0
+                    word_count = 0
+                    
+                    if not text and 'id' in article and 'vector_store' in st.session_state:
+                        try:
+                            complete_article = st.session_state.vector_store.get_article_by_id(article['id'])
+                            if complete_article and 'text' in complete_article:
+                                text = complete_article.get('text', '')
+                        except:
+                            pass
+                    
+                    # Calculate word count if we have text
+                    if text and isinstance(text, str):
+                        word_count = len(text.split())
                     
                     # Create a more readable display with columns
                     col1, col2 = st.columns(2)
@@ -223,16 +256,34 @@ def render_home_page(article_count: int, articles: List[Dict[str, Any]]):
                         st.markdown("**Basic Information**")
                         st.markdown(f"**Headline:** {article.get('headline', 'Untitled')}")
                         st.markdown(f"**Source Domain:** {article.get('source_domain', 'Unknown')}")
-                        st.markdown(f"**Published:** {timestamp}")
+                        st.markdown(f"**Published:** {formatted_timestamp}")
                         st.markdown(f"**Word Count:** {word_count}")
                     
                     with col2:
                         st.markdown("**Topics & Tags**")
                         topics = article.get('topics', [])
-                        if topics:
+                        
+                        # First try to get topics from the database if missing
+                        if (not topics or len(topics) == 0) and 'id' in article and 'vector_store' in st.session_state:
+                            try:
+                                complete_article = st.session_state.vector_store.get_article_by_id(article['id'])
+                                if complete_article and 'topics' in complete_article:
+                                    topics = complete_article.get('topics', [])
+                            except:
+                                pass
+                        
+                        # Display topics with better formatting
+                        if topics and len(topics) > 0:
+                            topic_list = []
                             for topic in topics:
-                                if topic and topic != 'None':
+                                if topic and topic != 'None' and topic != 'Uncategorized':
+                                    topic_list.append(topic)
+                                    
+                            if topic_list:
+                                for topic in topic_list:
                                     st.markdown(f"- {topic}")
+                            else:
+                                st.markdown("*No specific topics identified*")
                         else:
                             st.markdown("*No topics available*")
                     
@@ -243,7 +294,7 @@ def render_home_page(article_count: int, articles: List[Dict[str, Any]]):
                         "source_domain": article.get('source_domain', 'Unknown'),
                         "url": article.get('url', 'Unknown'),
                         "timestamp": timestamp,
-                        "topics": article.get('topics', []),
+                        "topics": topics,  # Use the potentially updated topics list
                         "word_count": word_count
                     })
                 

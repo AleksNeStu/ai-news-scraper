@@ -338,6 +338,20 @@ class FAISSVectorStore(VectorStore):
                     if key not in ["embedding", "title_embedding", "summary_embedding"]:
                         article_data[key] = value
                 
+                # Ensure critical fields are present
+                if 'text' not in article_data or not article_data.get('text'):
+                    logger.warning(f"Article {article_id} has empty or missing text field")
+                    # Set a default text message if text is missing
+                    article_data['text'] = "Text content not available for this article."
+                    
+                if 'summary' not in article_data or not article_data.get('summary'):
+                    logger.warning(f"Article {article_id} has empty or missing summary field")
+                    article_data['summary'] = "No summary available for this article."
+                
+                if 'topics' not in article_data or not article_data.get('topics'):
+                    logger.warning(f"Article {article_id} has empty or missing topics field")
+                    article_data['topics'] = ["Uncategorized"]
+                
                 return article_data
             else:
                 logger.warning(f"Article with ID {article_id} not found")
