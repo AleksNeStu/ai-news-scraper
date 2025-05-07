@@ -21,6 +21,7 @@ from src.ui.pages.home import render_home_page
 from src.ui.pages.search_results import render_search_results, render_visualization
 from src.ui.pages.scrape import render_scrape_page
 from src.ui.pages.settings import render_settings_page
+from src.ui.utils import render_version_info
 
 # Suppress warnings from external libraries
 suppress_external_library_warnings()
@@ -133,6 +134,10 @@ def main():
         st.sidebar.info("🔌 Offline Mode Active")
     else:
         st.sidebar.success("🌐 Online Mode Active")
+    
+    # Display version information at the bottom of the sidebar
+    st.sidebar.divider()
+    render_version_info()
     
     # Initialize vector store if needed
     if st.session_state.vector_store is None:

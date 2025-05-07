@@ -158,6 +158,9 @@ The easiest way to use the application is through the provided launcher scripts:
 For convenience, the project includes launcher scripts for all major operating systems:
 
 ```bash
+# Universal Python launcher (works on all platforms):
+python run_app.py
+
 # On Linux/macOS:
 ./run_app.sh
 
@@ -170,9 +173,35 @@ run_app.bat
 
 These launcher scripts automatically:
 - Detect Python installations
-- Activate virtual environments if available
+- Create and activate virtual environments if needed
 - Install dependencies using Poetry or pip
 - Launch the Streamlit web interface
+- Display version information from git (commit hash, date, branch, message)
+
+#### Version Information Display
+
+The application includes a comprehensive version tracking system that helps users identify which version they're using:
+
+1. **Startup Version Info**: When launching the application through any of the provided scripts, version information from git is displayed in the terminal, showing:
+   - Commit hash
+   - Commit date and time
+   - Current branch
+   - Commit message
+   - Repository URL (with automatic conversion from SSH to HTTPS URLs)
+
+2. **UI Version Display**: The same version information is available in the Streamlit UI sidebar, with additional features:
+   - Clickable links to view the repository
+   - Direct links to the specific commit (for GitHub repositories)
+   - Formatted with emojis for better readability
+   - Expander interface to conserve UI space
+
+3. **Script Organization**: All launcher scripts are organized in the `scripts/` directory with symbolic links in the root directory for convenient access:
+   - `run_app.py` - Universal Python launcher (works on all platforms)
+   - `run_app.sh` - Bash script for Linux/macOS
+   - `run_app.bat` - Batch script for Windows Command Prompt
+   - `run_app.ps1` - PowerShell script for modern Windows environments
+
+If git is not available or the repository information cannot be accessed, the application will gracefully handle this and display an appropriate message.
 
 Alternatively, you can start the application manually:
 
@@ -447,14 +476,21 @@ ai-news-scraper/
 │   ├── main.py          # Pipeline orchestration
 │   └── ui/              # Streamlit UI components
 │       ├── app.py       # Main Streamlit application
+│       ├── utils.py     # UI utility functions
 │       └── pages/       # UI page components
 ├── tests/               # Test suite
 │   ├── test_scraper.py
 │   ├── test_search.py
 │   └── ...
-├── run_app.sh           # Launcher script for Linux/macOS
-├── run_app.bat          # Launcher script for Windows
-├── run_app.ps1          # Launcher script for PowerShell
+├── scripts/             # Cross-platform launcher scripts
+│   ├── run_app.py       # Universal Python launcher
+│   ├── run_app.sh       # Linux/macOS launcher
+│   ├── run_app.bat      # Windows CMD launcher
+│   └── run_app.ps1      # Windows PowerShell launcher
+├── run_app.py           # Symbolic link to Python launcher
+├── run_app.sh           # Symbolic link to Linux/macOS launcher
+├── run_app.bat          # Symbolic link to Windows CMD launcher
+├── run_app.ps1          # Symbolic link to PowerShell launcher
 ├── cli.py               # Command-line interface
 ├── requirements.txt     # Dependencies for pip
 ├── pyproject.toml       # Poetry configuration
@@ -526,9 +562,24 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## ✨ Recent Updates
 
-- Added cross-platform launcher scripts (`run_app.sh`, `run_app.bat`, `run_app.ps1`) for easy application start
-- Fixed UI navigation issues to remove redundant elements
-- Improved display of article topics and metadata
-- Enhanced text retrieval in articles 
-- Added better error handling and user feedback
-- Updated documentation and troubleshooting guides
+- **Organization improvements**:
+  - Moved all launcher scripts to a dedicated `scripts/` directory
+  - Created symbolic links in the root directory for easier access
+  - Made all script files properly executable
+- **Version tracking features**:
+  - Added version information display that shows git commit details at startup and in the UI
+  - Created new `utils.py` with functions to retrieve and display version information
+  - Added repository URL and clickable links to view commits in the UI
+  - Enhanced version info display with better formatting and emoji support
+- **Cross-platform support**:
+  - Enhanced universal Python launcher script (`run_app.py`) with version info display
+  - Updated existing cross-platform launcher scripts with version info display
+  - Ensured proper error handling when git is not available
+- **UI Improvements**:
+  - Fixed UI navigation issues to remove redundant elements
+  - Improved sidebar styling with better visual hierarchy
+  - Enhanced version information display with emojis and clear formatting
+- **Documentation updates**:
+  - Updated README with new file structure information
+  - Added troubleshooting section for common issues
+  - Improved instructions for all launcher scripts
