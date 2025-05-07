@@ -74,7 +74,7 @@ The application is built with a modular architecture consisting of the following
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/ai-news-scraper.git
+git clone https://github.com/AleksNeStu/ai-news-scraper.git
 cd ai-news-scraper
 ```
 
@@ -103,7 +103,7 @@ docker-compose up -d
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/ai-news-scraper.git
+git clone https://github.com/AleksNeStu/ai-news-scraper.git
 cd ai-news-scraper
 ```
 
@@ -151,7 +151,30 @@ The application can be used through the command-line interface, as a Python modu
 
 ### Web Interface (Recommended)
 
-The easiest way to use the application is through the Streamlit web interface:
+The easiest way to use the application is through the provided launcher scripts:
+
+#### Cross-Platform Launcher Scripts
+
+For convenience, the project includes launcher scripts for all major operating systems:
+
+```bash
+# On Linux/macOS:
+./run_app.sh
+
+# On Windows (Command Prompt):
+run_app.bat
+
+# On Windows (PowerShell):
+.\run_app.ps1
+```
+
+These launcher scripts automatically:
+- Detect Python installations
+- Activate virtual environments if available
+- Install dependencies using Poetry or pip
+- Launch the Streamlit web interface
+
+Alternatively, you can start the application manually:
 
 ```bash
 # Run with Poetry
@@ -262,20 +285,20 @@ poetry run python -m src.main clear
 You can also use the application programmatically:
 
 ```python
-from src.main import NewsPipeline
+from src.main import NewsScraperPipeline
 
 # Initialize the pipeline
-pipeline = NewsPipeline(use_enhanced=True)
+pipeline = NewsScraperPipeline(use_enhanced=True)
 
 # Process URLs
 urls = ["https://example.com/news1", "https://example.com/news2"]
 result = pipeline.process_urls(urls)
-print(f"Processed {result['processed_count']} articles")
+print(f"Processed {result['summary']['successful']} articles successfully")
 
 # Search for articles
 results = pipeline.search_articles("artificial intelligence developments", limit=5)
 for result in results:
-    print(f"{result['headline']} - {result['similarity_score']}")
+    print(f"{result['headline']} - {result['similarity']}")
 ```
 
 ### Docker Deployment
@@ -318,7 +341,7 @@ The application includes offline mode functionality:
 
 3. **Python Module**: Set `offline_mode=True` when initializing
    ```python
-   pipeline = NewsPipeline(config=Config(offline_mode=True))
+   pipeline = NewsScraperPipeline(config=Config(offline_mode=True))
    ```
 
 In offline mode, the application:
@@ -326,6 +349,7 @@ In offline mode, the application:
 - Employs extractive summarization instead of OpenAI
 - Performs keyword-based topic extraction
 - Uses text-based search with local algorithms
+- Requires no internet connection for operation
 
 ## 🧪 Testing
 
@@ -420,11 +444,17 @@ ai-news-scraper/
 │   ├── embedder.py      # Embedding generation
 │   ├── vector_store.py  # Vector DB interactions
 │   ├── search.py        # Semantic search logic
-│   └── main.py          # Pipeline orchestration
+│   ├── main.py          # Pipeline orchestration
+│   └── ui/              # Streamlit UI components
+│       ├── app.py       # Main Streamlit application
+│       └── pages/       # UI page components
 ├── tests/               # Test suite
 │   ├── test_scraper.py
 │   ├── test_search.py
 │   └── ...
+├── run_app.sh           # Launcher script for Linux/macOS
+├── run_app.bat          # Launcher script for Windows
+├── run_app.ps1          # Launcher script for PowerShell
 ├── cli.py               # Command-line interface
 ├── requirements.txt     # Dependencies for pip
 ├── pyproject.toml       # Poetry configuration
@@ -434,6 +464,15 @@ ai-news-scraper/
 ## 🔧 Troubleshooting
 
 ### Common Issues
+
+#### UI Navigation Elements Problem
+
+If you see redundant navigation elements in the UI (like "app", "home", "scrape", etc.), this is fixed in the latest version but may happen if you're running an older version of Streamlit.
+
+**Solution**: Update to the latest version of the code or upgrade Streamlit:
+```bash
+pip install --upgrade streamlit
+```
 
 #### Missing lxml.html.clean Module
 
@@ -460,6 +499,15 @@ If you see errors related to OpenAI API authentication:
 
 **Solution**: If using QDRANT or Pinecone, ensure the service is running and accessible and that your API keys and endpoints are correctly configured in the .env file.
 
+#### Full Text Not Available Error
+
+If you click "View Full Text" but see "Full text not available":
+
+**Solution**: This could happen if the article wasn't properly scraped or the text field wasn't included in search results. Try:
+1. Re-scraping the article
+2. Checking the vector store configuration
+3. Ensuring the article was fully processed
+
 ## 🤝 Contributing
 
 Contributions are welcome! Here's how you can contribute:
@@ -475,3 +523,12 @@ Please ensure your code follows the project's coding style and includes appropri
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## ✨ Recent Updates
+
+- Added cross-platform launcher scripts (`run_app.sh`, `run_app.bat`, `run_app.ps1`) for easy application start
+- Fixed UI navigation issues to remove redundant elements
+- Improved display of article topics and metadata
+- Enhanced text retrieval in articles 
+- Added better error handling and user feedback
+- Updated documentation and troubleshooting guides
