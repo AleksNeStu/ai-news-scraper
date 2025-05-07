@@ -18,7 +18,7 @@ import sys
 import logging
 
 from src.config import validate_config, suppress_external_library_warnings
-from src.main import NewsPipeline
+from src.main import NewsScraperPipeline
 
 # Suppress warnings from external libraries
 suppress_external_library_warnings()
@@ -54,7 +54,7 @@ def process_command(args):
         print("\nError: No URLs to process. Please provide URLs or a valid file.")
         return
     
-    pipeline = NewsPipeline(use_enhanced=args.enhanced)
+    pipeline = NewsScraperPipeline(use_enhanced=args.enhanced)
     results = pipeline.process_urls(urls)
     
     # Print results
@@ -71,7 +71,7 @@ def search_command(args):
     Args:
         args: Command-line arguments.
     """
-    pipeline = NewsPipeline()
+    pipeline = NewsScraperPipeline()
     results = pipeline.search_articles(args.query, limit=args.limit)
     
     # Print results
@@ -98,7 +98,7 @@ def list_command(args):
     Args:
         args: Command-line arguments.
     """
-    pipeline = NewsPipeline()
+    pipeline = NewsScraperPipeline()
     articles = pipeline.get_all_articles()
     
     # Print results
@@ -121,7 +121,7 @@ def clear_command(args):
     Args:
         args: Command-line arguments.
     """
-    pipeline = NewsPipeline()
+    pipeline = NewsScraperPipeline()
     
     if args.force:
         success = pipeline.clear_database()

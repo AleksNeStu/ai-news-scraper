@@ -16,6 +16,10 @@ The following table outlines the detailed functional requirements of the News Sc
 | FR010          | Testing                                         | As a developer, I want to test the system's modules to ensure each component works as expected.                     | The project should include unit tests and integration tests covering scraping, summarization, topic extraction, and semantic search modules.                      |
 | FR011          | Python 3.12 Compatibility                       | As a developer, I want the application to use Python 3.12 so it leverages the latest language features.            | All code should be compatible with Python 3.12 and take advantage of its features where appropriate.                                                              |
 | FR012          | Poetry Dependency Management                    | As a developer, I want to use Poetry for dependency management so the project has reproducible builds.              | The project should use Poetry for dependency management, with a complete `pyproject.toml` file defining all dependencies and development requirements.            |
+| FR013          | Offline Mode Support                           | As a user, I want to use the system without internet connectivity after initial setup so that I can work offline.    | The system should provide an offline mode that uses local models and cached data when internet connectivity is unavailable.                                      |
+| FR014          | Text-based Matching                           | As a user, I want to complement semantic search with text-based matching so I can find exact phrases when needed.     | The system should allow hybrid searches combining semantic similarity and exact text matching for more precise results when required.                           |
+| FR015          | Docker Containerization                        | As a developer, I want the application containerized so it can be easily deployed in various environments.           | The system should include a Dockerfile and docker-compose configuration for easy setup and deployment with all dependencies managed within the container.       |
+| FR016          | Interactive Web UI                             | As a user, I want a web interface to interact with the system so I can use it without command line knowledge.        | The system should provide a Streamlit-based web interface for uploading URLs, viewing article summaries, and performing semantic searches with visualizations. |
 
 ## Technical Requirements
 
@@ -31,6 +35,8 @@ The following table outlines the detailed functional requirements of the News Sc
 | TR008          | Configuration Management                          | Environment variables via python-dotenv for sensitive data                                                             |
 | TR009          | Code Quality                                      | Adherence to PEP8, use of type hints, comprehensive docstrings                                                         |
 | TR010          | Error Handling                                    | Robust exception handling, graceful degradation, and meaningful error messages                                          |
+| TR011          | Docker Containerization                           | Docker container configuration for easy deployment and environment isolation                                           |
+| TR012          | UI Framework                                      | Streamlit for creating an interactive web interface                                                                    |
 
 ## Project Structure
 
@@ -42,8 +48,16 @@ src/
   ├── embedder.py     # Embedding generation code
   ├── vector_store.py # Vector DB interaction logic
   ├── search.py       # Semantic search implementation
+  ├── config.py       # Configuration and settings management
+  ├── utils.py        # Utility functions and helpers
+  ├── ui/             # Streamlit UI components
+  │   ├── app.py      # Main Streamlit application
+  │   ├── pages/      # UI pages and components
+  │   └── assets/     # UI static assets
   └── main.py         # Pipeline orchestration
 tests/                # Unit and integration tests
+Dockerfile            # Container configuration
+docker-compose.yml    # Multi-container setup
 ```
 
 ## Evaluation Criteria
@@ -52,3 +66,6 @@ tests/                # Unit and integration tests
 - Quality and clarity of code and documentation
 - Performance of the semantic search functionality
 - Robustness of error handling and edge case management
+- User experience and intuitiveness of the web interface
+- Reliability of offline functionality
+- Quality of containerization and ease of deployment

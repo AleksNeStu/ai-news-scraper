@@ -16,21 +16,31 @@ This project creates a Python application that:
 - Scrapes **complete news articles** from URLs
 - Extracts both **headlines and full text**
 - Handles various website formats and error cases
+- Implements **advanced error handling** for site-specific issues
 
 ### 2️⃣ GenAI Processing
 - Generates **concise summaries** (100-300 words)
 - Identifies **3-10 key topics** per article
 - Uses **OpenAI GPT models** for advanced text analysis
+- Provides **offline mode** with local model fallbacks
 
 ### 3️⃣ Vector Database Integration
 - Creates **embeddings** of article content
 - Stores **complete metadata** (URL, headline, summary, topics)
 - Enables **efficient retrieval** through vector similarity
+- Supports **multiple vector database backends**
 
 ### 4️⃣ Semantic Search
 - Supports **natural language queries**
 - Understands **synonyms and context**
 - Returns **relevant results** ranked by similarity
+- Implements **text-based matching** and **hybrid search**
+
+### 5️⃣ Web Interface & Deployment
+- Includes a **Streamlit-based UI** for easy interaction
+- Provides **Docker containerization** for simple deployment
+- Supports **offline operation** without internet connectivity
+- Features **data visualization** for search results and statistics
 
 ## 🛠️ Tech Stack
 
@@ -39,7 +49,10 @@ This project creates a Python application that:
 - **Web Scraping:** `newspaper3k`, `BeautifulSoup`
 - **GenAI:** OpenAI GPT models
 - **Embeddings:** OpenAI embedding models (e.g., `text-embedding-ada-002`)
+- **Local Models:** Sentence Transformers (for offline mode)
 - **Vector DB:** FAISS, Pinecone, or Qdrant
+- **UI Framework:** Streamlit
+- **Containerization:** Docker
 - **Testing:** pytest
 
 ## 📁 Project Structure
@@ -57,16 +70,39 @@ The application is built with a modular architecture consisting of the following
 
 ## Installation
 
-### Prerequisites
+### Option 1: Using Docker (Recommended)
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/ai-news-scraper.git
+cd ai-news-scraper
+```
+
+2. Create a `.env` file with your API keys:
+```bash
+OPENAI_API_KEY=your-openai-api-key
+COMPLETION_MODEL=gpt-3.5-turbo
+OFFLINE_MODE=false
+```
+
+3. Build and run the Docker container:
+```bash
+docker-compose up -d
+```
+
+4. Access the application at http://localhost:8501
+
+### Option 2: Manual Installation
+
+#### Prerequisites
 
 - Python 3.9+
 - Poetry (optional, for dependency management)
 
-### Setup
+#### Setup
 
 1. Clone the repository:
-
-```
+```bash
 git clone https://github.com/yourusername/ai-news-scraper.git
 cd ai-news-scraper
 ```
@@ -74,12 +110,12 @@ cd ai-news-scraper
 2. Install dependencies:
 
 With Poetry (recommended):
-```
+```bash
 poetry install
 ```
 
 With pip:
-```
+```bash
 pip install -r requirements.txt
 ```
 
@@ -111,7 +147,26 @@ PINECONE_INDEX_NAME=news_articles
 
 ## 💻 Usage
 
-The application can be used through the command-line interface or as a Python module.
+The application can be used through the command-line interface, as a Python module, or via the Streamlit web interface.
+
+### Web Interface (Recommended)
+
+The easiest way to use the application is through the Streamlit web interface:
+
+```bash
+# Run with Poetry
+poetry run streamlit run src/ui/app.py
+
+# Or with regular Python
+streamlit run src/ui/app.py
+```
+
+This will open a browser window with the application interface, where you can:
+
+- Search for articles using semantic, text-based, or hybrid search
+- Submit URLs to scrape and analyze
+- View article summaries and topics
+- Configure application settings
 
 ### Command Line Interface
 
@@ -223,6 +278,55 @@ for result in results:
     print(f"{result['headline']} - {result['similarity_score']}")
 ```
 
+### Docker Deployment
+
+The application can be easily deployed using Docker:
+
+```bash
+# Build and start the application using docker-compose
+docker-compose up -d
+
+# Access the web UI at http://localhost:8501
+```
+
+You can customize the deployment by editing the `docker-compose.yml` file to:
+- Configure environment variables
+- Enable additional vector database services (e.g., Qdrant)
+- Adjust resource allocations
+- Set up persistent storage volumes
+
+For a quick test, you can also run just the Docker container:
+
+```bash
+# Build the Docker image
+docker build -t news-scraper .
+
+# Run the container
+docker run -p 8501:8501 --env-file .env news-scraper
+```
+
+### Offline Mode
+
+The application includes offline mode functionality:
+
+1. **Command Line**: Use the `--offline` flag
+   ```bash
+   poetry run python cli.py process --urls https://example.com/news1 --offline
+   ```
+
+2. **Web UI**: Toggle the "Offline Mode" checkbox in the sidebar
+
+3. **Python Module**: Set `offline_mode=True` when initializing
+   ```python
+   pipeline = NewsPipeline(config=Config(offline_mode=True))
+   ```
+
+In offline mode, the application:
+- Uses local embedding models (Sentence Transformers)
+- Employs extractive summarization instead of OpenAI
+- Performs keyword-based topic extraction
+- Uses text-based search with local algorithms
+
 ## 🧪 Testing
 
 Run all tests:
@@ -253,72 +357,35 @@ poetry run pytest --cov=src tests/
 
 ## 🗄️ Vector Database Options
 
-The application supports three vector databases, configurable via the `VECTOR_DB_TYPE` variable in your `.env` file:
+The application supports three vector databases:
 
-- **FAISS** (default):  
-  Local, fast, and easy to set up. Stores vector indices on disk.  
-  Set in `.env`:  
-  ```
-  VECTOR_DB_TYPE=FAISS
-  FAISS_INDEX_PATH=./data/vector_index
-  ```
+### FAISS (Default)
 
-- **Qdrant**:  
-  Open-source, production-ready vector database with REST API.  
-  Set in `.env`:  
-  ```
-  VECTOR_DB_TYPE=QDRANT
-  QDRANT_URL=http://localhost:6333
-  QDRANT_COLLECTION_NAME=news_articles
-  ```
+Facebook AI Similarity Search (FAISS) is included by default and requires no additional setup. It stores indices locally on disk.
 
-- **Pinecone**:  
-  Managed cloud vector database, scalable and robust.  
-  Set in `.env`:  
-  ```
-  VECTOR_DB_TYPE=PINECONE
-  PINECONE_API_KEY=your-pinecone-api-key
-  PINECONE_ENVIRONMENT=your-pinecone-environment
-  PINECONE_INDEX_NAME=news_articles
-  ```
+### Qdrant
 
-### How to Check Database Content
+To use Qdrant:
+1. Install additional dependencies: 
+   ```bash
+   poetry install --with optional
+   # Or specifically:
+   pip install qdrant-client
+   ```
+2. Set `VECTOR_DB_TYPE=QDRANT` in your .env file
+3. Configure `QDRANT_URL` and `QDRANT_COLLECTION_NAME`
 
-You can inspect the stored articles and metadata using the CLI or Python module:
+### Pinecone
 
-- **List all articles (CLI):**
-  ```bash
-  poetry run python cli.py list
-  # or
-  python cli.py list
-  ```
-
-- **Search for articles (CLI):**
-  ```bash
-  poetry run python cli.py search "your query"
-  ```
-
-- **Programmatically (Python):**
-  ```python
-  from src.main import NewsPipeline
-  pipeline = NewsPipeline()
-  articles = pipeline.list_articles()
-  for article in articles:
-      print(article['headline'], article['url'])
-  ```
-
-- **Directly (for FAISS):**
-  - The FAISS index is stored at the path set by `FAISS_INDEX_PATH`.  
-    You can load and inspect it using the FAISS Python API if needed.
-
-- **Directly (for Qdrant):**
-  - Use the Qdrant REST API or [Qdrant UI](https://github.com/qdrant/qdrant-ui) to browse collections.
-
-- **Directly (for Pinecone):**
-  - Use the Pinecone dashboard or Python client to inspect your index.
-
-**Tip:**  
-Always use the provided CLI or Python interfaces for safe access and to avoid corrupting the vector database.
+To use Pinecone:
+1. Install additional dependencies:
+   ```bash
+   poetry install --with optional
+   # Or specifically:
+   pip install pinecone-client
+   ```
+2. Set `VECTOR_DB_TYPE=PINECONE` in your .env file
+3. Configure your Pinecone API key and environment
 
 ## 👨‍💻 Development
 
@@ -363,18 +430,6 @@ ai-news-scraper/
 ├── pyproject.toml       # Poetry configuration
 └── README.md            # Project documentation
 ```
-
-## 🤖 Model Selection
-
-The default models configured for this project are:
-
-- **EMBEDDING_MODEL=text-embedding-ada-002**  
-  This OpenAI model provides high-quality vector embeddings suitable for semantic search and topic clustering. It is efficient and widely used for document and query embedding tasks.
-
-- **COMPLETION_MODEL=gpt-3.5-turbo**  
-  This model is cost-effective and delivers strong performance for summarization and topic extraction. It is well-suited for generating concise summaries (100–300 words) and extracting key topics from news articles.
-
-These models are appropriate for news article summarization, topic extraction, and semantic search. For even higher quality (and if your budget allows), you may consider upgrading to `gpt-4-turbo` for completion tasks, but `gpt-3.5-turbo` is a solid and reliable default.
 
 ## 🔧 Troubleshooting
 
