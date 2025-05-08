@@ -49,12 +49,21 @@ This project creates a Python application that:
 - **Package Management:** Poetry
 - **Web Scraping:** `newspaper3k`, `BeautifulSoup`
 - **GenAI:** OpenAI GPT models
-- **Embeddings:** OpenAI embedding models (e.g., `text-embedding-ada-002`)
-- **Local Models:** Sentence Transformers (for offline mode)
-- **Vector DB:** FAISS, Pinecone, or Qdrant
-- **UI Framework:** Streamlit
+- **Text Processing:** `NLTK` for tokenization and text analysis
+- **Vector Database:** FAISS, Qdrant, Pinecone
+- **UI:** Streamlit
 - **Containerization:** Docker
-- **Testing:** pytest
+
+### NLTK Resources
+
+The application uses the following NLTK resources for text processing:
+
+- **punkt**: For sentence tokenization
+- **stopwords**: For filtering common words
+- **averaged_perceptron_tagger**: For part-of-speech tagging
+- **punkt_tab**: For additional tokenization capabilities
+
+These resources are automatically downloaded on first run to a project-specific `nltk_data` directory, ensuring they're available for both development and deployed environments.
 
 ## 📁 Project Structure
 
@@ -521,29 +530,46 @@ Install lxml[html_clean] or lxml_html_clean directly.
 
 **Solution**: Update your dependencies by running:
 ```bash
-poetry add "lxml[html_clean]"
-# OR with pip
 pip install "lxml[html_clean]"
+# or
+poetry add "lxml[html_clean]"
 ```
 
-#### OpenAI API Authentication Issues
+#### NLTK Resource Errors
 
-If you see errors related to OpenAI API authentication:
+If you encounter errors related to missing NLTK resources, such as:
+```
+LookupError: Resource punkt_tab not found.
+```
 
-**Solution**: Verify that your .env file contains a valid `OPENAI_API_KEY` entry.
+**Solution**: The application should automatically download required NLTK resources. If this fails:
 
-#### Vector Database Connection Errors
+1. Manually download the required resources:
+```bash
+python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('averaged_perceptron_tagger'); nltk.download('punkt_tab')"
+```
 
-**Solution**: If using QDRANT or Pinecone, ensure the service is running and accessible and that your API keys and endpoints are correctly configured in the .env file.
+2. Check permissions on the `nltk_data` directory in the project root.
 
-#### Full Text Not Available Error
+3. If running in Docker, ensure the container has internet access during the build process.
 
-If you click "View Full Text" but see "Full text not available":
+4. For debugging, try running with increased logging level:
+```bash
+python cli.py search "test query" --debug
+```
 
-**Solution**: This could happen if the article wasn't properly scraped or the text field wasn't included in search results. Try:
-1. Re-scraping the article
-2. Checking the vector store configuration
-3. Ensuring the article was fully processed
+### Network Connectivity Issues
+
+If you experience network connectivity issues, such as:
+
+- Timeouts when trying to access the web interface
+- Errors related to API requests (e.g., OpenAI, vector database)
+
+**Solution**:
+
+1. Check your internet connection and ensure you are online.
+2. If using Docker, verify that the container has network access.
+3. For API-related errors, ensure that your API keys are correctly set in the `.env` file and that the services are reachable.
 
 ## 🤝 Contributing
 
@@ -563,6 +589,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## ✨ Recent Updates
 
+- **NLTK Resource Management**:
+  - Added automatic download and management of required NLTK resources
+  - Fixed text search functionality by properly handling missing resources
+  - Created project-specific NLTK data directory for consistent resource access
+  - Added comprehensive tests for NLTK resource handling
 - **Organization improvements**:
   - Moved all launcher scripts to a dedicated `scripts/` directory
   - Created symbolic links in the root directory for easier access
