@@ -88,20 +88,33 @@ def render_scrape_page(process_urls_callback):
     
     # Scraping options
     st.subheader("Processing Options")
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
         summarize = st.checkbox("Generate summaries", value=True)
     with col2:
         extract_topics = st.checkbox("Extract topics", value=True)
-    with col3:
-        offline_mode = st.checkbox("Use offline mode", value=st.session_state.get('offline_mode', False))
-        # This is just for the UI, the actual offline mode is controlled by the sidebar
-        if offline_mode != st.session_state.get('offline_mode', False):
-            st.warning("To change offline mode, use the checkbox in the sidebar")
+        
+    # Show current processing mode information
+    mode_cols = st.columns(2)
     
-    if offline_mode and (summarize or extract_topics):
-        st.warning("⚠️ In offline mode, AI-powered summarization and topic extraction will use local models with reduced quality.")
+    with mode_cols[0]:
+        if st.session_state.offline_mode:
+            st.info("🔌 **OFFLINE MODE**: Using local models")
+            
+            if summarize or extract_topics:
+                st.warning("⚠️ AI features will use local models with reduced quality.")
+        else:
+            st.success("🌐 **ONLINE MODE**: Using OpenAI API")
+    
+    with mode_cols[1]:
+        if st.session_state.enhanced_mode:
+            st.info("✨ **ENHANCED MODE**: Structured output")
+            
+            if st.session_state.offline_mode:
+                st.warning("⚠️ Enhanced features work best with online mode.")
+        else:
+            st.success("📊 **STANDARD MODE**: Basic processing")
     
     # Process button
     if st.button("Process URLs", type="primary", disabled=len(urls) == 0):
