@@ -553,7 +553,12 @@ python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk
 
 3. If running in Docker, ensure the container has internet access during the build process.
 
-4. For debugging, try running with increased logging level:
+4. Use the provided NLTK resource check script:
+```bash
+python scripts/check_nltk.py --download
+```
+
+5. For debugging, try running with increased logging level:
 ```bash
 python cli.py search "test query" --debug
 ```
