@@ -99,8 +99,27 @@ def render_search_results(results: List[Dict[Any, Any]]):
             with article_tabs[0]:
                 # Summary view - with improved fallback
                 summary = article.get('summary', '')
+                
+                # Check for enhanced content
+                key_points = article.get('key_points', [])
+                topic_categories = article.get('topic_categories', {})
+                
                 if summary and summary.strip():
                     st.markdown(f"### Summary\n{summary}")
+                    
+                    # Display key points if available (from enhanced mode)
+                    if key_points and len(key_points) > 0:
+                        st.markdown("### Key Points")
+                        for i, point in enumerate(key_points, 1):
+                            st.markdown(f"- {point}")
+                            
+                    # Display topic categories if available (from enhanced mode)
+                    if topic_categories and len(topic_categories) > 0:
+                        st.markdown("### Topic Categories")
+                        for category, topics in topic_categories.items():
+                            if topics and len(topics) > 0:
+                                topics_str = ", ".join(topics)
+                                st.markdown(f"**{category}**: {topics_str}")
                 else:
                     # Try to fetch the summary from the database
                     doc_id = article.get('id', None)
@@ -110,6 +129,19 @@ def render_search_results(results: List[Dict[Any, Any]]):
                             complete_article = st.session_state.vector_store.get_article_by_id(doc_id)
                             if complete_article and 'summary' in complete_article and complete_article['summary'].strip():
                                 st.markdown(f"### Summary\n{complete_article['summary']}")
+                                
+                                # Check for enhanced content in the complete article
+                                if 'key_points' in complete_article and complete_article['key_points']:
+                                    st.markdown("### Key Points")
+                                    for i, point in enumerate(complete_article['key_points'], 1):
+                                        st.markdown(f"- {point}")
+                                        
+                                if 'topic_categories' in complete_article and complete_article['topic_categories']:
+                                    st.markdown("### Topic Categories")
+                                    for category, topics in complete_article['topic_categories'].items():
+                                        if topics and len(topics) > 0:
+                                            topics_str = ", ".join(topics)
+                                            st.markdown(f"**{category}**: {topics_str}")
                             else:
                                 st.info("💡 No summary available for this article.")
                         except Exception as e:
