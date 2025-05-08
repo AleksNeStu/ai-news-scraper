@@ -14,7 +14,7 @@ from unittest.mock import patch, MagicMock
 import tempfile
 import os
 
-from src.main import NewsPipeline
+from src.main import NewsScraperPipeline
 from src.scraper import ScrapedArticle
 
 
@@ -92,7 +92,7 @@ class TestPipelineIntegration(unittest.TestCase):
     @patch('src.topics.TopicExtractor')
     @patch('src.embedder.ArticleEmbedder')
     @patch('src.vector_store.FAISSVectorStore')  
-    @patch('src.search.SemanticSearch')
+    @patch('src.search.SemanticSearchEngine')
     def test_end_to_end_pipeline(self, MockSearch, MockStore, MockEmbedder, 
                                 MockTopics, MockSummarizer, MockScraper):
         """Test the entire pipeline from scraping to search."""
@@ -127,12 +127,17 @@ class TestPipelineIntegration(unittest.TestCase):
             
         mock_store.clear.side_effect = clear_articles
         
+        # Mock the config
+        mock_config = MagicMock()
+        mock_config.offline_mode = True
+        mock_config.max_retry_attempts = 3
+        
         # Initialize the pipeline with a mocked embedder to ensure our test doesn't hit real API
         with patch('src.main.get_vector_store', return_value=mock_store), \
              patch('src.main.ArticleScraper', return_value=mock_scraper), \
-             patch('src.main.SemanticSearch', return_value=mock_search):
+             patch('src.main.SemanticSearchEngine', return_value=mock_search):
              
-            pipeline = NewsPipeline(offline_mode=True)  # Use offline mode to avoid API calls
+            pipeline = NewsScraperPipeline(config=mock_config)  # Use mocked config with offline mode
         
         # Process sample URLs
         urls = ["https://example.com/article1", "https://example.com/article2"]
@@ -159,6 +164,67 @@ class TestPipelineIntegration(unittest.TestCase):
         # Verify database is empty
         all_articles = pipeline.get_all_articles()
         self.assertEqual(len(all_articles), 0)
+    
+    def test_text_search_functionality(self):
+        """Test that text search functionality works end-to-end."""
+        # Set up mock data
+        mock_articles = [
+            {"url": "https://example.com/article1", "headline": "Test Article One",
+             "summary": "This is a test article about AI technology", "text": "Full text about AI technology",
+             "source_domain": "example.com", "publish_date": "2025-05-01"},
+            {"url": "https://example.com/article2", "headline": "Test Article Two",
+             "summary": "This is another test article about machine learning",
+             "text": "Full text about machine learning advances", "source_domain": "example.com",
+             "publish_date": "2025-05-02"}
+        ]
+        
+        # Set up mocks
+        mock_scraper = MagicMock()
+        mock_search = MagicMock()
+        mock_store = MagicMock()
+        mock_store.get_all_metadata.return_value = mock_articles
+        
+        # Mock search to return articles based on the query
+        def mock_search_function(query, limit=5, **kwargs):
+            if "AI" in query:
+                return [dict(mock_articles[0], similarity=0.85)]
+            elif "machine learning" in query:
+                return [dict(mock_articles[1], similarity=0.9)]
+            else:
+                # Return both with different scores
+                return [
+                    dict(mock_articles[0], similarity=0.7),
+                    dict(mock_articles[1], similarity=0.6)
+                ][:limit]
+                
+        # Mock both search and text_search methods to ensure our test works in any mode
+        mock_search.search.side_effect = mock_search_function
+        mock_search.text_search.side_effect = mock_search_function
+        
+        # Mock the config
+        mock_config = MagicMock()
+        mock_config.offline_mode = True
+        
+        # Initialize the pipeline with mocks
+        with patch('src.main.get_vector_store', return_value=mock_store), \
+             patch('src.main.ArticleScraper', return_value=mock_scraper), \
+             patch('src.main.SemanticSearchEngine', return_value=mock_search):
+             
+            # Create pipeline with mocked config for offline mode
+            pipeline = NewsScraperPipeline(config=mock_config)
+            
+            # Test specific text searches
+            ai_results = pipeline.search_articles("AI technology", limit=1)
+            self.assertEqual(len(ai_results), 1)
+            self.assertEqual(ai_results[0]["url"], "https://example.com/article1")
+            
+            ml_results = pipeline.search_articles("machine learning advances", limit=1)
+            self.assertEqual(len(ml_results), 1)
+            self.assertEqual(ml_results[0]["url"], "https://example.com/article2")
+            
+            # Test generic search that should return both articles
+            all_results = pipeline.search_articles("technology", limit=2)
+            self.assertEqual(len(all_results), 2)
 
 
 if __name__ == '__main__':

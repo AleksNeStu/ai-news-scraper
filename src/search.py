@@ -8,12 +8,49 @@ language queries, using vector embeddings for semantic similarity matching.
 import logging
 from typing import List, Dict, Any, Optional, Tuple, Union
 import re
+import os
+import sys
 
 from src.embedder import ArticleEmbedder
 from src.vector_store import get_vector_store, VectorStore
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Initialize NLTK resources
+def download_nltk_resources():
+    """Download required NLTK resources if they don't exist."""
+    try:
+        import nltk
+        
+        # Create NLTK data directory in the project if it doesn't exist
+        nltk_data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "nltk_data")
+        os.makedirs(nltk_data_dir, exist_ok=True)
+        
+        # Add the project's NLTK data directory to the search path
+        nltk.data.path.append(nltk_data_dir)
+        
+        # Download necessary resources
+        resources = {
+            "punkt": "tokenizers/punkt",
+            "stopwords": "corpora/stopwords",
+            "averaged_perceptron_tagger": "taggers/averaged_perceptron_tagger",
+            "punkt_tab": "tokenizers/punkt_tab"
+        }
+        
+        for resource, path in resources.items():
+            try:
+                nltk.data.find(path)
+                logger.debug(f"NLTK resource '{resource}' already exists")
+            except LookupError:
+                logger.info(f"Downloading NLTK resource '{resource}'")
+                nltk.download(resource, download_dir=nltk_data_dir, quiet=True)
+                
+    except Exception as e:
+        logger.error(f"Failed to download NLTK resources: {str(e)}")
+        
+# Download NLTK resources at module import time
+download_nltk_resources()
 
 
 class SemanticSearchEngine:
@@ -373,15 +410,13 @@ class SemanticSearchEngine:
             from nltk.tokenize import word_tokenize
             from nltk.corpus import stopwords
             
-            # Download necessary NLTK data
-            nltk.download('punkt', quiet=True)
-            nltk.download('stopwords', quiet=True)
-            
+            # We've already downloaded necessary NLTK data at module import time
+            # Just access the resources now
             self.tokenize = word_tokenize
             self.stopwords = set(stopwords.words('english'))
             logger.info("Text search components initialized successfully")
-        except ImportError:
-            logger.warning("NLTK not available. Text search will use basic tokenization.")
+        except Exception as e:
+            logger.warning(f"NLTK initialization failed: {str(e)}. Text search will use basic tokenization.")
             # Fallback tokenizer
             self.tokenize = lambda text: text.lower().split()
             self.stopwords = {"a", "an", "the", "and", "or", "but", "in", "on", "at", 

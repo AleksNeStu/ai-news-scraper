@@ -11,7 +11,7 @@ import os
 import tempfile
 from unittest.mock import patch, MagicMock
 
-from src.main import NewsPipeline, read_urls_from_file
+from src.main import NewsScraperPipeline, read_urls_from_file
 from src.scraper import ScrapedArticle
 
 
@@ -50,13 +50,13 @@ class TestReadUrlsFromFile(unittest.TestCase):
         self.assertEqual(urls, [])
 
 
-class TestNewsPipeline(unittest.TestCase):
-    """Test the NewsPipeline class."""
+class TestNewsScraperPipeline(unittest.TestCase):
+    """Test the NewsScraperPipeline class."""
     
     def setUp(self):
         """Set up test environment before each test."""
         # Mock the configuration validation
-        self.mock_validate_config_patcher = patch('src.main.validate_config')
+        self.mock_validate_config_patcher = patch('src.config.validate_config')
         self.mock_validate_config = self.mock_validate_config_patcher.start()
         self.mock_validate_config.return_value = True
         
@@ -92,7 +92,7 @@ class TestNewsPipeline(unittest.TestCase):
         self.mock_search.return_value = self.search_instance
         
         # Create a pipeline instance
-        self.pipeline = NewsPipeline()
+        self.pipeline = NewsScraperPipeline()
         
         # Sample test data
         self.test_urls = ["https://example.com/article1", "https://example.com/article2"]
