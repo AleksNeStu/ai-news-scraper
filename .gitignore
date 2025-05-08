@@ -130,6 +130,7 @@ __pypackages__/
 # Me
 dev/
 tmp/
+out/
 
 # Vector database storage
 ./data
