@@ -12,21 +12,39 @@ def render_search_page():
     st.title("🔍 Search Articles")
     
     # Display mode information specific to search functionality
-    if st.session_state.offline_mode:
-        st.info("""
-        ### 🔌 Search in Offline Mode
-        - Using local sentence transformer models for search embeddings
-        - Search quality may be reduced compared to Online Mode
-        - Only previously indexed articles will be searchable
-        - Performance might be slower on large collections
-        """)
-    else:
-        st.success("""
-        ### 🌐 Search in Online Mode
-        - Using OpenAI embeddings for high-quality semantic search
-        - Better understanding of complex queries and nuanced meanings
-        - Improved search relevance and accuracy
-        """)
+    mode_cols = st.columns(2)
+    
+    with mode_cols[0]:
+        if st.session_state.offline_mode:
+            st.info("""
+            ### 🔌 Offline Search
+            - Using local sentence transformer models
+            - Reduced search quality
+            - Local processing only
+            """)
+        else:
+            st.success("""
+            ### 🌐 Online Search
+            - OpenAI embeddings for quality results
+            - Better semantic understanding
+            - Improved relevance
+            """)
+    
+    with mode_cols[1]:
+        if st.session_state.enhanced_mode:
+            st.info("""
+            ### ✨ Enhanced Results
+            - Structured summaries with key points
+            - Categorized topics by domain
+            - Detailed content analysis
+            """)
+        else:
+            st.success("""
+            ### 📊 Standard Results
+            - Basic summaries and topics
+            - Simple content display
+            - Essential information
+            """)
         
     if st.session_state.vector_store is None:
         st.error("Vector database not initialized. Please check your settings.")
@@ -229,6 +247,11 @@ def perform_search(query, search_type, limit=5, threshold=0.5, blend=0.5,
     try:
         start_time = time.time()
         search_engine = st.session_state.search_engine
+        
+        # Display a note about enhanced mode if enabled
+        if st.session_state.enhanced_mode:
+            st.info("✨ Enhanced mode enabled: Results will include key points and topic categories when available")
+            
         
         # Initialize filter criteria if needed
         if filter_criteria is None:
