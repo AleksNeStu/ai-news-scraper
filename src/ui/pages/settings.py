@@ -139,6 +139,34 @@ def render_settings_page(save_settings_callback: Callable[[Dict[str, Any]], None
         
         st.info("Offline mode can be toggled using the checkbox in the sidebar.")
     
+    # Enhanced Mode
+    st.subheader("Enhanced Mode")
+    with st.expander("Enhanced Processing Configuration", expanded=True):
+        # Enhanced information about the enhanced mode
+        st.markdown("""
+        ### About Enhanced Mode
+        
+        **Enhanced Mode** provides:
+        - Structured summaries with key points extraction
+        - Topic categorization into domains (Technology, Business, Science, etc.)
+        - More detailed insights from article content
+        - Better quality analysis using advanced prompts
+        
+        **Standard Mode**:
+        - Basic summaries and topic extraction
+        - Simpler output format
+        - Uses fewer API tokens and resources
+        - Faster processing time
+        
+        The enhanced mode can be toggled in the sidebar and works with both online and offline modes,
+        though it provides the best results when used with online mode (OpenAI API).
+        """)
+        
+        current_mode = "ENHANCED" if st.session_state.enhanced_mode else "STANDARD"
+        st.info(f"**Current Mode**: {current_mode}")
+        
+        st.info("Enhanced mode can be toggled using the checkbox in the sidebar.")
+    
     # Advanced Settings
     st.subheader("Advanced Settings")
     with st.expander("Advanced Configuration"):
