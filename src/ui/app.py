@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.config import Config, suppress_external_library_warnings
 from src.main import NewsScraperPipeline
+from src.enhanced_pipeline import EnhancedNewsScraperPipeline
 from src.search import SemanticSearchEngine
 from src.vector_store import get_vector_store
 
@@ -78,6 +79,7 @@ if "pipeline" not in st.session_state:
     config = Config()
     st.session_state.pipeline = NewsScraperPipeline(config)
     st.session_state.offline_mode = config.offline_mode
+    st.session_state.enhanced_mode = False  # Default to standard mode
     st.session_state.vector_store = None
     st.session_state.search_engine = None
     st.session_state.articles = []
@@ -158,11 +160,56 @@ def main():
             st.session_state.pipeline.set_offline_mode(offline_mode)
             st.rerun()
     
-    # Status indicator for offline mode
-    if st.session_state.offline_mode:
-        st.sidebar.info("🔌 **OFFLINE MODE ACTIVE**: Using local models, limited AI capabilities")
-    else:
-        st.sidebar.success("🌐 **ONLINE MODE ACTIVE**: Using OpenAI for enhanced features")
+    # Enhanced mode toggle
+    with st.sidebar.expander("✨ Enhanced Processing Settings", expanded=True):
+        st.markdown("""
+        ### Enhanced Mode Settings
+        
+        **Enhanced Mode**: 
+        - Uses advanced GenAI capabilities for structured output
+        - Provides key points extraction and topic categorization
+        - Utilizes more sophisticated prompts for better insights
+        - Ideal for detailed analysis of articles
+        
+        **Standard Mode**: 
+        - Uses basic summarization and topic extraction
+        - Provides essential information in a simpler format
+        - Uses fewer API tokens and faster processing
+        """)
+        
+        enhanced_mode = st.checkbox(
+            "Enable Enhanced Mode", 
+            value=st.session_state.enhanced_mode,
+            help="Switch between enhanced (structured) and standard processing"
+        )
+        
+        if enhanced_mode != st.session_state.enhanced_mode:
+            st.session_state.enhanced_mode = enhanced_mode
+            
+            # Reinitialize pipeline based on mode
+            config = Config()
+            if enhanced_mode:
+                st.session_state.pipeline = EnhancedNewsScraperPipeline(config)
+            else:
+                st.session_state.pipeline = NewsScraperPipeline(config)
+                
+            # Update offline mode setting
+            st.session_state.pipeline.set_offline_mode(st.session_state.offline_mode)
+            st.rerun()
+    
+    # Status indicators for modes
+    status_cols = st.sidebar.columns(2)
+    with status_cols[0]:
+        if st.session_state.offline_mode:
+            st.info("🔌 **OFFLINE MODE**")
+        else:
+            st.success("🌐 **ONLINE MODE**")
+            
+    with status_cols[1]:
+        if st.session_state.enhanced_mode:
+            st.info("✨ **ENHANCED MODE**")
+        else:
+            st.success("📊 **STANDARD MODE**")
     
     # Display version information at the bottom of the sidebar
     st.sidebar.divider()
@@ -175,7 +222,35 @@ def main():
             with st.sidebar.status("Loading vector database...") as status:
                 success = initialize_vector_store()
                 if success:
-                    status.update(label="Vector database loaded successfully!", state="complete")
+                    # Get database metadata
+                    db_type = os.environ.get("VECTOR_DB_TYPE", "faiss").upper()
+                    
+                    # Get specific details based on the database type
+                    db_details = ""
+                    if db_type == "FAISS":
+                        db_path = os.environ.get("FAISS_INDEX_PATH", "data/vector_index")
+                        db_details = f"Location: {db_path}"
+                    elif db_type == "QDRANT":
+                        db_url = os.environ.get("QDRANT_URL", "http://localhost:6333")
+                        collection = os.environ.get("QDRANT_COLLECTION_NAME", "news_articles")
+                        db_details = f"Server: {db_url}, Collection: {collection}"
+                    elif db_type == "PINECONE":
+                        env = os.environ.get("PINECONE_ENVIRONMENT", "")
+                        index = os.environ.get("PINECONE_INDEX_NAME", "")
+                        db_details = f"Environment: {env}, Index: {index}"
+                    
+                    # Get the number of articles if available
+                    article_count = 0
+                    if st.session_state.vector_store:
+                        try:
+                            article_count = len(st.session_state.vector_store.get_all_metadata())
+                        except:
+                            pass
+                    
+                    status.update(
+                        label=f"{db_type} database loaded successfully! ({article_count} articles)\n{db_details}", 
+                        state="complete"
+                    )
                     # Mark as initialized to avoid showing message again
                     st.session_state.db_initialized = True
                 else:
@@ -235,28 +310,29 @@ def process_urls(urls, summarize=True, extract_topics=True):
                             st.session_state.articles = []
                         else:
                             st.error("Failed to clear existing articles")
-                    
+            
+            # Show pipeline mode information
+            if st.session_state.enhanced_mode:
+                st.info("✨ Using enhanced pipeline with structured output")
+            
             # Process the URLs
+            results = []
             for i, url in enumerate(urls):
                 st.write(f"Processing: {url}")
-                st.session_state.pipeline.process_url(
+                result = st.session_state.pipeline.process_url(
                     url, summarize=summarize, extract_topics=extract_topics
                 )
+                results.append(result)
                 progress_bar.progress((i + 1) / len(urls))
             
             # Refresh articles list after processing
-            if st.session_state.vector_store:
-                st.session_state.articles = st.session_state.vector_store.get_all_articles()
-                st.success(f"Successfully processed {len(urls)} URLs. Database now contains {len(st.session_state.articles)} articles.")
-            
-            # Refresh the vector store
+            # Refresh the vector store first
             initialize_vector_store()
             
             # Update article list
             if st.session_state.vector_store:
                 st.session_state.articles = st.session_state.vector_store.get_all_articles()
-                
-            st.success(f"Successfully processed {len(urls)} URLs!")
+                st.success(f"Successfully processed {len(urls)} URLs. Database now contains {len(st.session_state.articles)} articles.")
         except Exception as e:
             st.error(f"Error processing URLs: {str(e)}")
 
@@ -302,7 +378,17 @@ def save_settings(settings):
     
     # Reinitialize the pipeline with new settings
     config = Config()
-    st.session_state.pipeline = NewsScraperPipeline(config)
+    
+    # Use the appropriate pipeline based on enhanced mode setting
+    if st.session_state.enhanced_mode:
+        st.session_state.pipeline = EnhancedNewsScraperPipeline(config)
+    else:
+        st.session_state.pipeline = NewsScraperPipeline(config)
+    
+    # Set offline mode
+    st.session_state.pipeline.set_offline_mode(st.session_state.offline_mode)
+    
+    # Reset other components to force reinitialization
     st.session_state.vector_store = None
     st.session_state.search_engine = None
     initialize_vector_store()
