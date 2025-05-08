@@ -19,6 +19,7 @@ import logging
 
 from src.config import validate_config, suppress_external_library_warnings
 from src.main import NewsScraperPipeline
+from src.enhanced_pipeline import EnhancedNewsScraperPipeline
 
 # Suppress warnings from external libraries
 suppress_external_library_warnings()
@@ -54,14 +55,20 @@ def process_command(args):
         print("\nError: No URLs to process. Please provide URLs or a valid file.")
         return
     
-    pipeline = NewsScraperPipeline(use_enhanced=args.enhanced)
-    results = pipeline.process_urls(urls)
+    # Use enhanced pipeline if requested
+    if args.enhanced:
+        pipeline = EnhancedNewsScraperPipeline()
+        print("\nUsing enhanced pipeline with advanced GenAI features...")
+    else:
+        pipeline = NewsScraperPipeline()
+        
+    results = pipeline.process_urls(urls, summarize=not args.no_summary, extract_topics=not args.no_topics)
     
     # Print results
     print("\n=== Processing Results ===")
-    print(f"Processed {results['processed_count']} of {results['total_urls']} URLs")
-    print(f"Time taken: {results['elapsed_seconds']:.2f} seconds")
-    print(f"Success: {results['success']}")
+    print(f"Processed {len(results['results'])} of {results['summary']['total']} URLs")
+    print(f"Time taken: {results['summary']['elapsed_time_seconds']:.2f} seconds")
+    print(f"Success: {results['summary']['successful']} / Failed: {results['summary']['failed']}")
 
 
 def search_command(args):
@@ -71,7 +78,13 @@ def search_command(args):
     Args:
         args: Command-line arguments.
     """
-    pipeline = NewsScraperPipeline()
+    # Use enhanced pipeline if requested
+    if args.enhanced:
+        pipeline = EnhancedNewsScraperPipeline()
+        print("\nUsing enhanced pipeline with advanced GenAI features...")
+    else:
+        pipeline = NewsScraperPipeline()
+        
     results = pipeline.search_articles(args.query, limit=args.limit)
     
     # Print results
@@ -80,14 +93,34 @@ def search_command(args):
         print("No results found.")
     
     for i, result in enumerate(results, 1):
-        print(f"\n--- Result #{i} (Score: {result['similarity_score']:.4f}) ---")
+        print(f"\n--- Result #{i} (Score: {result.get('similarity_score', 0):.4f}) ---")
         print(f"Title: {result['headline']}")
         print(f"Source: {result['source_domain']}")
         if 'publish_date' in result and result['publish_date']:
             print(f"Date: {result['publish_date']}")
         print(f"URL: {result['url']}")
-        if 'summary' in result and result['summary']:
-            print(f"\nSummary: {result['summary']}")
+        
+        if args.enhanced:
+            if 'summary' in result and result['summary']:
+                print(f"\nSummary: {result['summary']}")
+            
+            if 'key_points' in result and result['key_points']:
+                print("\nKey Points:")
+                for idx, point in enumerate(result['key_points'], 1):
+                    print(f"  {idx}. {point}")
+                
+            if 'topic_categories' in result and result['topic_categories']:
+                print("\nTopic Categories:")
+                for category, topics in result['topic_categories'].items():
+                    topics_str = ", ".join(topics)
+                    print(f"  {category}: {topics_str}")
+        else:
+            if 'summary' in result and result['summary']:
+                print(f"\nSummary: {result['summary']}")
+                
+            if 'topics' in result and result['topics']:
+                print("\nTopics:", ", ".join(result['topics']))
+                
         print("-" * 60)
 
 
@@ -98,7 +131,12 @@ def list_command(args):
     Args:
         args: Command-line arguments.
     """
-    pipeline = NewsScraperPipeline()
+    # Use enhanced pipeline if requested
+    if args.enhanced:
+        pipeline = EnhancedNewsScraperPipeline()
+        print("\nUsing enhanced pipeline with advanced GenAI features...")
+    else:
+        pipeline = NewsScraperPipeline()
     articles = pipeline.get_all_articles()
     
     # Print results
@@ -156,17 +194,24 @@ def main():
     url_group = process_parser.add_mutually_exclusive_group(required=True)
     url_group.add_argument("--urls", nargs="+", help="URLs to process (space-separated)")
     url_group.add_argument("--file", type=str, help="Path to file containing URLs (one per line)")
-    process_parser.add_argument("--enhanced", action="store_true", help="Use enhanced processing")
+    process_parser.add_argument("--enhanced", action="store_true", help="Use enhanced processing with structured output")
+    process_parser.add_argument("--no-summary", action="store_true", help="Skip summary generation")
+    process_parser.add_argument("--no-topics", action="store_true", help="Skip topic extraction")
+    process_parser.add_argument("--offline", action="store_true", help="Run in offline mode")
     process_parser.set_defaults(func=process_command)
     
     # Search command
     search_parser = subparsers.add_parser("search", help="Search articles")
     search_parser.add_argument("query", help="Search query")
     search_parser.add_argument("--limit", type=int, default=5, help="Maximum number of results")
+    search_parser.add_argument("--enhanced", action="store_true", help="Use enhanced search with structured output")
+    search_parser.add_argument("--offline", action="store_true", help="Run in offline mode")
     search_parser.set_defaults(func=search_command)
     
     # List command
     list_parser = subparsers.add_parser("list", help="List all articles")
+    list_parser.add_argument("--enhanced", action="store_true", help="Show enhanced article details")
+    list_parser.add_argument("--topic-filter", type=str, help="Filter articles by topic")
     list_parser.set_defaults(func=list_command)
     
     # Clear command
