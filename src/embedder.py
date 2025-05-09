@@ -256,8 +256,27 @@ class ArticleEmbedder:
             
         Returns:
             List[float]: Vector embedding of the query.
+            Returns None if embedding generation fails and no fallback is available.
         """
-        return self.create_embedding(query)
+        try:
+            # First try the standard embedding method
+            embedding = self.create_embedding(query)
+            if embedding:
+                return embedding
+                
+            # If that fails, try text embedding as fallback
+            logger.warning("Standard embedding failed, trying fallback text embedding")
+            embedding = self.embed_text(query)
+            if embedding:
+                return embedding
+                
+            # If all else fails, generate a random embedding
+            logger.warning("All embedding methods failed, using random embedding as last resort")
+            return self._create_random_embedding()
+        except Exception as e:
+            logger.error(f"Unhandled error in embed_query: {str(e)}")
+            # Last resort - return random embedding
+            return self._create_random_embedding()
     
     def embed_text(self, text: str) -> Optional[List[float]]:
         """

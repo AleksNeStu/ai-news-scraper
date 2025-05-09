@@ -98,6 +98,10 @@ class SemanticSearchEngine:
             logger.info(f"Creating embedding for query: '{query}'")
             query_embedding = self.embedder.embed_query(query)
             
+            if not query_embedding:
+                logger.warning("Failed to generate embedding for query, falling back to text search")
+                return self.text_based_search(query, limit=limit, filter_criteria=filter_criteria)
+            
             # Perform vector search
             logger.info("Searching for similar articles")
             results = self.vector_store.search(query_embedding, limit=limit)
@@ -203,34 +207,58 @@ class SemanticSearchEngine:
         formatted_results = []
         
         for result in results:
+            if not result:
+                continue
+                
             # Handle different result structures (payload vs. direct fields)
             if "payload" in result:
                 # New structure with payload
                 metadata = result["payload"]
-                similarity = result.get("score", 0.0)
+                similarity = result.get("score", result.get("similarity", 0.0))
             else:
                 # Old structure with direct fields
                 metadata = result
                 similarity = result.get("similarity", 0.0)
             
+            # Validate that we have the necessary fields
+            if not metadata:
+                logger.warning(f"Result missing metadata: {result}")
+                continue
+                
+            # Get URL and headline - these are required fields
+            url = metadata.get("url", "")
+            headline = metadata.get("headline", "")
+            
+            if not url or not headline:
+                logger.warning(f"Result missing URL or headline: {metadata}")
+                continue
+            
             # Create a new result with only the fields we want to display
             formatted = {
-                "url": metadata.get("url", ""),
-                "headline": metadata.get("headline", ""),
+                "url": url,
+                "headline": headline,
                 "source_domain": metadata.get("source_domain", ""),
                 "publish_date": metadata.get("publish_date", ""),
-                "similarity_score": similarity,
+                "similarity_score": float(similarity),
             }
             
             # Add summary if available
             if "payload" in result and "summary" in result["payload"]:
                 # Highlight query terms in summary
-                highlighted_summary = self._highlight_query_terms(result["payload"]["summary"], query)
-                formatted["summary"] = highlighted_summary
+                summary = result["payload"]["summary"]
+                if summary and isinstance(summary, str):
+                    highlighted_summary = self._highlight_query_terms(summary, query)
+                    formatted["summary"] = highlighted_summary
             elif "summary" in metadata:
                 # Highlight query terms in summary
-                highlighted_summary = self._highlight_query_terms(metadata["summary"], query)
-                formatted["summary"] = highlighted_summary
+                summary = metadata["summary"]
+                if summary and isinstance(summary, str):
+                    highlighted_summary = self._highlight_query_terms(summary, query)
+                    formatted["summary"] = highlighted_summary
+            
+            # Add topics if available
+            if "topics" in metadata and metadata["topics"]:
+                formatted["topics"] = metadata["topics"]
             
             formatted_results.append(formatted)
         
@@ -558,7 +586,7 @@ class SemanticSearchEngine:
         return matches / len(query_tokens)
     
     def hybrid_search(self, query: str, limit: int = 5, 
-                     threshold: float = 0.5, blend: float = 0.5,
+                     threshold: float = 0.3, blend: float = 0.5,
                      filter_criteria: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         Perform hybrid search combining semantic and text-based approaches.
@@ -575,52 +603,82 @@ class SemanticSearchEngine:
         """
         logger.info(f"Performing hybrid search with blend {blend} for: '{query}'")
         
-        # Get semantic search results (no limit since we'll combine and rerank)
-        semantic_results = self.search(query, limit=limit*2, filter_criteria=filter_criteria)
-        
-        # Get text search results (no limit for same reason)
-        text_results = self.text_search(query, limit=limit*2, filter_criteria=filter_criteria)
-        
-        # Create a mapping of URL to combined result
-        combined_results = {}
-        
-        # Process semantic results
-        for result in semantic_results:
-            url = result.get('url')
-            if url:
-                combined_results[url] = {
-                    'article': result,
-                    'semantic_score': result.get('similarity', 0.0),
-                    'text_score': 0.0
-                }
-        
-        # Process text results
-        for result in text_results:
-            url = result.get('url')
-            if url:
-                if url in combined_results:
-                    # Update existing entry with text score
-                    combined_results[url]['text_score'] = result.get('similarity', 0.0)
-                else:
-                    # Create new entry
+        try:
+            # Get semantic search results (no limit since we'll combine and rerank)
+            try:
+                semantic_results = self.search(query, limit=limit*2, filter_criteria=filter_criteria)
+                logger.info(f"Got {len(semantic_results)} semantic search results")
+            except Exception as e:
+                logger.error(f"Error in semantic search: {str(e)}")
+                semantic_results = []
+            
+            # Get text search results (no limit for same reason)
+            try:
+                text_results = self.text_search(query, limit=limit*2, filter_criteria=filter_criteria)
+                logger.info(f"Got {len(text_results)} text search results")
+            except Exception as e:
+                logger.error(f"Error in text search: {str(e)}")
+                text_results = []
+            
+            # If both search methods failed, return empty results
+            if not semantic_results and not text_results:
+                logger.warning("Both semantic and text search failed, returning empty results")
+                return []
+            
+            # Create a mapping of URL to combined result
+            combined_results = {}
+            
+            # Process semantic results
+            for result in semantic_results:
+                url = result.get('url')
+                if url:
                     combined_results[url] = {
                         'article': result,
-                        'semantic_score': 0.0,
-                        'text_score': result.get('similarity', 0.0)
+                        'semantic_score': float(result.get('similarity_score', result.get('similarity', 0.0))),
+                        'text_score': 0.0
                     }
-        
-        # Calculate combined scores and prepare final results
-        final_results = []
-        for url, data in combined_results.items():
-            # Calculate blended score
-            combined_score = (blend * data['semantic_score'] + 
-                             (1 - blend) * data['text_score'])
             
-            if combined_score >= threshold:
-                result = dict(data['article'])
-                result['similarity'] = combined_score
-                final_results.append(result)
-        
-        # Sort by combined score (descending) and limit results
-        final_results.sort(key=lambda x: x.get('similarity', 0), reverse=True)
-        return final_results[:limit]
+            # Process text results
+            for result in text_results:
+                url = result.get('url')
+                if url:
+                    if url in combined_results:
+                        # Update existing entry with text score
+                        combined_results[url]['text_score'] = float(result.get('similarity_score', result.get('similarity', 0.0)))
+                    else:
+                        # Create new entry
+                        combined_results[url] = {
+                            'article': result,
+                            'semantic_score': 0.0,
+                            'text_score': float(result.get('similarity_score', result.get('similarity', 0.0)))
+                        }
+            
+            # Calculate combined scores and prepare final results
+            final_results = []
+            for url, data in combined_results.items():
+                # Calculate blended score
+                combined_score = (blend * data['semantic_score'] + 
+                                (1 - blend) * data['text_score'])
+                
+                if combined_score >= threshold:
+                    result = dict(data['article'])
+                    result['similarity'] = float(combined_score)
+                    result['semantic_score'] = float(data['semantic_score'])
+                    result['text_score'] = float(data['text_score'])
+                    final_results.append(result)
+            
+            # Sort by combined score (descending) and limit results
+            final_results.sort(key=lambda x: x.get('similarity', 0), reverse=True)
+            logger.info(f"Returning {len(final_results[:limit])} hybrid search results")
+            return final_results[:limit]
+            
+        except Exception as e:
+            logger.error(f"Error in hybrid search: {str(e)}")
+            
+            # Try to fall back to text search as a last resort
+            try:
+                logger.warning("Falling back to pure text search")
+                return self.text_based_search(query, limit=limit)
+            except Exception as e2:
+                logger.error(f"Fallback text search also failed: {str(e2)}")
+                return []

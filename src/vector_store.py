@@ -185,25 +185,63 @@ class FAISSVectorStore(VectorStore):
             if not embedded_articles:
                 logger.warning("No embeddings to store")
                 return False
-                
+            
+            successful_count = 0
             # Extract embeddings and metadata
             embeddings = []
+            new_metadata = {}
+            
             for idx, article in enumerate(embedded_articles):
-                # Get the embedding vector
-                embedding = article["embedding"]
-                if not isinstance(embedding, np.ndarray):
-                    embedding = np.array(embedding, dtype=np.float32)
-                
-                # Store the embedding
-                embeddings.append(embedding)
-                
-                # Store metadata without the embedding vectors to save space
-                metadata_copy = {k: v for k, v in article.items() 
-                                if k not in ["embedding", "title_embedding", "summary_embedding"]}
-                
-                # Store the id and index in the metadata
-                article_id = article.get("id", len(self.metadata) + idx)
-                self.metadata[article_id] = metadata_copy
+                try:
+                    # Get the embedding vector
+                    if "embedding" not in article:
+                        logger.warning(f"Article missing embedding field: {article.get('url', 'unknown')}")
+                        continue
+                        
+                    embedding = article["embedding"]
+                    # Check if embedding is valid
+                    if not embedding or len(embedding) < 10:  # Very basic validation
+                        logger.warning(f"Invalid embedding for article: {article.get('url', 'unknown')}")
+                        continue
+                        
+                    if not isinstance(embedding, np.ndarray):
+                        embedding = np.array(embedding, dtype=np.float32)
+                        
+                    # Ensure the embedding has the correct dimension
+                    expected_dimension = 1536  # Default for OpenAI embeddings
+                    if embedding.shape[0] != expected_dimension:
+                        logger.warning(f"Embedding dimension mismatch: expected {expected_dimension}, got {embedding.shape[0]}")
+                        # Resize embedding to match expected dimension
+                        if embedding.shape[0] < expected_dimension:
+                            # Pad with zeros
+                            padding = np.zeros(expected_dimension - embedding.shape[0], dtype=np.float32)
+                            embedding = np.concatenate([embedding, padding])
+                        else:
+                            # Truncate
+                            embedding = embedding[:expected_dimension]
+                    
+                    # Store the embedding
+                    embeddings.append(embedding)
+                    
+                    # Store metadata without the embedding vectors to save space
+                    metadata_copy = {k: v for k, v in article.items() 
+                                    if k not in ["embedding", "title_embedding", "summary_embedding"]}
+                    
+                    # Store the id and index in the metadata
+                    article_id = article.get("id", str(hash(article.get("url", ""))))
+                    if not article_id:
+                        article_id = f"article_{len(self.metadata) + idx}"
+                        
+                    new_metadata[article_id] = metadata_copy
+                    successful_count += 1
+                    
+                except Exception as e:
+                    logger.error(f"Error processing article {idx}: {str(e)}")
+                    continue
+            
+            if not embeddings:
+                logger.warning("No valid embeddings to store after filtering")
+                return False
             
             # Convert embeddings to numpy array
             embeddings_array = np.array(embeddings, dtype=np.float32)
@@ -211,12 +249,15 @@ class FAISSVectorStore(VectorStore):
             # Add embeddings to the index
             self.index.add(embeddings_array)
             
+            # Update the metadata dictionary with new articles
+            self.metadata.update(new_metadata)
+            
             # Save the index and metadata
             faiss.write_index(self.index, self.index_file)
             with open(self.metadata_file, 'wb') as f:
                 pickle.dump(self.metadata, f)
             
-            logger.info(f"Stored {len(embedded_articles)} embeddings in FAISS")
+            logger.info(f"Stored {successful_count} embeddings in FAISS (from {len(embedded_articles)} input articles)")
             return True
             
         except Exception as e:
@@ -251,23 +292,35 @@ class FAISSVectorStore(VectorStore):
             distances, indices = self.index.search(query_embedding, limit)
             
             results = []
+            article_ids = list(self.metadata.keys())
+            
             for i, (dist, idx) in enumerate(zip(distances[0], indices[0])):
+                # Skip invalid indices
+                if idx < 0 or idx >= len(article_ids):
+                    logger.warning(f"Invalid index {idx} returned from FAISS search")
+                    continue
+                
                 # Convert distance to similarity score (1 / (1 + distance))
                 similarity = 1 / (1 + dist)
                 
-                # Find the article ID in the metadata
-                article_ids = list(self.metadata.keys())
-                if idx < len(article_ids):
+                try:
+                    # Find the article ID in the metadata
                     article_id = article_ids[idx]
                     article_data = self.metadata.get(article_id, {})
+                    
+                    if not article_data:
+                        logger.warning(f"No metadata found for article ID {article_id}")
+                        continue
                     
                     # Add similarity score
                     result = {
                         "id": article_id,
                         "similarity": float(similarity),  # Convert numpy float to Python float
-                        **article_data
+                        "payload": article_data  # Use the consistent "payload" format
                     }
                     results.append(result)
+                except IndexError:
+                    logger.error(f"Index error accessing article_ids[{idx}], length is {len(article_ids)}")
             
             return results
             
