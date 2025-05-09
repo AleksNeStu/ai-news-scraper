@@ -3,7 +3,7 @@ Scrape page component for the AI News Scraper application.
 """
 
 import streamlit as st
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Callable
 
 def render_scrape_page(process_urls_callback):
     """
@@ -51,34 +51,38 @@ def render_scrape_page(process_urls_callback):
     
     else:  # Sample URLs
         st.info("Select from these sample news articles to try out the application")
-        sample_urls = {
-            "Technology": [
-                "https://www.theguardian.com/technology/2025/may/07/amazon-makes-fundamental-leap-forward-in-robotics-with-device-having-sense-of-touch",
-                "https://blog.google/technology/ai/google-ai-updates-april-2025/",
-                "https://www.forbes.com/councils/forbestechcouncil/2025/02/03/top-10-technology-trends-for-2025/"
-            ],
-            "World News": [
-                "https://apnews.com/article/05ad77483111bf49ffa14b390f550585",
-                "https://www.ft.com/content/49e38ee8-f37e-47da-8ee4-1631175d2224",
-                "https://www.theguardian.com/business/live/2025/may/06/trade-war-china-service-sector-uk-eurozone-ford-tariffs-bp-shell-oil-business-live-news"
-            ],
-            "Science": [
-                "https://time.com/7283206/what-trump-proposed-nasa-budget-cuts-mean-for-space-science/",
-                "https://www.ft.com/content/ccbbcb4a-992f-426b-ae63-97f2770b1655",
-                "https://www.reuters.com/sustainability/climate-energy/why-we-need-scientists-now-more-than-ever-2025-05-07/"
-            ],
-            "AI & Innovation": [
-                "https://www.barrons.com/articles/crowdstrike-stock-layoffs-job-cuts-b55c736d",
-                "https://www.anthropic.com/news/ai-for-science-program",
-                "https://www.techradar.com/pro/live/google-cloud-next-2025-all-the-news-and-updates-as-it-happens"
-            ]
-        }
         
-        selected_category = st.selectbox("Select category", list(sample_urls.keys()))
+        # Import sample URLs from the data module
+        from src.ui.data.sample_urls import SAMPLE_URLS, get_random_sample_urls
         
-        for url in sample_urls[selected_category]:
+        # Add a button to load random samples
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            selected_category = st.selectbox("Select category", list(SAMPLE_URLS.keys()))
+        with col2:
+            if st.button("📋 Load Random Sample", key="load_random"):
+                # Add 3 random URLs from across categories
+                st.session_state.random_urls = get_random_sample_urls(3)
+                st.rerun()  # Rerun to reflect changes
+        
+        # If we have random URLs selected, display them
+        if hasattr(st.session_state, 'random_urls') and st.session_state.random_urls:
+            st.subheader("Random Sample URLs")
+            for url in st.session_state.random_urls:
+                if st.checkbox(url, key=f"random_{url}"):
+                    if url not in urls:  # Prevent duplicates
+                        urls.append(url)
+            
+            if st.button("Clear Random URLs"):
+                st.session_state.random_urls = []
+                st.rerun()
+                
+        # Display category-specific URLs
+        st.subheader(f"{selected_category} Articles")
+        for url in SAMPLE_URLS[selected_category]:
             if st.checkbox(url, key=f"sample_{url}"):
-                urls.append(url)
+                if url not in urls:  # Prevent duplicates
+                    urls.append(url)
     
     # Show selected URLs
     if urls:

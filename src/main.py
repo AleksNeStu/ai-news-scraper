@@ -197,6 +197,13 @@ class NewsScraperPipeline:
             
             # Step 4: Generate embeddings and store in vector database
             try:
+                # Check if the article was successfully scraped with meaningful content
+                if not article.text or not article.text.strip() or "could not be accessed due to an error" in article.text:
+                    logger.warning(f"Skipping storage for article without valid content: {url}")
+                    result["stored"] = False
+                    result["error"] = "Article could not be scraped successfully - no valid content"
+                    return result
+                
                 # Create embeddings
                 embedded_article = self.embedder.embed_article(
                     article,
@@ -211,11 +218,8 @@ class NewsScraperPipeline:
                     # Make sure we always have topics, even if extraction failed
                     embedded_article["topics"] = ["Uncategorized"]
                 
-                # Add the full text (ensure it's not empty)
-                if article.text and article.text.strip():
-                    embedded_article["text"] = article.text
-                else:
-                    embedded_article["text"] = "Full text could not be extracted from this article."
+                # Add the full text
+                embedded_article["text"] = article.text
                     
                 # Ensure summary is present (with default if missing)
                 if summarize and "summary" in result and result["summary"]:
@@ -253,19 +257,47 @@ class NewsScraperPipeline:
         start_time = time.time()
         results = []
         
+        # Check for duplicates and get existing articles
+        existing_articles = self.get_all_articles()
+        existing_urls = set()
+        for article in existing_articles:
+            if "url" in article:
+                existing_urls.add(article["url"])
+        
+        # Process only unique URLs that haven't been processed before
+        unique_urls = []
+        duplicate_urls = []
         for url in urls:
+            if url in existing_urls:
+                duplicate_urls.append(url)
+            elif url not in unique_urls:  # Avoid duplicates within the current batch
+                unique_urls.append(url)
+        
+        # Add duplicate notifications to results
+        for url in duplicate_urls:
+            results.append({
+                "url": url,
+                "status": "skipped",
+                "reason": "URL already exists in the database",
+                "stored": True  # Already stored previously
+            })
+        
+        # Process unique URLs
+        for url in unique_urls:
             result = self.process_url(url, summarize, extract_topics)
             results.append(result)
         
         # Prepare final results
         successful = sum(1 for result in results if result.get("status") == "success")
-        failed = len(results) - successful
+        failed = sum(1 for result in results if result.get("status") == "failed")
+        skipped = sum(1 for result in results if result.get("status") == "skipped")
         
         elapsed_time = time.time() - start_time
         summary = {
             "total": len(urls),
             "successful": successful,
             "failed": failed,
+            "skipped": skipped,
             "elapsed_time_seconds": elapsed_time,
             "offline_mode": self.offline_mode
         }
