@@ -1,0 +1,117 @@
+trigger:
+  branches:
+    include:
+      - main
+  tags:
+    include:
+      - v*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  pythonVersion: '3.12'
+  DOCKER_REGISTRY: '$(ACR_NAME).azurecr.io'
+  DOCKER_REPOSITORY: 'ai-news-scraper'
+  DOCKER_IMAGE_NAME: '$(DOCKER_REGISTRY)/$(DOCKER_REPOSITORY)'
+  DOCKER_TAG: '$(Build.BuildNumber)'
+
+stages:
+- stage: Validate
+  jobs:
+  - job: LintAndTest
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+        
+    - script: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry config virtualenvs.in-project true
+        poetry install
+      displayName: 'Install dependencies'
+      
+    - script: |
+        poetry run flake8 src tests
+        poetry run mypy src
+        poetry run black --check src tests
+      displayName: 'Lint code'
+      
+    - script: |
+        poetry run pytest tests/ --cov=src --cov-report=xml --cov-report=html
+      displayName: 'Run tests'
+      env:
+        OFFLINE_MODE: 'true'
+        
+    - task: PublishCodeCoverageResults@1
+      inputs:
+        codeCoverageTool: Cobertura
+        summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage.xml'
+        reportDirectory: '$(System.DefaultWorkingDirectory)/htmlcov'
+      displayName: 'Publish code coverage'
+
+- stage: Build
+  dependsOn: Validate
+  condition: succeeded()
+  jobs:
+  - job: BuildDockerImage
+    steps:
+    - task: Docker@2
+      inputs:
+        containerRegistry: 'AzureContainerRegistry'
+        repository: '$(DOCKER_REPOSITORY)'
+        command: 'buildAndPush'
+        Dockerfile: '**/Dockerfile'
+        tags: |
+          $(DOCKER_TAG)
+          $(Build.SourceBranchName)
+          ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/') }}:
+            latest
+          ${{ endif }}
+      displayName: 'Build and push Docker image'
+
+- stage: DeployToStaging
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: DeployStaging
+    environment: 'staging'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: 'Azure Subscription'
+              appName: '$(STAGING_APP_NAME)'
+              containers: '$(DOCKER_IMAGE_NAME):$(DOCKER_TAG)'
+              appSettings: |
+                -OFFLINE_MODE false
+                -VECTOR_DB_TYPE FAISS
+                -FAISS_INDEX_PATH /app/data/vector_index
+            displayName: 'Deploy to Azure Web App for Containers (Staging)'
+
+- stage: DeployToProduction
+  dependsOn: DeployToStaging
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+  jobs:
+  - deployment: DeployProduction
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: 'Azure Subscription'
+              appName: '$(PRODUCTION_APP_NAME)'
+              containers: '$(DOCKER_IMAGE_NAME):$(DOCKER_TAG)'
+              appSettings: |
+                -OFFLINE_MODE false
+                -VECTOR_DB_TYPE QDRANT
+                -QDRANT_URL $(QDRANT_URL)
+                -QDRANT_COLLECTION_NAME news_articles
+                -OPENAI_API_KEY $(OPENAI_API_KEY)
+            displayName: 'Deploy to Azure Web App for Containers (Production)'
