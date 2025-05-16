@@ -120,11 +120,21 @@ class NewsScraperPipeline:
             Dict[str, Any]: Results of the processing.
         """
         try:
-            # Step 1: Scrape the article
+            # Step 1: Check if URL is from a known news aggregator
+            if self.scraper._is_news_aggregator(url):
+                logger.warning(f"URL {url} is from a known news aggregator, checking carefully")
+            
+            # Step 2: Scrape the article
             article = self.scraper.scrape_url(url)
             if not article:
                 logger.warning(f"Failed to scrape article from {url}")
                 return {"url": url, "status": "failed", "reason": "Scraping failed"}
+                
+            # Step 3: Validate article content to ensure we don't have aggregator preview content
+            is_valid, reason = self.scraper._validate_article_content(article)
+            if not is_valid:
+                logger.warning(f"URL {url} content validation failed: {reason}")
+                return {"url": url, "status": "failed", "reason": reason}
             
             # Ensure we have valid text content
             if not article.text or not article.text.strip():
@@ -282,10 +292,24 @@ class NewsScraperPipeline:
                 "stored": True  # Already stored previously
             })
         
-        # Process unique URLs
-        for url in unique_urls:
-            result = self.process_url(url, summarize, extract_topics)
-            results.append(result)
+        # Batch scrape the unique URLs
+        if unique_urls:
+            scraped_articles, failed_scraped = self.scraper.scrape_urls(unique_urls)
+            
+            # Process failed URLs
+            for failed in failed_scraped:
+                results.append({
+                    "url": failed["url"],
+                    "status": "failed",
+                    "reason": failed.get("reason", "Failed to scrape"),
+                    "stored": False
+                })
+            
+            # Process successfully scraped articles
+            for article in scraped_articles:
+                # Process each article individually
+                result = self._process_article(article, summarize, extract_topics)
+                results.append(result)
         
         # Prepare final results
         successful = sum(1 for result in results if result.get("status") == "success")
@@ -302,8 +326,126 @@ class NewsScraperPipeline:
             "offline_mode": self.offline_mode
         }
         
-        logger.info(f"Processing completed: {successful} succeeded, {failed} failed, in {elapsed_time:.2f} seconds")
+        logger.info(f"Processing completed: {successful} succeeded, {failed} failed, {skipped} skipped, in {elapsed_time:.2f} seconds")
         return {"summary": summary, "results": results}
+        
+    def _process_article(self, article: ScrapedArticle, summarize: bool = True, extract_topics: bool = True) -> Dict[str, Any]:
+        """
+        Process a single scraped article through the pipeline (post-scraping).
+        
+        Args:
+            article: Already scraped article
+            summarize: Whether to generate a summary
+            extract_topics: Whether to extract topics
+            
+        Returns:
+            Dict[str, Any]: Results of the processing
+        """
+        try:
+            url = article.url
+            
+            # Get current time in ISO format
+            current_time_iso = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
+            
+            # Set article_indexed to current time
+            article.article_indexed = current_time_iso
+            
+            # Set article_posted from publish_date if available, otherwise default to current time
+            if not article.article_posted:
+                try:
+                    if article.publish_date:
+                        # Try to parse the existing publish_date to a consistent format
+                        import datetime
+                        if isinstance(article.publish_date, (int, float)):
+                            article.article_posted = datetime.datetime.fromtimestamp(article.publish_date).strftime("%Y-%m-%dT%H:%M:%S")
+                        elif isinstance(article.publish_date, str) and article.publish_date.strip():
+                            # Try to keep the original date but in consistent format
+                            article.article_posted = article.publish_date
+                        else:
+                            article.article_posted = current_time_iso
+                    else:
+                        article.article_posted = current_time_iso
+                except Exception:
+                    # If any parsing errors, default to current time
+                    article.article_posted = current_time_iso
+            
+            result = {
+                "url": url,
+                "headline": article.headline or "Untitled Article",  # Ensure headline is not empty
+                "source_domain": article.source_domain or "Unknown Domain",
+                "publish_date": article.publish_date,  # Keep original for backward compatibility
+                "article_posted": article.article_posted,  # ISO format date when the article was published
+                "article_indexed": article.article_indexed,  # ISO format date when the article was indexed
+                "status": "success",
+                "timestamp": int(time.time())  # Keep this for backward compatibility
+            }
+            
+            # Step 2: Summarize if requested
+            if summarize:
+                try:
+                    summary = self.summarizer.summarize(article)
+                    result["summary"] = summary if summary and summary.strip() else "No summary available."
+                except Exception as e:
+                    logger.error(f"Error generating summary for {url}: {str(e)}")
+                    result["summary"] = "Error generating summary."
+                    result["summary_error"] = str(e)
+            else:
+                # Add a default summary even if not requested
+                result["summary"] = "Summary generation was not requested."
+            
+            # Step 3: Extract topics if requested
+            if extract_topics:
+                try:
+                    topics = self.topic_extractor.extract_topics(article)
+                    # Ensure we have at least one topic
+                    result["topics"] = topics if topics and len(topics) > 0 else ["Uncategorized"]
+                except Exception as e:
+                    logger.error(f"Error extracting topics for {url}: {str(e)}")
+                    result["topics"] = ["Uncategorized"]
+                    result["topics_error"] = str(e)
+            else:
+                # Add default topics if extraction was not requested
+                result["topics"] = ["Uncategorized"]
+            
+            # Step 4: Generate embeddings and store in vector database
+            try:
+                # Create embeddings
+                embedded_article = self.embedder.embed_article(
+                    article,
+                    include_summary=summarize and "summary" in result,
+                    summary=result.get("summary")
+                )
+                
+                # Add topics to the embedded article (with default if missing)
+                if extract_topics and "topics" in result and result["topics"]:
+                    embedded_article["topics"] = result["topics"]
+                else:
+                    # Make sure we always have topics, even if extraction failed
+                    embedded_article["topics"] = ["Uncategorized"]
+                
+                # Add the full text
+                embedded_article["text"] = article.text
+                    
+                # Ensure summary is present (with default if missing)
+                if summarize and "summary" in result and result["summary"]:
+                    embedded_article["summary"] = result["summary"]
+                else:
+                    embedded_article["summary"] = "No summary available for this article."
+                
+                # Store in vector database
+                self.vector_store.store_embeddings([embedded_article])
+                result["stored"] = True
+                
+            except Exception as e:
+                logger.error(f"Error storing article in vector database: {str(e)}")
+                result["stored"] = False
+                result["error"] = str(e)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error processing article from {article.url}: {str(e)}")
+            return {"url": article.url, "status": "failed", "reason": str(e)}
     
     def get_all_articles(self) -> List[Dict[str, Any]]:
         """

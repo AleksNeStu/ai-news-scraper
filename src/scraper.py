@@ -91,6 +91,46 @@ class ArticleScraper:
         (r'Advertisement.*?\n', ''),  # Advertisement markers
     ]
     
+    # News aggregator domains that should be treated carefully
+    NEWS_AGGREGATOR_DOMAINS = [
+        'news.google.com',
+        'feedly.com',
+        'flipboard.com',
+        'msn.com',
+        'yahoo.com',
+        'bing.com',
+        'apple.news',
+        'smartnews.com'
+    ]
+    
+    # Text patterns indicating the content is a preview or redirect
+    PREVIEW_CONTENT_PATTERNS = [
+        r'visit original article',
+        r'before you continue',
+        r'read full article',
+        r'click to read more',
+        r'view full (article|story)',
+        r'continue reading',
+        r'read the full',
+        r'see original post',
+        r'open in app',
+        r'continue to site',
+        r'go to website',
+        r'read on',
+    ]
+    
+    # Patterns indicating content limitations
+    CONTENT_LIMITATION_PATTERNS = [
+        r'paywall',
+        r'subscribe to continue',
+        r'subscription required',
+        r'sign in to read',
+        r'create an account',
+        r'register to continue',
+        r'reached your.*limit',
+        r'reached your.*articles',
+    ]
+    
     def __init__(self, max_retries: int = MAX_RETRY_ATTEMPTS):
         """
         Initialize the ArticleScraper.
@@ -474,7 +514,7 @@ class ArticleScraper:
         
         return publish_date, authors, image_url
 
-    def scrape_urls(self, urls: List[str]) -> List[ScrapedArticle]:
+    def scrape_urls(self, urls: List[str]) -> Tuple[List[ScrapedArticle], List[Dict[str, str]]]:
         """
         Scrape multiple URLs in sequence.
         
@@ -482,18 +522,33 @@ class ArticleScraper:
             urls: List of URLs to scrape.
             
         Returns:
-            List of successfully scraped ScrapedArticle objects.
+            Tuple of (list of successfully scraped ScrapedArticle objects, list of failed URLs with reasons)
         """
         articles = []
+        failed_urls = []
         
         # Show progress bar for multiple URLs
         for url in tqdm(urls, desc="Scraping articles"):
+            # First, check if the URL is from a known aggregator
+            if self._is_news_aggregator(url):
+                logger.warning(f"URL {url} is from a known news aggregator, using extra validation")
+            
             article = self.scrape_url(url)
+            
+            # If we have an article, validate its content
             if article:
-                articles.append(article)
+                is_valid, reason = self._validate_article_content(article)
+                if is_valid:
+                    articles.append(article)
+                else:
+                    logger.warning(f"URL {url} was rejected: {reason}")
+                    failed_urls.append({"url": url, "status": "failed", "reason": reason})
+            else:
+                failed_urls.append({"url": url, "status": "failed", "reason": "Scraping failed"})
         
         logger.info(f"Successfully scraped {len(articles)} out of {len(urls)} articles")
-        return articles
+        logger.info(f"Failed to scrape {len(failed_urls)} URLs")
+        return articles, failed_urls
 
     def _extract_with_beautiful_soup(self, url: str) -> Optional[ScrapedArticle]:
         """
@@ -1018,3 +1073,105 @@ class ArticleScraper:
                 )
             except:
                 return None
+    
+    def _is_news_aggregator(self, url: str) -> bool:
+        """
+        Check if a URL is from a known news aggregator site.
+        
+        Args:
+            url: URL to check
+            
+        Returns:
+            bool: True if the URL is from a news aggregator
+        """
+        domain = urlparse(url).netloc.lower()
+        return any(agg_domain in domain for agg_domain in self.NEWS_AGGREGATOR_DOMAINS)
+    
+    def _is_preview_content(self, text: str) -> bool:
+        """
+        Check if the content appears to be a preview or "visit original article" type content.
+        
+        Args:
+            text: Article text to check
+            
+        Returns:
+            bool: True if the content appears to be preview content
+        """
+        lowered = text.lower()
+        # Check for preview/redirection patterns
+        for pattern in self.PREVIEW_CONTENT_PATTERNS:
+            if re.search(pattern, lowered, re.IGNORECASE):
+                return True
+        
+        # Check if text is too short (likely not a full article)
+        if len(text.split()) < 150 and self._contains_visit_original_indicators(text):
+            return True
+            
+        return False
+    
+    def _contains_visit_original_indicators(self, text: str) -> bool:
+        """
+        Check if the content contains indicators that it's a preview directing to the original article.
+        
+        Args:
+            text: Article text to check
+            
+        Returns:
+            bool: True if the content contains "visit original" indicators
+        """
+        # Look for URLs or indications that this is a preview/snippet
+        indicators = [
+            "http://", "https://", 
+            "visit website", "click here", "visit site", 
+            "source:", "via:", "read more at"
+        ]
+        
+        lowered = text.lower()
+        # If the text is very short and contains these indicators, it's likely a preview
+        if len(text) < 1000:
+            return any(indicator in lowered for indicator in indicators)
+            
+        return False
+        
+    def _validate_article_content(self, article: ScrapedArticle) -> Tuple[bool, str]:
+        """
+        Validate if the article content appears to be a complete article.
+        
+        Args:
+            article: The article to validate
+            
+        Returns:
+            Tuple of (is_valid, reason_if_invalid)
+        """
+        # Check if URL is from a known aggregator
+        if self._is_news_aggregator(article.url):
+            logger.warning(f"URL {article.url} is from a known news aggregator")
+            if self._is_preview_content(article.text):
+                return False, "Content appears to be a preview or 'visit original article' page"
+        
+        # Check for minimum content length (rough estimate of a complete article)
+        if len(article.text.split()) < 100:  # Fewer than 100 words
+            # If from an aggregator, this is almost certainly a preview
+            if self._is_news_aggregator(article.url):
+                return False, "Content too short and appears to be from a news aggregator"
+            # For other sites, warn but don't automatically reject
+            logger.warning(f"Article content from {article.url} is very short (less than 100 words)")
+        
+        # Check if the content appears to be a preview
+        if self._is_preview_content(article.text):
+            return False, "Content appears to be a preview directing to the original article"
+        
+        # Check for patterns that indicate multiple articles (news feed)
+        paragraphs = article.text.split('\n\n')
+        if len(paragraphs) > 5:
+            link_count = sum(1 for p in paragraphs if 'http' in p)
+            if link_count > 2:
+                return False, "Content appears to contain multiple articles or news feed"
+        
+        # Check for paywall or subscription limitations
+        for pattern in self.CONTENT_LIMITATION_PATTERNS:
+            if re.search(pattern, article.text, re.IGNORECASE):
+                return False, "Content appears to be limited by a paywall or subscription"
+        
+        # If all checks pass, the article is likely valid
+        return True, ""
