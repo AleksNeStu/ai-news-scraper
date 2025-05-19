@@ -53,7 +53,52 @@ def render_scrape_page(process_urls_callback):
         st.info("Select from these sample news articles to try out the application")
         
         # Import sample URLs from the data module
-        from src.ui.data.sample_urls import SAMPLE_URLS, get_random_sample_urls
+        try:
+            # First try the absolute import path (works in development)
+            from src.ui.data.sample_urls import SAMPLE_URLS, get_random_sample_urls
+        except ImportError:
+            # In deployment, we might need to adjust the path
+            import sys
+            from pathlib import Path
+            
+            # Add the project root to the path so we can import our modules
+            project_root = Path(__file__).parent.parent.parent.parent
+            if str(project_root) not in sys.path:
+                sys.path.insert(0, str(project_root))
+            
+            try:
+                # Try the import again
+                from src.ui.data.sample_urls import SAMPLE_URLS, get_random_sample_urls
+            except ImportError:
+                # If all else fails, define the sample URLs here
+                import random
+                
+                # A fallback collection of sample URLs organized by categories
+                SAMPLE_URLS = {
+                    "Technology": [
+                        "https://techcrunch.com/2023/04/17/anthropic-claude-2-1/",
+                        "https://www.wired.com/story/how-to-use-chatgpt-for-coding/"
+                    ],
+                    "World News": [
+                        "https://www.reuters.com/world/europe/ukraine-says-russian-forces-blew-up-nova-kakhovka-dam-2023-06-06/",
+                        "https://www.bbc.com/news/world-middle-east-67626746"
+                    ],
+                    "Science": [
+                        "https://www.scientificamerican.com/article/new-wave-of-small-nuclear-reactors-could-revitalize-carbon-free-energy/",
+                        "https://www.nature.com/articles/d41586-023-02882-1"
+                    ]
+                }
+                
+                def get_random_sample_urls(num_urls: int = 3):
+                    """Returns a random selection of sample URLs."""
+                    all_urls = []
+                    for category_urls in SAMPLE_URLS.values():
+                        all_urls.extend(category_urls)
+                    
+                    if num_urls > len(all_urls):
+                        return all_urls
+                    
+                    return random.sample(all_urls, num_urls)
         
         # Add a button to load random samples
         col1, col2 = st.columns([1, 1])
