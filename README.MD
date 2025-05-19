@@ -1,5 +1,10 @@
 # 📰 AI News Scraper & Semantic Search
 
+## 📽️ Demo Preview
+![AI News Scraper Demo](demo/demo.gif)
+
+*The AI News Scraper application in action: scraping, summarizing, and semantically searching news articles*
+
 ## 🎯 Overview
 This project creates a Python application that combines web scraping, GenAI, and vector search technologies to provide an intelligent news article management system:
 
@@ -15,7 +20,60 @@ This project creates a Python application that combines web scraping, GenAI, and
 
 The solution is designed with a modular pipeline architecture, ensuring components can be independently tested, replaced, or extended. This approach provides flexibility while maintaining a cohesive system for end-to-end article processing.
 
+## 📸 Demo Showcase
+
+### Application Interface
+<div align="center">
+  <img src="demo/1.png" alt="Application Home Screen" width="80%" />
+  <p><em>Home screen of the AI News Scraper application</em></p>
+</div>
+
+### Article Scraping
+<div align="center">
+  <img src="demo/2.png" alt="Article Scraping Interface" width="80%" />
+  <p><em>Adding and processing news article URLs</em></p>
+</div>
+
+### Semantic Search
+<div align="center">
+  <img src="demo/3.png" alt="Semantic Search Interface" width="80%" />
+  <p><em>Searching for articles using natural language queries</em></p>
+</div>
+
+### Search Results
+<div align="center">
+  <img src="demo/4.png" alt="Search Results Display" width="80%" />
+  <p><em>Viewing semantically relevant search results with summaries and topics</em></p>
+</div>
+
+### System Configuration
+<div align="center">
+  <img src="demo/5.png" alt="Configuration Settings" width="80%" />
+  <p><em>Configuring application settings and processing options</em></p>
+</div>
+
 ## 🏗️ Solution Architecture
+
+### Visual Overview
+<div align="center">
+  <table>
+    <tr>
+      <td width="60%">
+        <img src="demo/3.png" alt="Search Interface" width="100%" />
+      </td>
+      <td width="40%">
+        <h4>Key Components:</h4>
+        <ul>
+          <li>📥 <strong>Data Ingestion</strong>: URL processing</li>
+          <li>🧠 <strong>AI Processing</strong>: Summarization & topic extraction</li>
+          <li>💾 <strong>Vector Storage</strong>: Embedding database</li>
+          <li>🔍 <strong>Semantic Search</strong>: Natural language queries</li>
+          <li>📊 <strong>UI Dashboard</strong>: Interactive interface</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
 
 ### Core Architecture
 
@@ -151,15 +209,20 @@ This section provides key points for demonstrating the project and discussing it
 
 ### 📊 Demo Flow
 
+<div align="center">
+  <img src="demo/demo.gif" alt="AI News Scraper Workflow Demo" width="90%" />
+  <p><em>Complete workflow demonstration: scraping, processing, and searching news articles</em></p>
+</div>
+
 #### 1. Quick Start Demo (5 minutes)
 1. Launch the application: `python run_app.py`
 2. Show the UI and explain the main components:
-   - Scrape page for adding URLs
-   - Search page for finding articles
-   - Settings for configuring the application
+   - Scrape page for adding URLs ([see screenshot](#article-scraping))
+   - Search page for finding articles ([see screenshot](#semantic-search))
+   - Settings for configuring the application ([see screenshot](#system-configuration))
 3. Process sample URLs from `urls.txt`
 4. Perform a semantic search with a natural language query
-5. Show how results are ranked by relevance
+5. Show how results are ranked by relevance ([see screenshot](#search-results))
 
 #### 2. Technical Deep Dive (15 minutes)
 1. Explain the pipeline architecture and data flow
