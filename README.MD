@@ -2,14 +2,22 @@
 
 ## 🚀 Quick Start
 
-### 📖 Documentation
+### 📖 Documentation & Development
 - **[Complete Documentation](./docs/)** - Project requirements, setup, and guides
 - **[TaskMaster AI Guide](./docs/TASKMASTER_GUIDE.md)** - ⭐ **Single source of truth** for development workflow and task management across all IDEs
+- **[Current Tasks](./docs/TASK_MANAGEMENT.md)** - View project progress and task status
 
 ### 🔧 Development Setup
 1. **Clone & Install**: See [Installation Guide](#installation)
 2. **TaskMaster Integration**: Copy [`docs/mcp-config-template.json`](./docs/mcp-config-template.json) to your IDE's MCP configuration
 3. **Start Developing**: Follow the workflow in [`TASKMASTER_GUIDE.md`](./docs/TASKMASTER_GUIDE.md)
+
+### 📊 Current Project Status
+- **Total Tasks**: 20 tasks across 8 epics
+- **In Progress**: 1 task (Fix 'View Full Text' UI Functionality)
+- **Current Sprint**: Sprint 3 (11 tasks planned, 3 active)
+- **Completion**: Early development phase with core functionality implemented
+- **Next Phase**: Performance optimization and enhanced error handling (Sprint 4)
 
 ## 📽️ Demo Preview
 ![AI News Scraper Demo](demo/demo.gif)
@@ -85,6 +93,43 @@ The solution is designed with a modular pipeline architecture, ensuring componen
     </tr>
   </table>
 </div>
+
+### Core Architecture
+
+## 🏗️ Development Status & Roadmap
+
+### 🎯 Current Phase: Core Enhancement (Sprint 3)
+The project is actively under development using **TaskMaster AI** for comprehensive task management. Current focus areas:
+
+#### 🔥 Active Development
+- **Task #1**: Fix 'View Full Text' UI Functionality (In Progress)
+  - 6 subtasks covering article content retrieval and display
+  - High priority bug affecting user experience
+  - **Status**: Currently debugging article ID retrieval and session state handling
+- **Sprint 3 Pipeline** (11 tasks total):
+  - **Task #2**: Performance Optimization for Large Volume Processing (Ready)
+  - **Task #8**: Code Quality Improvements and Refactoring (Ready)
+  - **Task #9**: API Rate Limiting and Caching Implementation (Ready)
+  - **Task #10**: Comprehensive Integration Testing Suite (Ready)
+  - **Task #11**: Docker Compose Enhancement for Development (Ready)
+  - **Task #20**: User Documentation and Tutorials (Ready)
+
+#### 📋 Development Framework
+This project uses **TaskMaster AI** for systematic development management:
+- **20 total tasks** organized across 7 epic categories
+- **Automated task generation** from Product Requirements Document
+- **Cross-IDE compatibility** (VS Code, Cursor, etc.)
+- **Integrated development workflow** with Claude AI
+
+#### 🎯 Epic Categories
+1. **UI Enhancement** - User interface improvements and bug fixes (2 tasks)
+2. **Performance Enhancement** - Optimization and scalability (2 tasks)
+3. **Reliability Enhancement** - Error handling and robustness (1 task)
+4. **AI Enhancement** - Model optimization and offline capabilities (2 tasks)
+5. **Analytics & Insights** - Dashboard and reporting features (1 task)
+6. **Infrastructure** - DevOps and deployment improvements (3 tasks)
+7. **Security** - Security audit and vulnerability assessment (1 task)
+8. **Quality & Documentation** - Testing, code quality, and user documentation (8 tasks)
 
 ### Core Architecture
 
@@ -183,36 +228,73 @@ Vector databases enable semantic search by:
 
 ## 📋 Key Features
 
-### 1️⃣ Article Extraction
-- Scrapes **complete news articles** from URLs
-- Extracts both **headlines and full text**
-- Handles various website formats and error cases
-- Implements **advanced error handling** for site-specific issues
+### ✅ Implemented Features
 
-### 2️⃣ GenAI Processing
-- Generates **concise summaries** (100-300 words)
-- Identifies **3-10 key topics** per article
-- Uses **predefined topic categories** for consistent classification
-- Uses **OpenAI GPT models** for advanced text analysis
-- Provides **offline mode** with local model fallbacks
+#### 1️⃣ Article Extraction
+- ✅ Scrapes **complete news articles** from URLs using newspaper3k and BeautifulSoup
+- ✅ Extracts both **headlines and full text**
+- ✅ Handles various website formats and error cases
+- ✅ Implements **basic error handling** for site-specific issues
 
-### 3️⃣ Vector Database Integration
-- Creates **embeddings** of article content
-- Stores **complete metadata** (URL, headline, summary, topics)
-- Enables **efficient retrieval** through vector similarity
-- Supports **multiple vector database backends**
+#### 2️⃣ GenAI Processing
+- ✅ Generates **concise summaries** (100-300 words) using OpenAI GPT models
+- ✅ Identifies **3-10 key topics** per article with categorization
+- ✅ Uses **predefined topic categories** for consistent classification
+- ✅ **Enhanced processing mode** with structured summaries and hierarchical topics
+- 🔄 **Offline mode** in development (planned for Sprint 4)
 
-### 4️⃣ Semantic Search
-- Supports **natural language queries**
-- Understands **synonyms and context**
-- Returns **relevant results** ranked by similarity
-- Implements **text-based matching** and **hybrid search**
+#### 3️⃣ Vector Database Integration
+- ✅ Creates **embeddings** using OpenAI text-embedding-ada-002
+- ✅ Stores **complete metadata** (URL, headline, summary, topics)
+- ✅ **FAISS vector database** fully implemented
+- ✅ Enables **efficient retrieval** through vector similarity
+- 🔄 **Qdrant/Pinecone backends** in development
 
-### 5️⃣ Web Interface & Deployment
-- Includes a **Streamlit-based UI** for easy interaction
-- Provides **Docker containerization** for simple deployment
-- Supports **offline operation** without internet connectivity
-- Features **data visualization** for search results and statistics
+#### 4️⃣ Semantic Search
+- ✅ Supports **natural language queries**
+- ✅ Understands **synonyms and context** through vector embeddings
+- ✅ Returns **relevant results** ranked by similarity scores
+- ✅ Implements **text-based matching** and **hybrid search** modes
+- ⚠️ **"View Full Text" functionality** currently under repair (Task #1 - In Progress)
+
+#### 5️⃣ Web Interface & CLI
+- ✅ **Streamlit-based UI** with multiple pages (scrape, search, settings)
+- ✅ **Command-line interface** with batch processing capabilities (`cli.py`)
+- ✅ **Docker containerization** for deployment (Docker + docker-compose)
+- ✅ **Cross-platform launcher scripts** (Windows, Linux, macOS)
+- ✅ **Version tracking and display** with git integration
+- ✅ **Configuration management** with environment-based settings
+
+### 🚧 In Development
+
+#### Current Sprint (Sprint 3) - 11 Active Tasks
+- 🔄 **UI Bug Fixes**: Resolving "View Full Text" display issues (Task #1 - In Progress)
+- 🔄 **Performance Optimization**: Async processing for 100+ articles (Task #2 - Ready)
+- 🔄 **Code Quality**: Refactoring and technical debt reduction (Task #8 - Ready)
+- 🔄 **API Optimization**: Rate limiting and intelligent caching (Task #9 - Ready)
+- 🔄 **Testing Suite**: Comprehensive integration tests (Task #10 - Ready)
+- 🔄 **DevOps Enhancement**: Docker Compose improvements (Task #11 - Ready)
+- 🔄 **Documentation**: User guides and tutorials (Task #20 - Ready)
+
+#### Upcoming Features (Sprint 4-5) - 9 Planned Tasks
+- 🔄 **Enhanced Error Handling**: Network timeouts and API failures (Task #3)
+- 🔄 **Offline Mode**: Local model integration for disconnected usage (Task #4)
+- 🔄 **Advanced Analytics**: Processing statistics and search behavior analysis (Task #5)
+- 🔄 **Security Audit**: Vulnerability assessment and hardening (Task #12)
+- 🔄 **Multi-language Support**: Foundation for internationalization (Task #6)
+- 🔄 **REST API**: Programmatic access to all functionality (Task #15)
+- 🔄 **Monitoring System**: Application health and performance tracking (Task #14)
+- 🔄 **Advanced Search**: Filters, sorting, and enhanced UI (Task #17)
+- 🔄 **ML Optimization**: Model performance improvements (Task #19)
+
+### 🏗️ Development Methodology
+This project follows a **structured development approach** using:
+- **TaskMaster AI** for systematic task management and workflow automation
+- **Sprint-based development** with 20 tasks organized across 8 epic categories
+- **Test-driven development** with comprehensive test coverage (7 test suites)
+- **Modular architecture** for independent component development and testing
+- **Documentation-first** approach with integrated guides and comprehensive references
+- **Cross-IDE compatibility** supporting VS Code, Cursor, and other environments
 
 ## 🎬 Demo & Interview Guide
 
@@ -868,46 +950,73 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## ✨ Recent Updates
 
-- **NLTK Resource Management**:
-  - Added automatic download and management of required NLTK resources
-  - Integrated NLTK data downloader in the application startup
-  - Ensured seamless extraction and processing in offline mode
-  - Improved documentation on NLTK dependencies and setup
+**June 2025 - TaskMaster AI Integration & Project Restructure**:
+- **Documentation Consolidation**: Created single source of truth for TaskMaster AI integration in [`docs/TASKMASTER_GUIDE.md`](./docs/TASKMASTER_GUIDE.md)
+- **Cross-IDE Support**: Standardized MCP configurations for VS Code, Cursor, and other editors
+- **Task Management**: Integrated 20 tasks across 8 epic categories with automated workflow management
+- **Development Framework**: Established Sprint-based development (currently Sprint 3) with comprehensive task tracking
+- **Project Cleanup**: Removed redundant documentation files and established unified documentation structure
 
-## 📜 Project Requirements
+**Technical Improvements**:
+- **NLTK Resource Management**: Automatic download and management of required NLTK resources
+- **Version Tracking**: Integrated git-based version display in UI and launcher scripts
+- **Configuration Management**: Enhanced environment-based configuration with comprehensive error handling
+- **Docker Optimization**: Updated containerization for improved development and deployment experience
 
-This project was developed according to the specifications outlined in the [Project Requirements Document (PRD)](PRD.MD). The PRD defines:
+## � Documentation
 
-- 18 functional requirements (FR001-FR018)
-- 12 technical requirements (TR001-TR012)
-- Project structure guidelines
-- Evaluation criteria
+### Project Management & Development
+- **[TaskMaster AI Integration Guide](./docs/TASKMASTER_GUIDE.md)** - Comprehensive guide for AI-assisted development workflow
+- **[Task Management Documentation](./docs/TASK_MANAGEMENT.md)** - Development methodology and task tracking
+- **[MCP Configuration Template](./docs/mcp-config-template.json)** - Universal configuration for cross-IDE compatibility
 
-The implementation fully satisfies both the letter and spirit of these requirements, providing a comprehensive solution for news article scraping, analysis, and semantic search with GenAI integration.
+### Development Resources
+- **[Documentation Index](./docs/README.md)** - Navigation guide for all project documentation
+- **[Product Requirements Document](./PRD.MD)** - Original project specifications and requirements
+- **[Contributing Guidelines](#-contributing)** - How to contribute to the project
+- **[Recent Updates](#-recent-updates)** - Latest changes and improvements
 
-For a detailed breakdown of requirements and their implementation status, see the [PRD Compliance](#-prd-compliance) section above.
+The project implements a comprehensive documentation structure that supports both individual development and team collaboration across different IDEs and development environments.
 
-## 🔄 Continuous Improvement
+## 🔄 Future Development
 
-While the current implementation meets all PRD requirements, there are several areas planned for future enhancement:
+The project roadmap is actively managed through **TaskMaster AI** with 20 total tasks organized into development sprints:
 
-1. **Performance Optimization**:
-   - Further optimizing batch processing for large article sets
-   - Implementing more sophisticated vector index configurations for faster retrieval
+### Immediate Priorities (Sprint 3-4)
+1. **UI/UX Improvements**:
+   - Fix "View Full Text" functionality (Task #1 - In Progress)
+   - Enhanced user interface components and error handling
 
-2. **Feature Extensions**:
-   - Multi-language support for articles in different languages
-   - Image content analysis for articles with significant visual components
-   - Automated trend detection across article collections
+2. **Performance & Scalability**:
+   - Async processing for large article batches (100+ articles in <10 minutes)
+   - API rate limiting and intelligent caching systems
+   - Memory optimization and resource management
 
-3. **Advanced UI Features**:
-   - Interactive data visualizations for topic relationships
-   - Custom dashboards for specific use cases
-   - Enhanced result filtering and exploration tools
+3. **Quality & Reliability**:
+   - Comprehensive integration testing suite
+   - Enhanced error handling for edge cases
+   - Code quality improvements and refactoring
 
-4. **Integration Capabilities**:
-   - API endpoints for third-party integration
-   - Webhook support for automated processing
-   - Extended plugin architecture
+### Long-term Vision (Sprint 5+)
+1. **Advanced AI Features**:
+   - Offline mode with local model integration
+   - Multi-language support and internationalization
+   - ML model performance optimization and fine-tuning
 
-Contributions and suggestions for these or other improvements are welcome!
+2. **Enterprise Features**:
+   - REST API for programmatic access
+   - Monitoring and alerting systems
+   - Advanced analytics dashboard with visualizations
+
+3. **Platform Integration**:
+   - Security audit and vulnerability assessment
+   - Backup and recovery systems
+   - Enhanced search filters and export capabilities
+
+### Development Philosophy
+- **AI-Assisted Development**: Using TaskMaster AI for systematic task management and automated workflow optimization
+- **Quality-First Approach**: Comprehensive testing, documentation, and code review processes
+- **Modular Architecture**: Extensible design supporting plugin development and custom integrations
+- **Community-Driven**: Open contribution model with clear guidelines and structured development processes
+
+**Get Involved**: Check out the [TaskMaster AI Integration Guide](./docs/TASKMASTER_GUIDE.md) to see how you can contribute using our AI-assisted development workflow!
