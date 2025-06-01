@@ -3,6 +3,16 @@
 ## 📋 Task Overview
 This document tracks all project tasks with complexity, effort estimation, and dependencies using industry best practices.
 
+## 🔧 TaskMaster Integration
+**For complete TaskMaster AI integration and tool reference, see: [`TASKMASTER_GUIDE.md`](./TASKMASTER_GUIDE.md)**
+
+This guide contains:
+- Complete MCP tool reference for all IDEs
+- CLI command mappings
+- Development workflow patterns
+- Configuration templates
+- Troubleshooting guide
+
 ## 🏗️ Task Categories
 
 ### 🔥 Epic: Core Functionality
