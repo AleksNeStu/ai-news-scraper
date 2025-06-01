@@ -136,3 +136,95 @@ out/
 ./data
 data/
 nltk_data/
+
+# Added by Task Master AI
+# Logs
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+# Dependency directories
+node_modules/
+# Environment variables
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+# Task files
+tasks.json
+tasks/ 
+
+# TaskMaster AI generated files
+.taskmaster/tasks/
+.taskmaster/reports/
+.taskmaster/cache/
+.taskmaster/logs/
+.taskmaster/tmp/
+
+# Keep TaskMaster configuration and docs
+!.taskmaster/docs/
+!.taskmaster/config/
+!.taskmaster/templates/
+
+# New development artifacts and cache files
+*.pyc
+__pycache__/
+.pytest_cache/
+.coverage
+.mypy_cache/
+*.egg-info/
+.tox/
+.nox/
+
+# IDE and editor files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+.Spotlight-V100
+.Trashes
+
+# Temporary and cache files
+*.tmp
+*.temp
+cache/
+temp/
+.cache/
+
+# Documentation build artifacts
+docs/_build/
+site/
+.sass-cache/
+
+# Package distribution artifacts
+dist/
+build/
+*.egg/
+
+# Virtual environment variations
+.venv/
+venv/
+env/
+.virtualenv/
+
+# Environment configuration variations
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.test
