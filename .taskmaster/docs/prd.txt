@@ -1,0 +1,233 @@
+# AI News Scraper & Semantic Search with GenAI - Comprehensive PRD
+
+## Project Overview
+
+### Objective
+Develop a Python application that combines web scraping, GenAI, and vector search technologies to provide an intelligent news article management system. This project demonstrates problem-solving skills and ability to integrate Generative AI tools for real-world applications.
+
+### Core Features
+- Scrapes full news articles (headline + body) from provided URLs using newspaper3k and BeautifulSoup4
+- Uses GenAI (OpenAI GPT models) to generate concise article summaries (100-300 words) and extract relevant topics
+- Stores content and metadata in a vector database (FAISS/Qdrant/Pinecone) for semantic search
+- Implements semantic search with hybrid capabilities for intelligent article retrieval
+- Provides multiple interfaces: Streamlit UI, CLI, and Python API
+- Supports offline mode with local models for development or air-gapped environments
+- Offers containerized deployment for easy setup and scalability
+
+## Functional Requirements
+
+### FR001 - News Article Extraction
+**Description**: Extract full news articles from provided URLs
+**User Story**: As a user, I want the system to fetch full news articles from provided URLs so that I can process and store them.
+**Acceptance Criteria**:
+- Scrape article headline and full text content
+- Handle various website formats and structures
+- Implement robust error handling with retries
+- Skip invalid or unreachable URLs gracefully
+- Return structured data for each URL processed
+- Support batch processing of multiple URLs
+
+### FR002 - GenAI-Driven Summarization
+**Description**: Generate concise summaries using GenAI models
+**User Story**: As a user, I want the system to summarize articles so I can quickly understand key points.
+**Acceptance Criteria**:
+- Use OpenAI GPT models for summarization
+- Generate 100-300 word summaries
+- Maintain key information and context
+- Provide fallback summaries in offline mode
+- Handle articles of varying lengths effectively
+
+### FR003 - Topic Identification
+**Description**: Extract and categorize main topics from articles
+**User Story**: As a user, I want the system to identify main topics so I can categorize and search articles effectively.
+**Acceptance Criteria**:
+- Extract 3-10 relevant topics per article
+- Use predefined topic categories for consistency
+- Implement topic normalization and hierarchy
+- Map extracted topics to standardized categories
+- Provide fallback topics when extraction fails
+
+### FR004 - Vector Database Storage
+**Description**: Store articles and embeddings in vector database
+**User Story**: As a developer, I want to store articles in a vector DB to enable fast semantic search.
+**Acceptance Criteria**:
+- Generate embeddings using text-embedding-ada-002 or equivalent
+- Store metadata (URL, headline, summary, topics) with embeddings
+- Support multiple vector database backends (FAISS, Qdrant, Pinecone)
+- Implement efficient indexing and retrieval
+- Handle large volumes of articles
+
+### FR005 - Semantic Search
+**Description**: Implement natural language search capabilities
+**User Story**: As a user, I want to search articles semantically using natural language queries.
+**Acceptance Criteria**:
+- Convert user queries to embeddings
+- Perform similarity searches in vector database
+- Return top relevant articles ranked by similarity
+- Support complex natural language queries
+- Provide relevance scores for results
+
+### FR006 - Synonym and Context Handling
+**Description**: Handle synonyms and contextual understanding in search
+**User Story**: As a user, I want search to understand synonyms and context for meaningful results.
+**Acceptance Criteria**:
+- Match conceptually similar queries and content
+- Handle synonyms (e.g., "AI" and "Artificial Intelligence")
+- Understand contextual relationships
+- Provide semantically relevant results
+- Support hybrid text and semantic search
+
+### FR007 - Web User Interface
+**Description**: Provide interactive web interface using Streamlit
+**User Story**: As a user, I want a web interface to interact with the system without command line knowledge.
+**Acceptance Criteria**:
+- Create intuitive Streamlit-based interface
+- Support URL input via text, file upload, or sample selection
+- Display article summaries and topics
+- Implement search functionality with results visualization
+- Provide settings and configuration options
+- Show processing status and progress indicators
+
+### FR008 - Offline Mode Support
+**Description**: Enable operation without internet connectivity
+**User Story**: As a user, I want to use the system offline after initial setup.
+**Acceptance Criteria**:
+- Use local models when internet unavailable
+- Cache embeddings and processed articles
+- Provide text-based search fallback
+- Maintain core functionality offline
+- Switch seamlessly between online and offline modes
+
+### FR009 - Error Handling and Resilience
+**Description**: Implement robust error handling throughout the system
+**User Story**: As a developer, I want the system to handle errors gracefully for stability.
+**Acceptance Criteria**:
+- Implement retry mechanisms for network operations
+- Log errors with appropriate detail levels
+- Provide meaningful error messages to users
+- Handle partial failures gracefully
+- Maintain system stability during errors
+
+### FR010 - Data Quality and Fallbacks
+**Description**: Ensure consistent user experience with fallback mechanisms
+**User Story**: As a user, I want consistent experience even when scraping encounters failures.
+**Acceptance Criteria**:
+- Provide default values for missing data
+- Implement fallback mechanisms for each component
+- Ensure UI displays consistent information
+- Handle partial article content appropriately
+- Maintain data integrity across operations
+
+## Technical Requirements
+
+### TR001 - Technology Stack
+- Python 3.12+ for latest language features
+- Poetry for dependency management and virtual environments
+- newspaper3k and BeautifulSoup for web scraping
+- OpenAI API for GenAI operations
+- FAISS/Qdrant/Pinecone for vector database
+- Streamlit for web interface
+- Docker for containerization
+
+### TR002 - Code Quality Standards
+- Follow PEP8 coding conventions
+- Use type hints throughout codebase
+- Implement comprehensive docstrings
+- Maintain clean, modular architecture
+- Write unit and integration tests
+- Achieve minimum test coverage thresholds
+
+### TR003 - Security and Configuration
+- Manage API keys via environment variables
+- Implement secure credential handling
+- Use python-dotenv for configuration
+- Avoid hardcoding sensitive information
+- Implement proper input validation
+
+### TR004 - Performance and Scalability
+- Optimize vector search operations
+- Implement efficient batch processing
+- Use caching where appropriate
+- Design for horizontal scaling
+- Monitor and log performance metrics
+
+### TR005 - Deployment and DevOps
+- Containerize application with Docker
+- Implement CI/CD pipelines
+- Support multiple deployment environments
+- Provide health checks and monitoring
+- Enable easy configuration management
+
+## Current Issues and Priorities
+
+### P0 - Critical Issues
+- None currently identified
+
+### P1 - High Priority Issues
+- Fix "View full text" functionality in UI
+- Resolve module import errors in deployed version
+
+### P2 - Medium Priority Issues
+- Improve error handling for edge cases
+- Optimize performance for large article volumes
+
+### P4 - Nice to Have
+- Add vector index viewer for FAISS
+- Implement advanced analytics dashboard
+- Add support for additional languages
+- Create Jupyter notebook examples
+
+## Architecture Overview
+
+### Modular Pipeline Design
+```
+User Input → Article Scraper → GenAI Processing → Vector Storage → Semantic Search → User Interface
+```
+
+### Core Components
+1. **Data Ingestion Layer**: URL processing, error handling, multi-format extraction
+2. **GenAI Processing Layer**: OpenAI integration, local model fallbacks, structured analysis
+3. **Storage Layer**: Pluggable vector database architecture, metadata management
+4. **Search Layer**: Semantic similarity, hybrid search, relevance ranking
+5. **Presentation Layer**: Streamlit interface, CLI, programmatic API
+
+### Deployment Architecture
+- Docker containerization for easy deployment
+- Support for multiple environments (dev, staging, production)
+- CI/CD pipeline integration
+- Health monitoring and logging
+
+## Success Criteria
+
+### Technical Success Metrics
+- Successfully scrape and process 95%+ of provided URLs
+- Generate high-quality summaries with user satisfaction > 85%
+- Achieve semantic search relevance score > 80%
+- Maintain system uptime > 99% during operation
+- Complete article processing within 30 seconds per article
+
+### User Experience Metrics
+- Intuitive UI with minimal learning curve
+- Fast search response times (< 2 seconds)
+- Clear error messages and user guidance
+- Consistent data presentation across all interfaces
+
+### Development Quality Metrics
+- Code coverage > 80%
+- All critical and high-priority issues resolved
+- Comprehensive documentation and setup instructions
+- Successful deployment in containerized environment
+
+## Future Enhancements
+
+### Phase 2 Features
+- Real-time article monitoring and alerts
+- Advanced analytics and trend analysis
+- Multi-language support and translation
+- Integration with external news APIs
+
+### Phase 3 Features
+- Machine learning model training on collected data
+- Personalized content recommendations
+- Social sharing and collaboration features
+- Advanced visualization and reporting capabilities
