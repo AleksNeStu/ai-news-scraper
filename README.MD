@@ -1,5 +1,16 @@
 # 📰 AI News Scraper & Semantic Search
 
+## 🚀 Quick Start
+
+### 📖 Documentation
+- **[Complete Documentation](./docs/)** - Project requirements, setup, and guides
+- **[TaskMaster AI Guide](./docs/TASKMASTER_GUIDE.md)** - ⭐ **Single source of truth** for development workflow and task management across all IDEs
+
+### 🔧 Development Setup
+1. **Clone & Install**: See [Installation Guide](#installation)
+2. **TaskMaster Integration**: Copy [`docs/mcp-config-template.json`](./docs/mcp-config-template.json) to your IDE's MCP configuration
+3. **Start Developing**: Follow the workflow in [`TASKMASTER_GUIDE.md`](./docs/TASKMASTER_GUIDE.md)
+
 ## 📽️ Demo Preview
 ![AI News Scraper Demo](demo/demo.gif)
 
@@ -269,7 +280,7 @@ This section provides key points for demonstrating the project and discussing it
 | **Summarization** | GPT-based abstractive with extractive fallback | Rule-based extractive only | Framework-provided summarizers | API-based abstractive only |
 | **Topic Extraction** | Categorized and normalized topics | Simple keyword extraction | Framework-specific extractors | Managed entity recognition |
 | **Search Capability** | Semantic + text-based hybrid | Keyword/Boolean search | Framework-specific retrieval | Managed search services |
-| **Vector Storage** | Multiple backends (FAISS/Qdrant/Pinecone) | Text indices only | Framework-specific storage | Proprietary vector stores |
+| **Vector Storage** | Multiple backends (FAISS/QDRANT/PINECONE) | Text indices only | Framework-specific storage | Proprietary vector stores |
 | **Deployment** | Self-hosted Docker or local | Self-hosted only | Framework-dependent | Cloud-only |
 | **Offline Support** | Full capability with local models | Limited functionality | Framework-dependent | None |
 | **Cost Model** | API usage + self-hosting | Self-hosting only | Framework license + hosting | Usage-based pricing |
