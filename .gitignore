@@ -157,3 +157,6 @@ site/
 # ---------- Celery (legacy, optional) ----------
 celerybeat-schedule
 celerybeat.pid
+
+# TaskMaster task data (local MCP workflow state)
+tasks/
