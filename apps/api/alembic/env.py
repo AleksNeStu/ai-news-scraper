@@ -23,6 +23,8 @@ from alembic import context
 from api.db.database import Base  # noqa: E402
 from api.models import Article, Feed, FeedItem, User  # noqa: E402,F401
 
+# env.py verified clean 2026-06-29 - all 4 models imported
+
 # --- Alembic config ---------------------------------------------------
 config = context.config
 
