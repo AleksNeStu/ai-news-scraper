@@ -1,6 +1,11 @@
 # =====================================================
 # AI News Scraper — Monorepo .gitignore
 # Public project — keep ALL IDE / agent state out of VCS.
+#
+# PUBLIC / PRIVATE boundary: see docs/PROJECT_RULES.md.
+# Any agent or contributor must read that file before
+# deciding what to commit. The pattern below mirrors the
+# PRIVATE scope listed there.
 # =====================================================
 
 # ---------- Python ----------

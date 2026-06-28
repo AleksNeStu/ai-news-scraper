@@ -1,1022 +1,146 @@
-# 📰 AI News Scraper & Semantic Search
+# 📰 AI News Search
+
+> Scrape, summarize, and semantically search your personal news library. FastAPI + Next.js 16 + ChromaDB monorepo.
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python%203.12-009688)](https://fastapi.tiangolo.com)
+[![ChromaDB](https://img.shields.io/badge/vector-ChromaDB-orange)](https://www.trychroma.com)
+
+---
+
+## What is this?
+
+AI News Search is a **personal semantic news library**:
+
+- **Scrape** any URL → headline, body, AI summary (100–300 words), topics, vector embedding.
+- **Semantic search** across your private article library — "what did I read 3 weeks ago about AI regulation?" returns relevant results by meaning, not keyword.
+- **RSS subscriptions** with auto-polling (15-min cadence).
+- **JWT auth** — your library stays yours.
+- **Public OSS** — MIT license, this repo doubles as a portfolio signal.
+
+See [`docs/PROJECT_RULES.md`](docs/PROJECT_RULES.md) for the public/private boundary policy.
 
 ## 🚀 Quick Start
 
-### 📖 Documentation & Development
-- **[Complete Documentation](./docs/)** - Project requirements, setup, and guides
-- **[TaskMaster AI Guide](./docs/TASKMASTER_GUIDE.md)** - ⭐ **Single source of truth** for development workflow and task management across all IDEs
-- **[Current Tasks](./docs/TASK_MANAGEMENT.md)** - View project progress and task status
+```bash
+git clone https://github.com/AleksNeStu/ai-news-scraper.git
+cd ai-news-scraper
 
-### 🔧 Development Setup
-1. **Clone & Install**: See [Installation Guide](#installation)
-2. **TaskMaster Integration**: Copy [`docs/mcp-config-template.json`](./docs/mcp-config-template.json) to your IDE's MCP configuration
-3. **Start Developing**: Follow the workflow in [`TASKMASTER_GUIDE.md`](./docs/TASKMASTER_GUIDE.md)
+cp .env.example .env
+# edit .env — set OPENAI_API_KEY (required) + JWT_SECRET (any long random string)
 
-### 📊 Current Project Status
-- **Total Tasks**: 20 tasks across 8 epics
-- **In Progress**: 1 task (Fix 'View Full Text' UI Functionality)
-- **Current Sprint**: Sprint 3 (11 tasks planned, 3 active)
-- **Completion**: Early development phase with core functionality implemented
-- **Next Phase**: Performance optimization and enhanced error handling (Sprint 4)
+docker compose up -d
+open http://localhost:3000
+```
 
-## 📽️ Demo Preview
-![AI News Scraper Demo](demo/demo.gif)
+That's it — Postgres + Redis + ChromaDB + API + Web come up together. Register an account, scrape a URL, search.
 
-*The AI News Scraper application in action: scraping, summarizing, and semantically searching news articles*
+## 🏗️ Architecture
 
-## 🎯 Overview
-This project creates a Python application that combines web scraping, GenAI, and vector search technologies to provide an intelligent news article management system:
+```
+┌─────────────────────────────────────────────────┐
+│  Next.js 16 (App Router)         localhost:3000 │
+│  • /scrape   • /search   • /articles            │
+│  • /feeds    • /settings • /login  • /register │
+└────────────────┬────────────────────────────────┘
+                 │  HTTP (JWT cookie)
+                 ▼
+┌─────────────────────────────────────────────────┐
+│  FastAPI (Python 3.12+)         localhost:8082 │
+│  /scrape  /articles  /search  /feeds  /auth    │
+│  → ChromaVectorStore  → Postgres (async)       │
+│  → OpenAI gpt-4o-mini + text-embedding-3-small  │
+│  → Redis cache (5-min search TTL)               │
+└─────────────────────────────────────────────────┘
+```
 
-- **Scrapes** full news articles (headline + body) from provided URLs using newspaper3k and BeautifulSoup4
-- Uses **GenAI** (OpenAI GPT models) to:
-  - Generate concise article summaries (100-300 words)
-  - Extract relevant topics and keywords with hierarchical categorization
-- **Stores** content and metadata in a **vector database** (FAISS/Qdrant/Pinecone)
-- Implements **semantic search** with hybrid capabilities for intelligent article retrieval
-- Provides **multiple interfaces**: Streamlit UI, CLI, and Python API
-- Supports **offline mode** with local models for development or air-gapped environments
-- Offers **containerized deployment** for easy setup and scalability
+Monorepo layout:
 
-The solution is designed with a modular pipeline architecture, ensuring components can be independently tested, replaced, or extended. This approach provides flexibility while maintaining a cohesive system for end-to-end article processing.
+```
+apps/
+├── api/          FastAPI backend (port 8082)
+└── web/          Next.js 16 frontend (port 3000)
+packages/
+└── shared/       TS types shared between api + web
+docs/             Project documentation
+.github/          CI workflows + community files
+```
 
-## 📸 Demo Showcase
+## ⚙️ Stack
 
-### Application Interface
+| Layer | Choice |
+|---|---|
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui |
+| Backend | FastAPI, Pydantic v2, SQLAlchemy 2.x async, asyncpg |
+| Vector DB | ChromaDB (persistent, metadata filtering) |
+| RDB | Postgres 16 |
+| Cache | Redis |
+| Auth | JWT (httpOnly cookies) + bcrypt |
+| AI | OpenAI (gpt-4o-mini + text-embedding-3-small) |
+| RSS | feedparser + APScheduler |
+| Workspace | pnpm + Poetry |
+
+## 🔧 Development
+
+```bash
+# API only
+cd apps/api
+poetry install
+poetry run uvicorn api.main:app --reload
+
+# Web only
+cd apps/web
+pnpm install
+pnpm dev
+
+# Tests
+cd apps/api && poetry run pytest
+cd apps/web && pnpm test
+
+# Lint
+cd apps/api && poetry run ruff check .
+cd apps/web && pnpm lint && pnpm typecheck
+```
+
+See [`AGENTS.md`](AGENTS.md) for agent-specific guidance and [`CONTRIBUTING.md`](CONTRIBUTING.md) for the PR process.
+
+## 📚 Documentation
+
+| File | What |
+|---|---|
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Public contributing guide, PR process, commit convention |
+| [`AGENTS.md`](AGENTS.md) | AI agent guidance (Claude Code, Cursor, Aider, etc.) |
+| [`docs/PROJECT_RULES.md`](docs/PROJECT_RULES.md) | **Hard rules** — public/private boundary, git hygiene, branch discipline |
+| [`docs/PRD.md`](docs/PRD.md) | Product requirements (legacy v2.0) |
+| [`docs/CI-CD.md`](docs/CI-CD.md) | CI/CD documentation |
+| [`docs/TASKMASTER_GUIDE.md`](docs/TASKMASTER_GUIDE.md) | TaskMaster workflow guide |
+| [`docs/TASK_MANAGEMENT.md`](docs/TASK_MANAGEMENT.md) | Task tracking |
+| [`docs/COMPREHENSIVE_TODO.md`](docs/COMPREHENSIVE_TODO.md) | Roadmap (open gaps) |
+| [`docs/COMPETITIVE_ANALYSIS.md`](docs/COMPETITIVE_ANALYSIS.md) | Competitive landscape |
+| [`SECURITY.md`](SECURITY.md) | Security disclosure policy |
+| [`CHANGELOG.md`](CHANGELOG.md) | Release history |
+| [`LICENSE`](LICENSE) | MIT License |
+
+## 🎯 Target users
+
+- **Research Analysts** — daily news digest + semantic recall across weeks of archives.
+- **Content Managers** — RSS auto-import, curation, light analytics.
+- **Developers / Data Scientists** — REST API, embedding playground, integration-friendly.
+
+## 📸 Demo (legacy Streamlit UI)
+
+The screenshots below are from the previous Streamlit UI (now removed). The new Next.js UI is at `localhost:3000` after `docker compose up`.
+
 <div align="center">
   <img src="demo/1.png" alt="Application Home Screen" width="80%" />
-  <p><em>Home screen of the AI News Scraper application</em></p>
+  <p><em>Home screen</em></p>
 </div>
-
-### Article Scraping
-<div align="center">
-  <img src="demo/2.png" alt="Article Scraping Interface" width="80%" />
-  <p><em>Adding and processing news article URLs</em></p>
-</div>
-
-### Semantic Search
-<div align="center">
-  <img src="demo/3.png" alt="Semantic Search Interface" width="80%" />
-  <p><em>Searching for articles using natural language queries</em></p>
-</div>
-
-### Search Results
-<div align="center">
-  <img src="demo/4.png" alt="Search Results Display" width="80%" />
-  <p><em>Viewing semantically relevant search results with summaries and topics</em></p>
-</div>
-
-### System Configuration
-<div align="center">
-  <img src="demo/5.png" alt="Configuration Settings" width="80%" />
-  <p><em>Configuring application settings and processing options</em></p>
-</div>
-
-## 🏗️ Solution Architecture
-
-### Visual Overview
-<div align="center">
-  <table>
-    <tr>
-      <td width="60%">
-        <img src="demo/3.png" alt="Search Interface" width="100%" />
-      </td>
-      <td width="40%">
-        <h4>Key Components:</h4>
-        <ul>
-          <li>📥 <strong>Data Ingestion</strong>: URL processing</li>
-          <li>🧠 <strong>AI Processing</strong>: Summarization & topic extraction</li>
-          <li>💾 <strong>Vector Storage</strong>: Embedding database</li>
-          <li>🔍 <strong>Semantic Search</strong>: Natural language queries</li>
-          <li>📊 <strong>UI Dashboard</strong>: Interactive interface</li>
-        </ul>
-      </td>
-    </tr>
-  </table>
-</div>
-
-### Core Architecture
-
-## 🏗️ Development Status & Roadmap
-
-### 🎯 Current Phase: Core Enhancement (Sprint 3)
-The project is actively under development using **TaskMaster AI** for comprehensive task management. Current focus areas:
-
-#### 🔥 Active Development
-- **Task #1**: Fix 'View Full Text' UI Functionality (In Progress)
-  - 6 subtasks covering article content retrieval and display
-  - High priority bug affecting user experience
-  - **Status**: Currently debugging article ID retrieval and session state handling
-- **Sprint 3 Pipeline** (11 tasks total):
-  - **Task #2**: Performance Optimization for Large Volume Processing (Ready)
-  - **Task #8**: Code Quality Improvements and Refactoring (Ready)
-  - **Task #9**: API Rate Limiting and Caching Implementation (Ready)
-  - **Task #10**: Comprehensive Integration Testing Suite (Ready)
-  - **Task #11**: Docker Compose Enhancement for Development (Ready)
-  - **Task #20**: User Documentation and Tutorials (Ready)
-
-#### 📋 Development Framework
-This project uses **TaskMaster AI** for systematic development management:
-- **20 total tasks** organized across 7 epic categories
-- **Automated task generation** from Product Requirements Document
-- **Cross-IDE compatibility** (VS Code, Cursor, etc.)
-- **Integrated development workflow** with Claude AI
-
-#### 🎯 Epic Categories
-1. **UI Enhancement** - User interface improvements and bug fixes (2 tasks)
-2. **Performance Enhancement** - Optimization and scalability (2 tasks)
-3. **Reliability Enhancement** - Error handling and robustness (1 task)
-4. **AI Enhancement** - Model optimization and offline capabilities (2 tasks)
-5. **Analytics & Insights** - Dashboard and reporting features (1 task)
-6. **Infrastructure** - DevOps and deployment improvements (3 tasks)
-7. **Security** - Security audit and vulnerability assessment (1 task)
-8. **Quality & Documentation** - Testing, code quality, and user documentation (8 tasks)
-
-### Core Architecture
-
-The AI News Scraper implements a modular, pipeline-based architecture designed for flexibility and extensibility:
-
-```
-User Input → Article Scraper → GenAI Processing → Vector Storage → Semantic Search → User Interface
-```
-
-#### Key Components:
-
-1. **Data Ingestion Layer**:
-   - URL input via UI, CLI, or file
-   - Robust error handling and retry mechanisms
-   - Multi-format article extraction
-
-2. **GenAI Processing Layer**:
-   - OpenAI GPT integration for intelligent text analysis
-   - Fallback to local models in offline mode
-   - Structured analysis with topic categorization
-
-3. **Storage Layer**:
-   - Pluggable vector database architecture
-   - Multiple backend options (FAISS, Qdrant, Pinecone)
-   - Metadata storage alongside embeddings
-
-4. **Search Layer**:
-   - Semantic similarity matching
-   - Text-based and hybrid search options
-   - Relevance ranking and filtering
-
-5. **Presentation Layer**:
-   - Streamlit web interface
-   - Command-line interface
-   - Programmatic API
-
-### Advanced Features
-
-#### Enhanced Processing Pipeline
-
-The solution implements both standard and enhanced processing pipelines:
-
-- **Standard Pipeline**: Basic summarization and topic extraction
-- **Enhanced Pipeline**: Structured summaries with key points and categorized topics
-
-#### Dual-Mode Operation
-
-- **Online Mode**: Uses OpenAI API for optimal results
-- **Offline Mode**: Falls back to local models for disconnected usage
-
-### Implementation Advantages
-
-1. **Modularity**: Each component is decoupled and independently testable
-2. **Extensibility**: Easy to add new features or replace components
-3. **Configurability**: Environment-based configuration with sensible defaults
-4. **Robustness**: Comprehensive error handling and graceful degradation
-5. **User Experience**: Multiple interfaces for different use cases
-
-### Technical Design Choices
-
-#### Why Vector Database?
-
-Vector databases enable semantic search by:
-- Converting text to high-dimensional vectors (embeddings)
-- Finding similar content using vector similarity metrics
-- Handling large volumes of data efficiently
-- Supporting complex queries beyond keyword matching
-
-#### Why OpenAI GPT?
-
-- Produces high-quality, human-like text summaries
-- Understands complex context and semantics
-- Effective at topic extraction and categorization
-- Available through well-documented APIs
-
-#### Why Streamlit?
-
-- Rapid UI development with minimal code
-- Built-in support for data visualization
-- Native integration with Python data ecosystem
-- Interactive elements for user engagement
-
-### Limitations and Considerations
-
-1. **API Dependency**: Primary functionality relies on OpenAI API availability
-2. **Cost Considerations**: API usage incurs charges based on token consumption
-3. **Processing Time**: GenAI operations add latency to the pipeline
-4. **Scaling Challenges**: Vector search can become resource-intensive with very large datasets
-
-### Future Enhancements
-
-1. **Distributed Processing**: Parallel processing of articles
-2. **Real-time Monitoring**: Dashboard for system metrics
-3. **Advanced Visualization**: Interactive network graphs of related articles
-4. **Multi-language Support**: Extend to non-English content
-
-## 📋 Key Features
-
-### ✅ Implemented Features
-
-#### 1️⃣ Article Extraction
-- ✅ Scrapes **complete news articles** from URLs using newspaper3k and BeautifulSoup
-- ✅ Extracts both **headlines and full text**
-- ✅ Handles various website formats and error cases
-- ✅ Implements **basic error handling** for site-specific issues
-
-#### 2️⃣ GenAI Processing
-- ✅ Generates **concise summaries** (100-300 words) using OpenAI GPT models
-- ✅ Identifies **3-10 key topics** per article with categorization
-- ✅ Uses **predefined topic categories** for consistent classification
-- ✅ **Enhanced processing mode** with structured summaries and hierarchical topics
-- 🔄 **Offline mode** in development (planned for Sprint 4)
-
-#### 3️⃣ Vector Database Integration
-- ✅ Creates **embeddings** using OpenAI text-embedding-ada-002
-- ✅ Stores **complete metadata** (URL, headline, summary, topics)
-- ✅ **FAISS vector database** fully implemented
-- ✅ Enables **efficient retrieval** through vector similarity
-- 🔄 **Qdrant/Pinecone backends** in development
-
-#### 4️⃣ Semantic Search
-- ✅ Supports **natural language queries**
-- ✅ Understands **synonyms and context** through vector embeddings
-- ✅ Returns **relevant results** ranked by similarity scores
-- ✅ Implements **text-based matching** and **hybrid search** modes
-- ⚠️ **"View Full Text" functionality** currently under repair (Task #1 - In Progress)
-
-#### 5️⃣ Web Interface & CLI
-- ✅ **Streamlit-based UI** with multiple pages (scrape, search, settings)
-- ✅ **Command-line interface** with batch processing capabilities (`cli.py`)
-- ✅ **Docker containerization** for deployment (Docker + docker-compose)
-- ✅ **Cross-platform launcher scripts** (Windows, Linux, macOS)
-- ✅ **Version tracking and display** with git integration
-- ✅ **Configuration management** with environment-based settings
-
-### 🚧 In Development
-
-#### Current Sprint (Sprint 3) - 11 Active Tasks
-- 🔄 **UI Bug Fixes**: Resolving "View Full Text" display issues (Task #1 - In Progress)
-- 🔄 **Performance Optimization**: Async processing for 100+ articles (Task #2 - Ready)
-- 🔄 **Code Quality**: Refactoring and technical debt reduction (Task #8 - Ready)
-- 🔄 **API Optimization**: Rate limiting and intelligent caching (Task #9 - Ready)
-- 🔄 **Testing Suite**: Comprehensive integration tests (Task #10 - Ready)
-- 🔄 **DevOps Enhancement**: Docker Compose improvements (Task #11 - Ready)
-- 🔄 **Documentation**: User guides and tutorials (Task #20 - Ready)
-
-#### Upcoming Features (Sprint 4-5) - 9 Planned Tasks
-- 🔄 **Enhanced Error Handling**: Network timeouts and API failures (Task #3)
-- 🔄 **Offline Mode**: Local model integration for disconnected usage (Task #4)
-- 🔄 **Advanced Analytics**: Processing statistics and search behavior analysis (Task #5)
-- 🔄 **Security Audit**: Vulnerability assessment and hardening (Task #12)
-- 🔄 **Multi-language Support**: Foundation for internationalization (Task #6)
-- 🔄 **REST API**: Programmatic access to all functionality (Task #15)
-- 🔄 **Monitoring System**: Application health and performance tracking (Task #14)
-- 🔄 **Advanced Search**: Filters, sorting, and enhanced UI (Task #17)
-- 🔄 **ML Optimization**: Model performance improvements (Task #19)
-
-### 🏗️ Development Methodology
-This project follows a **structured development approach** using:
-- **TaskMaster AI** for systematic task management and workflow automation
-- **Sprint-based development** with 20 tasks organized across 8 epic categories
-- **Test-driven development** with comprehensive test coverage (7 test suites)
-- **Modular architecture** for independent component development and testing
-- **Documentation-first** approach with integrated guides and comprehensive references
-- **Cross-IDE compatibility** supporting VS Code, Cursor, and other environments
-
-## 🎬 Demo & Interview Guide
-
-This section provides key points for demonstrating the project and discussing it in technical interviews.
-
-### 📊 Demo Flow
-
-<div align="center">
-  <img src="demo/demo.gif" alt="AI News Scraper Workflow Demo" width="90%" />
-  <p><em>Complete workflow demonstration: scraping, processing, and searching news articles</em></p>
-</div>
-
-#### 1. Quick Start Demo (5 minutes)
-1. Launch the application: `python run_app.py`
-2. Show the UI and explain the main components:
-   - Scrape page for adding URLs ([see screenshot](#article-scraping))
-   - Search page for finding articles ([see screenshot](#semantic-search))
-   - Settings for configuring the application ([see screenshot](#system-configuration))
-3. Process sample URLs from `urls.txt`
-4. Perform a semantic search with a natural language query
-5. Show how results are ranked by relevance ([see screenshot](#search-results))
-
-#### 2. Technical Deep Dive (15 minutes)
-1. Explain the pipeline architecture and data flow
-2. Demonstrate the enhanced vs. standard mode differences
-3. Show offline mode capabilities
-4. Explain vector search mechanics with a simple diagram
-5. Showcase error handling and resilience features
-
-### 💬 Interview Talking Points
-
-#### Architecture Decisions
-- **Why modular pipeline design?** Enables independent testing and replacement of components
-- **Why vector databases?** Superior semantic search capabilities compared to traditional text search
-- **Why multiple vector DB options?** Different use cases require different scaling characteristics
-
-#### Technical Challenges & Solutions
-1. **Challenge**: Reliably scraping diverse news sites
-   - **Solution**: Combined newspaper3k with custom site-specific extractors and robust error handling
-   
-2. **Challenge**: Balancing API costs with performance
-   - **Solution**: Implemented intelligent caching and offline mode with local models
-
-3. **Challenge**: Ensuring consistent topic categorization
-   - **Solution**: Developed a predefined topic hierarchy and normalization system
-
-#### Performance Considerations
-1. **Vector Search Optimization**:
-   - Dimensionality reduction techniques
-   - Indexing strategies for faster retrieval
-   - Hybrid search for balancing semantic and exact matching
-
-2. **Scaling Strategies**:
-   - Batch processing for large volumes of articles
-   - Distributed architecture possibilities
-   - Caching frequently accessed embeddings
-
-## 🔍 Solution Comparison & Analysis
-
-### Comparison with Alternative Approaches
-
-| Feature | AI News Scraper | Traditional Search Systems | Language Framework Solutions | Cloud-Based Services |
-|---------|----------------|----------------------------|------------------------------|----------------------|
-| **Content Extraction** | Custom scraper with newspaper3k and site-specific handlers | Web scraping libraries only | Framework-specific extractors | Managed scraping services |
-| **Summarization** | GPT-based abstractive with extractive fallback | Rule-based extractive only | Framework-provided summarizers | API-based abstractive only |
-| **Topic Extraction** | Categorized and normalized topics | Simple keyword extraction | Framework-specific extractors | Managed entity recognition |
-| **Search Capability** | Semantic + text-based hybrid | Keyword/Boolean search | Framework-specific retrieval | Managed search services |
-| **Vector Storage** | Multiple backends (FAISS/QDRANT/PINECONE) | Text indices only | Framework-specific storage | Proprietary vector stores |
-| **Deployment** | Self-hosted Docker or local | Self-hosted only | Framework-dependent | Cloud-only |
-| **Offline Support** | Full capability with local models | Limited functionality | Framework-dependent | None |
-| **Cost Model** | API usage + self-hosting | Self-hosting only | Framework license + hosting | Usage-based pricing |
-
-### Why This Approach?
-
-1. **Flexibility and Control**
-   - Custom pipeline offers fine-grained control over each step
-   - Can adapt to changing requirements and evolving AI technologies
-   - No vendor lock-in with pluggable components
-
-2. **Balanced Performance and Cost**
-   - OpenAI API provides state-of-the-art results with pay-per-use pricing
-   - Local fallbacks reduce costs during development and testing
-   - Vector search is more efficient than traditional text search for semantic queries
-
-3. **Practical Architecture**
-   - Modular design makes maintenance and updates easier
-   - Clear separation of concerns improves testability
-   - Standardized interfaces allow component replacement
-
-4. **User Experience Focus**
-   - Multiple interfaces (UI, CLI, API) for different user needs
-   - Rich semantic search improves information discovery
-   - Structured summaries and topics save time for users
-
-### Strengths of This Solution
-
-1. **Balanced Approach to AI Integration**
-   - Uses GenAI where it excels (summarization, topic analysis)
-   - Combines with traditional NLP for robustness (extractive fallback)
-   - Offers graceful degradation when optimal resources unavailable
-
-2. **Future-Proof Architecture**
-   - Easily adaptable to new AI models and APIs
-   - Vector database abstraction supports emerging technologies
-   - Clear interfaces for extending functionality
-
-3. **Real-World Practicality**
-   - Handles the messiness of web content extraction
-   - Provides fallbacks for all critical operations
-   - Offers multiple deployment options
-
-4. **Developer Experience**
-   - Clear documentation and code structure
-   - Comprehensive testing suite
-   - Multiple interfaces for integration
-
-### Limitations and Areas for Improvement
-
-1. **Scaling Considerations**
-   - Current architecture works well for thousands, not millions of articles
-   - Batch processing could be more parallelized
-   - Vector database sharding not implemented
-
-2. **Content Extraction Challenges**
-   - Some websites actively block scraping
-   - JavaScript-heavy sites require browser automation
-   - Paywalled content remains inaccessible
-
-3. **AI Cost Management**
-   - OpenAI API costs can accumulate with large volumes
-   - Token optimization could be improved
-   - Caching strategy could be more sophisticated
-
-4. **Advanced Features to Consider**
-   - Multi-language support
-   - Image content analysis
-   - Automated news feed monitoring
-   - Topic clustering and trend analysis
-
-### ROI Analysis
-
-Implementing this solution offers several key benefits that translate to tangible return on investment:
-
-1. **Time Savings**
-   - 70-80% reduction in time spent searching for relevant articles
-   - Quick summarization eliminates need to read full articles
-   - Topic categorization automates manual tagging work
-
-2. **Information Quality**
-   - Semantic search finds conceptually related content traditional search would miss
-   - AI-generated summaries focus on key information
-   - Standardized topics improve content organization
-
-3. **Development Efficiency**
-   - Modular architecture reduces time to add new features
-   - Multiple interfaces support diverse integration needs
-   - Clear error handling reduces debugging time
-
-4. **Cost Efficiency**
-   - Offline mode reduces development and testing costs
-   - Vector search reduces computational overhead compared to full-text search
-   - Containerized deployment simplifies operations
-
-## Installation
-
-### Option 1: Using Docker (Recommended)
-
-1. Clone the repository:
-```bash
-git clone https://github.com/AleksNeStu/ai-news-scraper.git
-cd ai-news-scraper
-```
-
-2. Create a `.env` file with your API keys:
-```bash
-OPENAI_API_KEY=your-openai-api-key
-COMPLETION_MODEL=gpt-3.5-turbo
-OFFLINE_MODE=false
-```
-
-3. Build and run the Docker container:
-```bash
-docker-compose up -d
-```
-
-4. Access the application at http://localhost:8501
-
-### Option 2: Manual Installation
-
-#### Prerequisites
-
-- Python 3.12+
-- Poetry (optional, for dependency management)
-
-#### Setup
-
-1. Clone the repository:
-```bash
-git clone https://github.com/AleksNeStu/ai-news-scraper.git
-cd ai-news-scraper
-```
-
-2. Install dependencies:
-
-With Poetry (recommended):
-```bash
-poetry install
-```
-
-With pip:
-```bash
-pip install -r requirements.txt
-```
-
-3. Create a `.env` file in the root directory with your API keys and configuration:
-
-```
-# OpenAI API Key (required)
-OPENAI_API_KEY=your-openai-api-key
-
-# OpenAI Models
-EMBEDDING_MODEL=text-embedding-ada-002
-COMPLETION_MODEL=gpt-3.5-turbo
-
-# Vector DB Configuration
-VECTOR_DB_TYPE=FAISS  # Options: FAISS, QDRANT, PINECONE
-
-# FAISS Configuration (if using FAISS)
-FAISS_INDEX_PATH=./data/vector_index
-
-# Qdrant Configuration (if using Qdrant)
-QDRANT_URL=http://localhost:6333
-QDRANT_COLLECTION_NAME=news_articles
-
-# Pinecone Configuration (if using Pinecone)
-PINECONE_API_KEY=your-pinecone-api-key
-PINECONE_ENVIRONMENT=your-pinecone-environment
-PINECONE_INDEX_NAME=news_articles
-```
-
-## 💻 Usage
-
-The application can be used through the command-line interface, as a Python module, or via the Streamlit web interface.
-
-### Web Interface (Recommended)
-
-The easiest way to use the application is through the provided launcher scripts:
-
-#### Cross-Platform Launcher Scripts
-
-For convenience, the project includes launcher scripts for all major operating systems:
-
-```bash
-# Universal Python launcher (works on all platforms):
-python run_app.py
-
-# On Linux/macOS:
-./run_app.sh
-
-# On Windows (Command Prompt):
-run_app.bat
-
-# On Windows (PowerShell):
-.\run_app.ps1
-```
-
-These launcher scripts automatically:
-- Detect Python installations
-- Create and activate virtual environments if needed
-- Install dependencies using Poetry or pip
-- Launch the Streamlit web interface
-- Display version information from git (commit hash, date, branch, message)
-
-#### Version Information Display
-
-The application includes a comprehensive version tracking system that helps users identify which version they're using:
-
-1. **Startup Version Info**: When launching the application through any of the provided scripts, version information from git is displayed in the terminal, showing:
-   - Commit hash
-   - Commit date and time
-   - Current branch
-   - Commit message
-   - Repository URL (with automatic conversion from SSH to HTTPS URLs)
-
-2. **UI Version Display**: The same version information is available in the Streamlit UI sidebar, with additional features:
-   - Clickable links to view the repository
-   - Direct links to the specific commit (for GitHub repositories)
-   - Formatted with emojis for better readability
-   - Expander interface to conserve UI space
-
-3. **Script Organization**: All launcher scripts are organized in the `scripts/` directory with symbolic links in the root directory for convenient access:
-   - `run_app.py` - Universal Python launcher (works on all platforms)
-   - `run_app.sh` - Bash script for Linux/macOS
-   - `run_app.bat` - Batch script for Windows Command Prompt
-   - `run_app.ps1` - PowerShell script for modern Windows environments
-
-If git is not available or the repository information cannot be accessed, the application will gracefully handle this and display an appropriate message.
-
-Alternatively, you can start the application manually:
-
-```bash
-# Run with Poetry
-poetry run streamlit run src/ui/app.py
-
-# Or with regular Python
-streamlit run src/ui/app.py
-```
-
-This will open a browser window with the application interface, where you can:
-
-- Search for articles using semantic, text-based, or hybrid search
-- Submit URLs to scrape and analyze
-- View article summaries and topics
-- Configure application settings
-
-### Command Line Interface
-
-#### Using the dedicated CLI script
-
-The project includes a user-friendly CLI script (`cli.py`) that provides a more interactive experience:
-
-1. Process news articles:
-
-```bash
-# With Poetry - Process URLs directly
-poetry run python cli.py process --urls https://example.com/news1 https://example.com/news2
-
-# Process URLs from a text file (one URL per line)
-poetry run python cli.py process --file urls.txt
-
-# Without Poetry
-python cli.py process --urls https://example.com/news1 https://example.com/news2
-```
-
-For enhanced processing (with structured summaries and categorized topics):
-
-```bash
-# Enhanced processing with direct URLs
-poetry run python cli.py process --urls https://example.com/news1 --enhanced
-
-# Enhanced processing with URLs from a file
-poetry run python cli.py process --file urls.txt --enhanced
-```
-
-2. Search for articles:
-
-```bash
-poetry run python cli.py search "artificial intelligence developments" --limit 5
-```
-
-3. List all articles:
-
-```bash
-poetry run python cli.py list
-```
-
-4. Clear the database:
-
-```bash
-poetry run python cli.py clear
-```
-
-#### Using the main module directly
-
-You can also use the main module directly:
-
-1. Process news articles:
-
-```bash
-# Process URLs directly
-poetry run python -m src.main process --urls https://example.com/news1 https://example.com/news2
-
-# Process URLs from a file
-poetry run python -m src.main process --file urls.txt
-```
-
-For enhanced processing (with structured summaries and categorized topics):
-
-```bash
-# Enhanced processing with direct URLs
-poetry run python -m src.main process --urls https://example.com/news1 --enhanced
-
-# Enhanced processing with URLs from a file
-poetry run python -m src.main process --file urls.txt --enhanced
-```
-
-2. Search for articles:
-
-```bash
-poetry run python -m src.main search "your search query" --limit 5
-```
-
-3. List all articles:
-
-```bash
-poetry run python -m src.main list
-```
-
-4. Clear the database:
-
-```bash
-poetry run python -m src.main clear
-```
-
-### Python Module
-
-You can also use the application programmatically:
-
-```python
-from src.main import NewsScraperPipeline
-
-# Initialize the pipeline
-pipeline = NewsScraperPipeline(use_enhanced=True)
-
-# Process URLs
-urls = ["https://example.com/news1", "https://example.com/news2"]
-result = pipeline.process_urls(urls)
-print(f"Processed {result['summary']['successful']} articles successfully")
-
-# Search for articles
-results = pipeline.search_articles("artificial intelligence developments", limit=5)
-for result in results:
-    print(f"{result['headline']} - {result['similarity']}")
-```
-
-### Docker Deployment
-
-The application can be easily deployed using Docker:
-
-```bash
-# Build and start the application using docker-compose
-docker-compose up -d
-
-# Access the web UI at http://localhost:8501
-```
-
-You can customize the deployment by editing the `docker-compose.yml` file to:
-- Configure environment variables
-- Enable additional vector database services (e.g., Qdrant)
-- Adjust resource allocations
-- Set up persistent storage volumes
-
-For a quick test, you can also run just the Docker container:
-
-```bash
-# Build the Docker image
-docker build -t news-scraper .
-
-# Run the container
-docker run -p 8501:8501 --env-file .env news-scraper
-```
-
-### Offline Mode
-
-The application includes comprehensive offline mode functionality:
-
-1. **Command Line**: Use the `--offline` flag
-   ```bash
-   poetry run python cli.py process --urls https://example.com/news1 --offline
-   ```
-
-2. **Web UI**: Toggle the "Offline Mode" checkbox in the sidebar
-
-3. **Python Module**: Set `offline_mode=True` when initializing
-   ```python
-   pipeline = NewsScraperPipeline(config=Config(offline_mode=True))
-   ```
-
-In offline mode, the application:
-- Uses **Sentence Transformers** for local text embeddings (`all-MiniLM-L6-v2`)
-- Employs **extractive summarization** using NLTK instead of OpenAI
-- Performs **keyword-based topic extraction** using NLTK's part-of-speech tagging
-- Uses **text-based search** with TF-IDF and cosine similarity
-- Requires **no internet connection** for core functionality
-- Provides **graceful degradation** with slightly reduced quality
-
-The offline mode is particularly useful for:
-- Development and testing without API costs
-- Running in environments without internet access
-- Privacy-sensitive applications where data must remain local
-- Building proof-of-concepts and demonstrations
-
-## 🧪 Testing
-
-Run all tests:
-
-```bash
-# With Poetry (recommended)
-poetry run pytest
-
-# Alternative using unittest
-poetry run python -m unittest discover tests
-```
-
-Run specific test file:
-
-```bash
-# With Poetry (recommended)
-poetry run pytest tests/test_scraper.py
-
-# Alternative using unittest
-poetry run python -m unittest tests.test_scraper
-```
-
-Run tests with coverage report:
-
-```bash
-poetry run pytest --cov=src tests/
-```
-
-## 🔧 Technical Implementation Details
-
-### Design Patterns
-
-The AI News Scraper application employs several software design patterns to ensure maintainability, extensibility, and robustness:
-
-1. **Pipeline Pattern**
-   - The core architecture follows a data processing pipeline pattern
-   - Each stage (scraping, summarizing, topic extraction, embedding) can be executed independently
-   - Data flows through the pipeline with clear input/output interfaces
-
-2. **Strategy Pattern**
-   - Interchangeable algorithms for summarization and topic extraction
-   - Runtime selection between online (GPT) and offline (local) strategies
-   - Implementation abstracted behind clear interfaces
-
-3. **Factory Pattern**
-   - Vector store instantiation via the `get_vector_store()` factory function
-   - Dynamic backend selection based on configuration
-   - Consistent interface across different implementations
-
-4. **Repository Pattern**
-   - Abstract data access behind the `VectorStore` base class
-   - Consistent API for storing and retrieving embeddings
-   - Implementation details isolated from business logic
-
-5. **Adapter Pattern**
-   - OpenAI and local model interfaces standardized
-   - Seamless switching between different backends
-   - Consistent error handling across adapters
-
-### Embedding Process
-
-The embedding process is central to the application's semantic search capabilities:
-
-1. **Text Preprocessing**
-   - Document segmentation for large articles
-   - Removal of irrelevant content and noise
-   - Normalization of text for consistency
-
-2. **Embedding Generation**
-   - OpenAI's text-embedding-ada-002 model (online mode)
-   - Sentence Transformers' all-MiniLM-L6-v2 (offline mode)
-   - Dimensionality: 1536 dimensions (OpenAI) / 384 dimensions (Sentence Transformers)
-
-3. **Metadata Association**
-   - Embedding vectors stored with rich metadata
-   - Enables filtering and post-processing of results
-   - Allows reconstruction of original content
-
-4. **Index Management**
-   - FAISS: Local disk-based index with IVF (Inverted File) for performance
-   - Qdrant: Vector database with filtering capabilities
-   - Pinecone: Cloud-based scalable vector search
-
-### Natural Language Processing Techniques
-
-The application leverages several NLP techniques throughout the pipeline:
-
-1. **Article Extraction**
-   - DOM analysis with newspaper3k
-   - Content cleaning and normalization
-   - Boilerplate removal
-
-2. **Summarization**
-   - Abstractive: OpenAI GPT models (online)
-   - Extractive: Sentence scoring with TF-IDF (offline)
-   - Structured output with key points in enhanced mode
-
-3. **Topic Extraction**
-   - Prompt engineering for GPT-based extraction (online)
-   - POS tagging and noun phrase extraction (offline)
-   - Topic normalization against predefined categories
-
-4. **Semantic Search**
-   - Vector similarity using cosine distance
-   - Re-ranking with text-based matching for hybrid search
-   - Query expansion for improved results
-
-### Performance Optimizations
-
-Several optimizations have been implemented to improve performance:
-
-1. **Batch Processing**
-   - Article embeddings generated in batches
-   - Reduces API call overhead
-   - Improves throughput for large datasets
-
-2. **Caching**
-   - Embedding results cached to avoid redundant computation
-   - URL-based content hashing to detect changes
-   - In-memory cache for frequently accessed items
-
-3. **Parallel Processing**
-   - Concurrent article scraping
-   - Asynchronous API calls where applicable
-   - Progress tracking with tqdm
-
-4. **Index Optimization**
-   - FAISS index trained on document corpus
-   - Quantization for reduced memory footprint
-   - Disk-based persistence for large datasets
-
-### Error Handling Strategy
-
-The application implements a robust error handling strategy:
-
-1. **Graceful Degradation**
-   - Pipeline continues despite individual component failures
-   - Default values provided for missing data
-   - Quality indicators for imperfect results
-
-2. **Retry Logic**
-   - Configurable retry attempts for network operations
-   - Exponential backoff for API rate limiting
-   - Circuit breaker for persistent failures
-
-3. **Comprehensive Logging**
-   - Structured logs with context
-   - Performance metrics and timing data
-   - Error aggregation and reporting
-
-4. **User Feedback**
-   - Clear error messages in UI
-   - Status indicators for long-running operations
-   - Suggestions for resolving common issues
 
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how you can contribute:
-
-1. Fork the repository
-2. Create a new branch: `git checkout -b feature/your-feature-name`
-3. Make your changes
-4. Run tests: `poetry run pytest`
-5. Submit a pull request
-
-Please ensure your code follows the project's coding style and includes appropriate tests.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). All contributions are licensed under [MIT](LICENSE).
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## ✨ Recent Updates
-
-**June 2025 - TaskMaster AI Integration & Project Restructure**:
-- **Documentation Consolidation**: Created single source of truth for TaskMaster AI integration in [`docs/TASKMASTER_GUIDE.md`](./docs/TASKMASTER_GUIDE.md)
-- **Cross-IDE Support**: Standardized MCP configurations for VS Code, Cursor, and other editors
-- **Task Management**: Integrated 20 tasks across 8 epic categories with automated workflow management
-- **Development Framework**: Established Sprint-based development (currently Sprint 3) with comprehensive task tracking
-- **Project Cleanup**: Removed redundant documentation files and established unified documentation structure
-
-**Technical Improvements**:
-- **NLTK Resource Management**: Automatic download and management of required NLTK resources
-- **Version Tracking**: Integrated git-based version display in UI and launcher scripts
-- **Configuration Management**: Enhanced environment-based configuration with comprehensive error handling
-- **Docker Optimization**: Updated containerization for improved development and deployment experience
-
-## � Documentation
-
-### Project Management & Development
-- **[TaskMaster AI Integration Guide](./docs/TASKMASTER_GUIDE.md)** - Comprehensive guide for AI-assisted development workflow
-- **[Task Management Documentation](./docs/TASK_MANAGEMENT.md)** - Development methodology and task tracking
-- **[MCP Configuration Template](./docs/mcp-config-template.json)** - Universal configuration for cross-IDE compatibility
-
-### Development Resources
-- **[Documentation Index](./docs/README.md)** - Navigation guide for all project documentation
-- **[Product Requirements Document](./PRD.MD)** - Original project specifications and requirements
-- **[Contributing Guidelines](#-contributing)** - How to contribute to the project
-- **[Recent Updates](#-recent-updates)** - Latest changes and improvements
-
-The project implements a comprehensive documentation structure that supports both individual development and team collaboration across different IDEs and development environments.
-
-## 🔄 Future Development
-
-The project roadmap is actively managed through **TaskMaster AI** with 20 total tasks organized into development sprints:
-
-### Immediate Priorities (Sprint 3-4)
-1. **UI/UX Improvements**:
-   - Fix "View Full Text" functionality (Task #1 - In Progress)
-   - Enhanced user interface components and error handling
-
-2. **Performance & Scalability**:
-   - Async processing for large article batches (100+ articles in <10 minutes)
-   - API rate limiting and intelligent caching systems
-   - Memory optimization and resource management
-
-3. **Quality & Reliability**:
-   - Comprehensive integration testing suite
-   - Enhanced error handling for edge cases
-   - Code quality improvements and refactoring
-
-### Long-term Vision (Sprint 5+)
-1. **Advanced AI Features**:
-   - Offline mode with local model integration
-   - Multi-language support and internationalization
-   - ML model performance optimization and fine-tuning
-
-2. **Enterprise Features**:
-   - REST API for programmatic access
-   - Monitoring and alerting systems
-   - Advanced analytics dashboard with visualizations
-
-3. **Platform Integration**:
-   - Security audit and vulnerability assessment
-   - Backup and recovery systems
-   - Enhanced search filters and export capabilities
-
-### Development Philosophy
-- **AI-Assisted Development**: Using TaskMaster AI for systematic task management and automated workflow optimization
-- **Quality-First Approach**: Comprehensive testing, documentation, and code review processes
-- **Modular Architecture**: Extensible design supporting plugin development and custom integrations
-- **Community-Driven**: Open contribution model with clear guidelines and structured development processes
-
-**Get Involved**: Check out the [TaskMaster AI Integration Guide](./docs/TASKMASTER_GUIDE.md) to see how you can contribute using our AI-assisted development workflow!
+[MIT](LICENSE) — Copyright (c) 2026 AleksNeStu.
