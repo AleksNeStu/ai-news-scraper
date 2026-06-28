@@ -6,6 +6,51 @@ Create Date: 2026-06-28 20:43:14.302318
 
 Mirrors the SQLAlchemy models in apps/api/api/models/:
     users, articles, feeds, feed_items.
+
+# DRIFT-FIX-2026-06-29: column-by-column drift review against models
+# -------------------------------------------------------------
+# Scope: apps/api/api/models/{user,article,feed,feed_item}.py
+# Method: compared every column, FK, unique constraint, and index
+#         in this upgrade() against the mapped_column() / __table_args__
+#         declarations on each model.
+#
+# Findings (per table):
+#   users      - id PK / email String(320) NOT NULL unique-indexed /
+#                hashed_password String(255) NOT NULL /
+#                created_at DateTime(tz) server_default=now() NOT NULL.
+#                Matches model exactly. No fixes needed.
+#   articles   - id PK / user_id UUID FK->users.id ON DELETE CASCADE
+#                nullable indexed / url Text NOT NULL indexed /
+#                headline/body/summary Text nullable /
+#                topics ARRAY(String) server_default='{}' /
+#                source_domain String(255) nullable indexed /
+#                publish_date DateTime(tz) nullable /
+#                indexed_at DateTime(tz) server_default=now() NOT NULL
+#                indexed / UniqueConstraint(user_id, url).
+#                Matches model exactly. No fixes needed.
+#   feeds      - id PK / user_id UUID FK->users.id ON DELETE CASCADE
+#                NOT NULL indexed / feed_url Text NOT NULL /
+#                title String(512) nullable /
+#                description Text nullable /
+#                last_polled DateTime(tz) nullable /
+#                active Boolean NOT NULL server_default=true /
+#                created_at DateTime(tz) server_default=now() NOT NULL /
+#                UniqueConstraint(user_id, feed_url).
+#                Matches model exactly. No fixes needed.
+#   feed_items - id PK / feed_id UUID FK->feeds.id ON DELETE CASCADE
+#                NOT NULL indexed /
+#                article_id UUID FK->articles.id ON DELETE SET NULL
+#                nullable indexed / guid Text NOT NULL /
+#                title/url Text nullable /
+#                fetched_at DateTime(tz) server_default=now() NOT NULL /
+#                UniqueConstraint(feed_id, guid).
+#                Matches model exactly. No fixes needed.
+#
+# Verdict: NO DRIFT - migration is hand-edited to be canonical against
+# the live models. No upgrade() body changes were required. Do NOT
+# regenerate via autogenerate without a follow-up ADR; this file is
+# the source of truth until a new revision is added.
+# -------------------------------------------------------------
 """
 
 from typing import Sequence, Union
