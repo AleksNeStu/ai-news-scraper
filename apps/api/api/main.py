@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import get_settings
-from api.routers import articles, auth, feeds, scrape, search
+from api.routers import articles, auth, feeds, health, scrape, search
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -40,14 +40,10 @@ app.add_middleware(
 )
 
 
-@app.get("/health", tags=["meta"])
-async def health():
-    return {"status": "ok", "env": _settings.app_env, "version": app.version}
-
-
 # Routers
 app.include_router(auth.router)
 app.include_router(articles.router)
 app.include_router(scrape.router)
 app.include_router(search.router)
 app.include_router(feeds.router)
+app.include_router(health.router)
