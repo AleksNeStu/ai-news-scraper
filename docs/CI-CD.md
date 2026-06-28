@@ -205,26 +205,26 @@ stages:
       inputs:
         versionSpec: '$(pythonVersion)'
         addToPath: true
-        
+
     - script: |
         python -m pip install --upgrade pip
         pip install poetry
         poetry config virtualenvs.in-project true
         poetry install
       displayName: 'Install dependencies'
-      
+
     - script: |
         poetry run flake8 src tests
         poetry run mypy src
         poetry run black --check src tests
       displayName: 'Lint code'
-      
+
     - script: |
         poetry run pytest tests/ --cov=src --cov-report=xml --cov-report=html
       displayName: 'Run tests'
       env:
         OFFLINE_MODE: 'true'
-        
+
     - task: PublishCodeCoverageResults@1
       inputs:
         codeCoverageTool: Cobertura
@@ -376,11 +376,11 @@ The CI/CD pipelines use the following environment-specific configurations:
 └─────────────────┘     └────────┬────────┘     └─────────────────┘
                                  │
                                  ▼
-                        ┌─────────────────┐     
-                        │ Azure Container │     
-                        │ Instance (ACI)  │     
-                        │ Qdrant Vector DB│     
-                        └─────────────────┘     
+                        ┌─────────────────┐
+                        │ Azure Container │
+                        │ Instance (ACI)  │
+                        │ Qdrant Vector DB│
+                        └─────────────────┘
 ```
 
 ## Setup Instructions
@@ -527,7 +527,7 @@ Navigate to your Azure DevOps pipeline → Edit → Variables
 **Azure Resource Manager Connection:**
 1. Go to Project Settings → Service connections → New service connection → Azure Resource Manager
 2. Select "Service principal (automatic)"
-3. Name it "Azure Subscription" 
+3. Name it "Azure Subscription"
 4. Select the appropriate scope level and subscription
 
 ## Best Practices
