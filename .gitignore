@@ -115,6 +115,10 @@ CLAUDE.md
 # ---------- Personal agent notes (PRD/ADRs kept local — not for public repo) ----------
 .agent/
 
+# ---------- Internal design + research notes (not for public repo) ----------
+DESIGN.md
+docs/research/
+
 # ---------- Data & runtime artifacts ----------
 data/
 nltk_data/
