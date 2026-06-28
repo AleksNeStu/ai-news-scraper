@@ -81,6 +81,62 @@ By participating you agree to the [Contributor Covenant v2.1](.github/CODE_OF_CO
 
 **Do not file public issues for security bugs.** Email `a.v.nesterovich@gmail.com` with subject prefix `[SECURITY]`. See [`SECURITY.md`](SECURITY.md) for the full policy.
 
+## Pre-commit hooks
+
+This repo uses [pre-commit](https://pre-commit.com/) to run lint, format, and secret-scan checks on every commit. Hooks auto-run after `git commit`; you can also run them manually.
+
+### One-time install
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+This installs the hook scripts into `.git/hooks/`. Re-run `pre-commit install` after cloning on a new machine.
+
+### Run on demand
+
+```bash
+# Run on staged files
+pre-commit run
+
+# Run on every file in the repo (slower — first-time CI check)
+pre-commit run --all-files
+
+# Update hook SHAs to newer pinned versions
+pre-commit autoupdate
+```
+
+### What's wired up
+
+| Hook | Purpose |
+|---|---|
+| `pre-commit/pre-commit-hooks` | File hygiene (trailing whitespace, EOF newlines, large files, merge-conflict markers, LF line endings) |
+| `astral-sh/ruff-pre-commit` | Python lint + format (`ruff check --fix`, `ruff format`) |
+| `gitleaks/gitleaks` | Secret scan — blocks API keys, tokens, private keys before they land |
+| `eslint` (local `pnpm exec`) | TypeScript / React lint for `apps/web/**` (uses the same version as `pnpm lint`) |
+| `prettier` (local `pnpm exec`) | Format `apps/web/**` (uses the same version as `pnpm format`) |
+| `ruff check` (via Poetry) | Belt-and-braces lint for `apps/api/**` |
+
+### Excluded paths
+
+Hooks are skipped on agent state and internal docs — these are never meant to be in VCS anyway, but the exclude protects against accidental staging:
+
+- `.agent/`, `.taskmaster/`, `.claude/`
+- `docs/research/`
+- `tasks/`
+- `legacy/streamlit/`
+
+### Bypassing (rare)
+
+If you must skip a hook for a single commit (e.g. WIP commit), use:
+
+```bash
+git commit --no-verify -m "wip: ..."
+```
+
+**Don't make this a habit.** Pre-commit failures usually mean the code needs fixing.
+
 ## License
 
 By contributing you agree your contributions are licensed under the [MIT License](LICENSE).
