@@ -96,6 +96,7 @@ out/
 # ---------- AI / agent tooling (KEEP OUT — public repo) ----------
 .claude/
 CLAUDE.local.md
+CLAUDE.md
 .roomodes
 .roo/
 .windsurfrules
@@ -110,6 +111,9 @@ CLAUDE.local.md
 
 # ---------- TaskMaster (fully ignored — workflow runs locally) ----------
 .taskmaster/
+
+# ---------- Personal agent notes (PRD/ADRs kept local — not for public repo) ----------
+.agent/
 
 # ---------- Data & runtime artifacts ----------
 data/
