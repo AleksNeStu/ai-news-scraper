@@ -1,0 +1,93 @@
+# =====================================================
+# AI News Scraper — pre-commit hooks
+# Pinned SHAs only. Update by: pre-commit autoupdate (review diff).
+# =====================================================
+# Public repo — keep secrets, AI state, and private docs out of VCS.
+# See docs/PROJECT_RULES.md for the public/private boundary.
+# =====================================================
+
+minimum_pre_commit_version: "3.5.0"
+
+# Skip these paths entirely. Mirrors the PUBLIC/PRIVATE boundary in
+# .gitignore — never run hooks on agent state, internal docs, or secrets.
+exclude: |
+  (?x)^(
+    \.agent/.*|
+    \.taskmaster/.*|
+    \.claude/.*|
+    docs/research/.*|
+    tasks/.*|
+    legacy/streamlit/.*
+  )$
+
+repos:
+  # ---------- Generic file hygiene ----------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b  # v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        # Allow multi-document YAML (docker-compose, etc.)
+        args: ["--allow-multiple-documents"]
+        exclude: ^docker-compose\.ya?ml$
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  # ---------- Python: ruff lint + format ----------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: c59bba8fb259db0fec2bbb77ad8ba51ea7341b56  # v0.15.20
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  # ---------- Secrets scan ----------
+  # gitleaks blocks known API-key patterns before they hit the commit.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e  # v8.30.1
+    hooks:
+      - id: gitleaks
+
+  # ---------- TypeScript / Next.js: ESLint (local) ----------
+  # Wired to local `pnpm exec eslint` so we use the same version that
+  # `pnpm lint` runs — no version drift between CI and pre-commit.
+  - repo: local
+    hooks:
+      - id: eslint-web
+        name: eslint (apps/web)
+        language: system
+        types_or: [ts, tsx, javascript, jsx]
+        files: ^apps/web/.*\.(ts|tsx|js|jsx)$
+        entry: bash -c 'cd apps/web && pnpm exec eslint --fix "$@"'
+        args: []
+
+  # ---------- TypeScript / Next.js: Prettier (local) ----------
+  # mirrors-prettier is archived; using the local toolchain version
+  # keeps prettier + plugins (e.g. prettier-plugin-tailwindcss) in sync
+  # with what `pnpm format` runs.
+  - repo: local
+    hooks:
+      - id: prettier-web
+        name: prettier (apps/web)
+        language: system
+        files: ^apps/web/.*\.(ts|tsx|js|jsx|json|css|md|mdx)$
+        entry: bash -c 'cd apps/web && pnpm exec prettier --write --ignore-unknown "$@"'
+        args: []
+
+  # ---------- Python: ruff check via Poetry (apps/api) ----------
+  # Belt-and-braces: the astral-sh hook above already runs ruff, but
+  # the Poetry-managed ruff pins the api project config. Cheap, idempotent.
+  - repo: local
+    hooks:
+      - id: ruff-api-poetry
+        name: ruff check (apps/api via poetry)
+        language: system
+        pass_filenames: false
+        files: ^apps/api/.*\.py$
+        entry: bash -c 'cd apps/api && poetry run ruff check .'
