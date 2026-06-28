@@ -51,7 +51,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install poetry
-      - run: poetry install --no-interaction --no-ansi
+      # Strict frozen-mode parity with pnpm install --frozen-lockfile.
+      # Refuses to silently update poetry.lock; CI fails if pyproject.toml
+      # drifted. Regenerate locally with `poetry lock --no-update`.
+      - run: poetry install --no-interaction --no-ansi --no-update
       - run: poetry run pytest -v --tb=short
 
   web-build:
