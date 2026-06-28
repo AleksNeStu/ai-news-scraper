@@ -39,7 +39,9 @@ def create_token(user_id: UUID, email: str) -> str:
 
 def decode_token(token: str) -> dict | None:
     try:
-        return jwt.decode(token, _settings.jwt_secret, algorithms=[_settings.jwt_algorithm])
+        return jwt.decode(
+            token, _settings.jwt_secret, algorithms=[_settings.jwt_algorithm]
+        )
     except jwt.ExpiredSignatureError:
         return None
     except jwt.InvalidTokenError as e:
@@ -60,7 +62,9 @@ class AuthService:
         async def _create() -> tuple[UUID, str]:
             async with AsyncSessionLocal() as session:
                 # Check uniqueness
-                existing = await session.execute(select(User).where(User.email == email))
+                existing = await session.execute(
+                    select(User).where(User.email == email)
+                )
                 if existing.scalar_one_or_none() is not None:
                     raise ValueError("email already registered")
                 user = User(email=email, hashed_password=hash_password(password))

@@ -18,13 +18,18 @@ class Article(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
     url: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     headline: Mapped[str | None] = mapped_column(Text)
     body: Mapped[str | None] = mapped_column(Text)
     summary: Mapped[str | None] = mapped_column(Text)
-    topics: Mapped[list[str]] = mapped_column(ARRAY(String), default=list, server_default="{}")
+    topics: Mapped[list[str]] = mapped_column(
+        ARRAY(String), default=list, server_default="{}"
+    )
     source_domain: Mapped[str | None] = mapped_column(String(255), index=True)
     publish_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     indexed_at: Mapped[datetime] = mapped_column(

@@ -19,8 +19,12 @@ class BaseVectorStore(ABC):
 
     @abstractmethod
     async def upsert(
-        self, collection: str, ids: list[str], embeddings: list[list[float]],
-        documents: list[str], metadatas: list[dict[str, Any]],
+        self,
+        collection: str,
+        ids: list[str],
+        embeddings: list[list[float]],
+        documents: list[str],
+        metadatas: list[dict[str, Any]],
     ) -> None: ...
 
     @abstractmethod
@@ -36,7 +40,12 @@ class BaseVectorStore(ABC):
 class ChromaVectorStore(BaseVectorStore):
     """ChromaDB implementation — HTTP server or persistent on-disk."""
 
-    def __init__(self, host: str | None = None, port: int | None = None, persist_dir: str | None = None):
+    def __init__(
+        self,
+        host: str | None = None,
+        port: int | None = None,
+        persist_dir: str | None = None,
+    ):
         self.host = host or _settings.chroma_host
         self.port = port or _settings.chroma_port
         self.persist_dir = persist_dir or _settings.chroma_persist_dir
@@ -63,7 +72,9 @@ class ChromaVectorStore(BaseVectorStore):
         metadatas: list[dict[str, Any]],
     ) -> None:
         coll = self.get_or_create_collection(collection)
-        coll.upsert(ids=ids, embeddings=embeddings, documents=documents, metadatas=metadatas)
+        coll.upsert(
+            ids=ids, embeddings=embeddings, documents=documents, metadatas=metadatas
+        )
 
     async def query(
         self,

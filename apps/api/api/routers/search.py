@@ -21,7 +21,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/search", tags=["search"])
 _settings = get_settings()
 
-_embedder = ArticleEmbedder(api_key=_settings.openai_api_key, model=_settings.openai_embedding_model, dimensions=_settings.embedding_dimensions)
+_embedder = ArticleEmbedder(
+    api_key=_settings.openai_api_key,
+    model=_settings.openai_embedding_model,
+    dimensions=_settings.embedding_dimensions,
+)
 _vector_store = ChromaVectorStore()
 
 
@@ -54,7 +58,9 @@ async def search(
 
     from uuid import UUID as _UUID
 
-    res = await db.execute(select(Article).where(Article.id.in_([_UUID(i) for i in ids])))
+    res = await db.execute(
+        select(Article).where(Article.id.in_([_UUID(i) for i in ids]))
+    )
     articles_by_id = {str(a.id): a for a in res.scalars().all()}
 
     results: list[SearchResult] = []
