@@ -7,7 +7,7 @@ Based on analysis of similar projects using Exa AI, here are key features and pa
 ### 1. **txtai** - All-in-one AI Framework
 - **Features**: Semantic search, LLM orchestration, vector indexing
 - **Architecture**: Embeddings database with vector indexes, graph networks, relational databases
-- **Key Insights**: 
+- **Key Insights**:
   - Combines sparse and dense vector indexes
   - Multi-model workflows
   - Built-in API with multiple language bindings
