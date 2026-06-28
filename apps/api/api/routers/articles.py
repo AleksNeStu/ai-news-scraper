@@ -31,7 +31,11 @@ async def list_articles(
     if topic:
         stmt = stmt.where(Article.topics.any(topic))
         count_stmt = count_stmt.where(Article.topics.any(topic))
-    stmt = stmt.order_by(Article.indexed_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    stmt = (
+        stmt.order_by(Article.indexed_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
     items = (await db.execute(stmt)).scalars().all()
     total = (await db.execute(count_stmt)).scalar_one()
     return ArticleListResponse(

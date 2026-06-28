@@ -3,8 +3,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,8 +23,14 @@ _settings = get_settings()
 
 # Service singletons (init in lifespan; reuse)
 _scraper = ArticleScraper()
-_summarizer = ArticleSummarizer(api_key=_settings.openai_api_key, model=_settings.openai_model)
-_embedder = ArticleEmbedder(api_key=_settings.openai_api_key, model=_settings.openai_embedding_model, dimensions=_settings.embedding_dimensions)
+_summarizer = ArticleSummarizer(
+    api_key=_settings.openai_api_key, model=_settings.openai_model
+)
+_embedder = ArticleEmbedder(
+    api_key=_settings.openai_api_key,
+    model=_settings.openai_embedding_model,
+    dimensions=_settings.embedding_dimensions,
+)
 _vector_store = ChromaVectorStore()
 
 
@@ -51,25 +56,30 @@ async def _process_one(url: str, user_id: UUID | None, db: AsyncSession) -> Arti
         source_domain=scraped.source_domain,
         publish_date=scraped.publish_date,
     )
-    stmt = pg_insert(Article).values(
-        user_id=user_id,
-        url=url,
-        headline=scraped.headline,
-        body=scraped.body,
-        summary=summary,
-        topics=[],
-        source_domain=scraped.source_domain,
-        publish_date=scraped.publish_date,
-    ).on_conflict_do_update(
-        index_elements=["user_id", "url"],
-        set_={
-            "headline": scraped.headline,
-            "body": scraped.body,
-            "summary": summary,
-            "source_domain": scraped.source_domain,
-            "publish_date": scraped.publish_date,
-        },
-    ).returning(Article)
+    stmt = (
+        pg_insert(Article)
+        .values(
+            user_id=user_id,
+            url=url,
+            headline=scraped.headline,
+            body=scraped.body,
+            summary=summary,
+            topics=[],
+            source_domain=scraped.source_domain,
+            publish_date=scraped.publish_date,
+        )
+        .on_conflict_do_update(
+            index_elements=["user_id", "url"],
+            set_={
+                "headline": scraped.headline,
+                "body": scraped.body,
+                "summary": summary,
+                "source_domain": scraped.source_domain,
+                "publish_date": scraped.publish_date,
+            },
+        )
+        .returning(Article)
+    )
     res = await db.execute(stmt)
     article = res.scalar_one()
     await db.commit()
@@ -83,7 +93,12 @@ async def _process_one(url: str, user_id: UUID | None, db: AsyncSession) -> Arti
                 ids=[str(article.id)],
                 embeddings=[embedding],
                 documents=[text_to_embed],
-                metadatas=[{"user_id": str(user_id) if user_id else "", "source_domain": scraped.source_domain or ""}],
+                metadatas=[
+                    {
+                        "user_id": str(user_id) if user_id else "",
+                        "source_domain": scraped.source_domain or "",
+                    }
+                ],
             )
         except Exception as e:
             logger.warning("ChromaDB upsert failed (article saved in PG): %s", e)

@@ -39,7 +39,9 @@ class ArticleScraper:
                     headline=article.title or None,
                     body=article.text,
                     source_domain=urlparse(url).netloc,
-                    publish_date=article.publish_date.isoformat() if article.publish_date else None,
+                    publish_date=article.publish_date.isoformat()
+                    if article.publish_date
+                    else None,
                     authors=article.authors or [],
                 )
         except Exception:
@@ -48,7 +50,9 @@ class ArticleScraper:
         # BS4 fallback — minimal extraction
         import httpx
 
-        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            timeout=self.timeout, follow_redirects=True
+        ) as client:
             r = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
             r.raise_for_status()
 

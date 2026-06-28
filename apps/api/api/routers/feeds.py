@@ -123,7 +123,9 @@ async def poll_feed(
     for item in parsed.items:
         # dedupe by (feed_id, guid)
         existing = await db.execute(
-            select(FeedItem).where(FeedItem.feed_id == feed.id, FeedItem.guid == item.guid)
+            select(FeedItem).where(
+                FeedItem.feed_id == feed.id, FeedItem.guid == item.guid
+            )
         )
         if existing.scalar_one_or_none() is not None:
             continue
@@ -132,8 +134,13 @@ async def poll_feed(
         await db.flush()
         new_items.append(
             FeedItemOut(
-                id=fi.id, feed_id=fi.feed_id, article_id=fi.article_id,
-                guid=fi.guid, title=fi.title, url=fi.url, fetched_at=fi.fetched_at,
+                id=fi.id,
+                feed_id=fi.feed_id,
+                article_id=fi.article_id,
+                guid=fi.guid,
+                title=fi.title,
+                url=fi.url,
+                fetched_at=fi.fetched_at,
             )
         )
     feed.last_polled = datetime.now(timezone.utc)

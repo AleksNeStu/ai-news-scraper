@@ -60,6 +60,8 @@ class FeedParser:
 
         return ParsedFeed(
             title=parsed.feed.get("title") if hasattr(parsed, "feed") else None,
-            description=parsed.feed.get("description") if hasattr(parsed, "feed") else None,
+            description=parsed.feed.get("description")
+            if hasattr(parsed, "feed")
+            else None,
             items=items,
         )
