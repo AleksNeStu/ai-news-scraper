@@ -31,7 +31,7 @@ langchain = "^0.3.7"
 langchain-openai = "^0.2.1"
 newspaper3k = "^0.2.8"
 beautifulsoup4 = "^4.12.3"
-lxml = "^5.3.0"
+lxml = ">=5.3,<7.0"
 # lxml 5.2 split lxml.html.clean into a separate `lxml_html_clean` package.
 # newspaper3k still imports the old path, so we install both transitively.
 # See: https://lxml.de/5.2.html
