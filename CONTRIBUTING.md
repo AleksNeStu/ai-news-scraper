@@ -12,7 +12,7 @@ docker compose up -d  # postgres + redis + chromadb + api + web
 open http://localhost:3000
 ```
 
-For app-only dev: see [`AGENTS.md`](AGENTS.md) for per-app commands.
+For app-only dev: see the **Run / test / lint** section in [`README.md`](README.md).
 
 ## Code style
 

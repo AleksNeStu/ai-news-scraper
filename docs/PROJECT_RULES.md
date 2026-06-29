@@ -2,7 +2,7 @@
 
 > **Hard rules for this project.** Public. Bound by the MIT license. Anyone working on this repo (human or AI agent) must follow.
 
-This document is the **canonical source of truth** for what is and isn't allowed in this repository. `CONTRIBUTING.md` is the human-friendly summary; `AGENTS.md` is the AI-agent-friendly version. When in conflict, this document wins.
+This document is the **canonical source of truth** for what is and isn't allowed in this repository. `CONTRIBUTING.md` is the human-friendly summary. When in conflict, this document wins.
 
 ---
 
@@ -25,7 +25,7 @@ Secondary (acceptable but not central): GitHub Sponsors, Polar.sh tip jar.
 | `packages/shared/**` | TS types shared between api + web |
 | `docs/PRD.md`, `docs/CI-CD.md`, `docs/README.md`, `docs/TASK_MANAGEMENT.md`, `docs/TASKMASTER_GUIDE.md`, `docs/COMPETITIVE_ANALYSIS.md`, `docs/COMPREHENSIVE_TODO.md` | Public docs |
 | `docs/PROJECT_RULES.md` (this file) | Hard rules |
-| `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `SECURITY.md`, `CHANGELOG.md`, `LICENSE` | Public top-level docs |
+| `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `LICENSE` | Public top-level docs |
 | `.github/CODE_OF_CONDUCT.md`, `.github/pull_request_template.md`, `.github/FUNDING.yml`, `.github/CODEOWNERS`, `.github/workflows/`, `.github/dependabot.yml` | GitHub-side configuration |
 | `docker-compose.yml`, `.env.example`, `pyproject.toml` (root workspace), `pnpm-workspace.yaml` | Repo config |
 | `legacy/streamlit/**` | Frozen Streamlit UI (historical reference) |
@@ -148,7 +148,7 @@ git ls-files | grep -E "^(\.agent/|DESIGN\.md|^CLAUDE\.md|docs/research/|\.taskm
 git check-ignore -v .agent CLAUDE.md DESIGN.md docs/research .taskmaster
 
 # Verify public docs are tracked
-git ls-files | grep -E "^(CONTRIBUTING\.md|AGENTS\.md|SECURITY\.md|CHANGELOG\.md|LICENSE)$"
+git ls-files | grep -E "^(CONTRIBUTING\.md|SECURITY\.md|CHANGELOG\.md|LICENSE)$"
 ```
 
 If any of these fail, **do not push**. Fix the leak first.
@@ -157,4 +157,4 @@ If any of these fail, **do not push**. Fix the leak first.
 
 ## 11. Changelog
 
-- 2026-06-28 — Initial hard rules document. Public/private boundary codified. Mirrors structure of `ai-real-estate-assistant` (CONTRIBUTING, AGENTS, SECURITY, CODEOWNERS, FUNDING).
+- 2026-06-28 — Initial hard rules document. Public/private boundary codified. Mirrors structure of `ai-real-estate-assistant` (CONTRIBUTING, SECURITY, CODEOWNERS, FUNDING).
