@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import Boolean, DateTime, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,6 +22,11 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    # RFC 8058 one-click unsubscribe target — flipped to ``False`` when
+    # the user hits the unsubscribe link (see services/unsubscribe.py).
+    email_digest_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="true", default=True
     )
 
     articles = relationship(
