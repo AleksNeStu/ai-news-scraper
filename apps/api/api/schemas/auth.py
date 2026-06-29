@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserCreate(BaseModel):
@@ -17,6 +17,11 @@ class UserLogin(BaseModel):
 
 
 class UserOut(BaseModel):
+    # Same fix as ``ArticleOut`` — pre-existing bug surfaced during #34
+    # acceptance. /auth/login, /auth/register, /auth/me all hit this
+    # when serializing a User ORM row.
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     email: EmailStr
     created_at: datetime

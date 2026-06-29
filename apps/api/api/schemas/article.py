@@ -4,10 +4,17 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class ArticleOut(BaseModel):
+    # Allow ``model_validate(article)`` where ``article`` is a SQLAlchemy
+    # ORM instance — Pydantic v2 needs this to read attributes rather than
+    # dict keys. Pre-existing bug surfaced during Task #34 acceptance;
+    # without this, /scrape, /search, and /articles all raise ValidationError
+    # at the response_model step.
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     url: str
     headline: Optional[str] = None
