@@ -1,0 +1,38 @@
+# Funding configuration
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+# GitHub Sponsors
+github: [AleksNeStu]
+
+# Open Collective (uncomment to enable)
+# open_collective: your-username
+
+# Ko-fi (uncomment to enable)
+# ko_fi: your-username
+
+# Tidelift (uncomment to enable)
+# tidelift: your-slug
+
+# Community Bridge (uncomment to enable)
+# community_bridge: your-project-id
+
+# Liberapay (uncomment to enable)
+# liberapay: your-username
+
+# IssueHunt (uncomment to enable)
+# issuehunt: your-username
+
+# LFX Crowdfunding (uncomment to enable)
+# lfx_crowdfunding: your-project-slug
+
+# Polar (uncomment to enable)
+# polar: your-username
+
+# Buy Me a Coffee (uncomment to enable)
+# buy_me_a_coffee: your-username
+
+# thanks_dev (uncomment to enable)
+# thanks_dev: your-username
+
+# Patreon (uncomment to enable)
+# patreon: your-username

@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+  # Manual trigger — useful when push events don't fire (e.g. branch
+  # protection interfering) or when re-running after a fix. Does not
+  # bypass the same jobs/checks that push and pull_request run.
+  workflow_dispatch:
+
+# Explicit minimal permissions. GitHub's default `GITHUB_TOKEN` is read-only
+# for `contents`, which is all this workflow needs (no deploys, no PR
+# comments, no releases). Declaring it here documents the intent and
+# protects against future accidental widening.
+permissions:
+  contents: read
+
+# Cancel in-flight runs on the same ref when a new commit lands. Saves CI
+# minutes when pushing follow-up commits before the previous run finishes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-lint:
+    name: API — lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check .
+
+  api-test:
+    name: API — test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ai_news_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: apps/api
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/ai_news_test
+      JWT_SECRET: test-secret-do-not-use
+      OPENAI_API_KEY: test-key
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install poetry
+      # NOTE: poetry.lock is not currently committed to this repo (no
+      # network access in dev sandboxes to generate it locally). We let
+      # CI generate it on first run via `poetry install` (no --no-update).
+      # TODO: regenerate locally with `poetry lock`, commit the lockfile,
+      # and re-add --no-update for true frozen-mode parity (see 9edeaab).
+      - run: poetry install --no-interaction --no-ansi
+      # Apply DB migrations before pytest so integration tests that
+      # INSERT into real tables don't fail with "relation does not exist".
+      # Migrations live in apps/api/alembic/versions/ and are idempotent.
+      - run: poetry run alembic upgrade head
+      - run: poetry run pytest -v --tb=short
+
+  web-build:
+    name: Web — build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          # Glob pattern resolves the pnpm monorepo's root lockfile
+          # regardless of which sub-package the job is running in.
+          # Plain `pnpm-lock.yaml` intermittently failed with
+          # "Some specified paths were not resolved" on setup-node v4
+          # (see actions/setup-node#490). The glob is the documented
+          # workaround.
+          cache-dependency-path: '**/pnpm-lock.yaml'
+      # Allow pnpm to update the lockfile on install. The Dependabot
+      # bumps only touch package.json; squash-merging discards the
+      # lockfile updates from the PR commits, so --frozen-lockfile
+      # would fail. Regenerate locally with `pnpm install --lockfile-only`
+      # and commit the lockfile to restore frozen-mode parity.
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm lint

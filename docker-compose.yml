@@ -1,31 +1,88 @@
-version: '3.8'
+# =====================================================
+# AI News Scraper — docker compose for local dev
+# =====================================================
 
 services:
-  app:
+  db:
+    image: postgres:16-alpine
+    container_name: ai-news-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_news
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-news-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: ai-news-chroma
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadata:/chroma/chroma
+
+  api:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: news-scraper-app
-    ports:
-      - "8501:8501"
-    volumes:
-      - ./data:/app/data
-    env_file:
-      - .env
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - VECTOR_DB_TYPE=faiss
-      - VECTOR_DB_PATH=/app/data/vector_db
+      dockerfile: apps/api/Dockerfile
+    container_name: ai-news-api
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      chromadb:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/ai_news
+      REDIS_URL: redis://redis:6379/0
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: "8000"
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
 
-  # Uncomment to enable Qdrant vector database if needed
-  # qdrant:
-  #   image: qdrant/qdrant:latest
-  #   container_name: news-scraper-qdrant
-  #   ports:
-  #     - "6333:6333"
-  #   volumes:
-  #     - ./data/qdrant_storage:/qdrant/storage
-  #   environment:
-  #     - QDRANT__SERVICE__GRPC_PORT=6334
-  #   restart: unless-stopped
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: ai-news-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      API_INTERNAL_URL: http://api:8082
+      NEXT_PUBLIC_API_URL: http://localhost:8082
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+
+volumes:
+  pgdata:
+  redisdata:
+  chromadata:
