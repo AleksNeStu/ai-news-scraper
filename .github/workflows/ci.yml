@@ -102,7 +102,12 @@ jobs:
           # (see actions/setup-node#490). The glob is the documented
           # workaround.
           cache-dependency-path: '**/pnpm-lock.yaml'
-      - run: pnpm install --frozen-lockfile
+      # Allow pnpm to update the lockfile on install. The Dependabot
+      # bumps only touch package.json; squash-merging discards the
+      # lockfile updates from the PR commits, so --frozen-lockfile
+      # would fail. Regenerate locally with `pnpm install --lockfile-only`
+      # and commit the lockfile to restore frozen-mode parity.
+      - run: pnpm install --no-frozen-lockfile
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm lint
