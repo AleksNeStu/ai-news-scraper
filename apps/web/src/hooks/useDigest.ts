@@ -8,10 +8,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
 import {
+  DigestDisabledError,
+  DigestNotFoundError,
   getDigest,
   getTodayDigest,
   listDigests,
-  DigestNotFoundError,
 } from "@/lib/api/digest";
 import type { Digest, DigestListResponse } from "@ai-news-scraper/shared";
 
@@ -19,6 +20,8 @@ export interface UseQueryState<T> {
   data: T | null;
   loading: boolean;
   error: string | null;
+  /** True when backend reports the digest endpoint is disabled (M6). */
+  disabled: boolean;
   reload: () => void;
 }
 
@@ -26,6 +29,7 @@ function useAsync<T>(fn: () => Promise<T>, deps: ReadonlyArray<unknown>): UseQue
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [disabled, setDisabled] = useState(false);
   const [tick, setTick] = useState(0);
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
@@ -34,6 +38,7 @@ function useAsync<T>(fn: () => Promise<T>, deps: ReadonlyArray<unknown>): UseQue
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setDisabled(false);
     fn()
       .then((res) => {
         if (!cancelled) setData(res);
@@ -41,7 +46,9 @@ function useAsync<T>(fn: () => Promise<T>, deps: ReadonlyArray<unknown>): UseQue
       .catch((e) => {
         if (cancelled) return;
         // 404 means "no digest yet" — not a hard error, surface as null data.
-        if (e instanceof DigestNotFoundError) {
+        if (e instanceof DigestDisabledError) {
+          if (!cancelled) setDisabled(true);
+        } else if (e instanceof DigestNotFoundError) {
           setData(null);
         } else if (e instanceof ApiError) {
           setError(e.message);
@@ -58,7 +65,7 @@ function useAsync<T>(fn: () => Promise<T>, deps: ReadonlyArray<unknown>): UseQue
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, tick]);
 
-  return { data, loading, error, reload };
+  return { data, loading, error, disabled, reload };
 }
 
 /** Today's digest (UTC). Returns `data: null` when none exists yet. */

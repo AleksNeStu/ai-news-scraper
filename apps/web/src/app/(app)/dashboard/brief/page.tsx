@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const PREVIEW_CHARS = 200;
 
 export default function BriefInboxPage() {
-  const { data, loading, error } = useDigestList(20);
+  const { data, loading, error, disabled } = useDigestList(20);
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
@@ -31,7 +31,16 @@ export default function BriefInboxPage() {
         </p>
       )}
 
-      {!loading && !error && data && data.digests.length === 0 && (
+      {!loading && !error && disabled && (
+        <div className="rounded-lg border border-dashed border-border bg-canvas/50 p-8 text-center">
+          <h4 className="font-medium">Daily briefs are temporarily unavailable</h4>
+          <p className="mt-1 text-sm text-muted-foreground">
+            We're working on it — check back soon.
+          </p>
+        </div>
+      )}
+
+      {!loading && !error && !disabled && data && data.digests.length === 0 && (
         <div className="rounded-lg border border-dashed border-border bg-canvas/50 p-8 text-center">
           <h4 className="font-medium">No briefs yet</h4>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -40,7 +49,7 @@ export default function BriefInboxPage() {
         </div>
       )}
 
-      {!loading && !error && data && data.digests.length > 0 && (
+      {!loading && !error && !disabled && data && data.digests.length > 0 && (
         <ul className="space-y-3">
           {data.digests.map((d) => {
             const preview = d.overall_summary.slice(0, PREVIEW_CHARS);
