@@ -1,0 +1,65 @@
+[tool.poetry]
+name = "ai-news-scraper-api"
+version = "0.1.0"
+description = "AI News Scraper — FastAPI backend (Python 3.12+)"
+authors = ["AleksNeStu"]
+license = "MIT"
+readme = "../../README.md"
+# Poetry 2.x refuses to install a project that has no `packages` declared
+# (`Error: No file/folder found for package ai-news-scraper-api`). The
+# `api/` directory holds the FastAPI app + tests, so include it as a
+# package.
+packages = [{include = "api"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+pydantic = "^2.9.0"
+pydantic-settings = "^2.6.0"
+# Required by pydantic for EmailStr fields (api/schemas/auth.py).
+# Pydantic raises ImportError at model-construction time without it.
+email-validator = "^2.2.0"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.36"}
+asyncpg = "^0.30.0"
+alembic = "^1.14.0"
+redis = {extras = ["hiredis"], version = "^5.2.0"}
+chromadb = "^0.5.20"
+openai = "^1.55.0"
+google-generativeai = "^0.8.0"
+langchain = "^0.3.7"
+langchain-openai = "^0.2.1"
+newspaper3k = "^0.2.8"
+beautifulsoup4 = "^4.12.3"
+lxml = ">=5.3,<7.0"
+# lxml 5.2 split lxml.html.clean into a separate `lxml_html_clean` package.
+# newspaper3k still imports the old path, so we install both transitively.
+# See: https://lxml.de/5.2.html
+lxml-html-clean = "^0.4.0"
+feedparser = "^6.0.11"
+apscheduler = "^3.10.4"
+pyjwt = "^2.10.0"
+bcrypt = "^4.2.0"
+python-multipart = ">=0.0.17,<0.0.33"
+httpx = "^0.28.0"
+python-dotenv = "^1.0.1"
+tenacity = "^9.0.0"
+nltk = "^3.9.1"
+aiosmtplib = "^3.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+pytest-asyncio = "^0.24.0"
+pytest-cov = ">=6,<8"
+ruff = ">=0.7.4,<0.16"
+mypy = ">=1.13,<3.0"
+respx = "^0.21.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"

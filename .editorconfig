@@ -1,0 +1,29 @@
+# EditorConfig — https://editorconfig.org
+# Root config: applies to every file unless overridden below.
+
+root = true
+
+[*]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# Python uses 4-space indent
+[*.{py,pyi}]
+indent_size = 4
+
+# Makefiles require literal tab characters
+[Makefile]
+indent_style = tab
+
+# Lock files and generated vendor files — leave as-is
+[*.{lock,lockb}]
+trim_trailing_whitespace = false
+insert_final_newline = false
+
+# Markdown: trailing whitespace is semantic (hard line breaks)
+[*.md]
+trim_trailing_whitespace = false

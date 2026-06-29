@@ -1,0 +1,46 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/apps/api"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Raised from 5 to 14: the prior backlog (PRs #10/#11/#12/#13/#14)
+    # all opened at once because the limit wasn't enough to absorb the
+    # weekly drift. New value covers the realistic upper bound (one PR
+    # per direct dependency).
+    open-pull-requests-limit: 14
+    groups:
+      python-minor:
+        update-types: ["minor", "patch"]
+      # Consolidate the python dev tools (mypy, pytest-cov, ruff) into a
+      # single PR so future weekly runs don't churn poetry.lock three
+      # times (PRs #10, #12, #13 each regenerated poetry.lock with
+      # ~3,100 lines of transitive changes).
+      python-dev-tools:
+        dependency-name:
+          - "mypy"
+          - "pytest-cov"
+          - "ruff"
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/apps/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Raised from 5 to 14 for the same reason as pip above. The
+    # web-minor group already collapses intra-package updates, but
+    # direct dependency bumps (eslint, sonner, @hookform/resolvers,
+    # @types/node) each open their own PR and the limit was hit.
+    open-pull-requests-limit: 14
+    groups:
+      web-minor:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3

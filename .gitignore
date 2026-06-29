@@ -1,103 +1,19 @@
-# Byte-compiled / optimized / DLL files
+# =====================================================
+# AI News Scraper — Monorepo .gitignore
+# Public project — keep ALL IDE / agent state out of VCS.
+#
+# PUBLIC / PRIVATE boundary: see docs/PROJECT_RULES.md.
+# Any agent or contributor must read that file before
+# deciding what to commit. The pattern below mirrors the
+# PRIVATE scope listed there.
+# =====================================================
+
+# ---------- Python ----------
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# VSCode settings and internals
-.vscode/
-.history/
-*.code-workspace
-.vscode-test/
-.vscode-insiders/
-
-# JetBrains IDE settings
-.idea/
-
-# Virtual environment
-venv/
-.env/
-.venv/
-env/
-ENV/
-
-# Environment variables / Secrets
-.env
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# Mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# Profiling data
-.prof
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# dotenv
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Logs and debug output
-logs/
-*.log
-
-# Coverage reports
-.coverage
-
-# macOS / Windows system files
-.DS_Store
-ehthumbs.db
-Icon?
-Thumbs.db
-
-# Python egg info
+.Python
 *.egg-info/
 *.egg
 dist/
@@ -110,121 +26,143 @@ develop-eggs/
 .installed.cfg
 lib/
 lib64/
-
-# PEP 582; used by python local packages
+# Next.js TypeScript source — DO NOT ignore. The global `lib/` rule above is
+# a Python build-output filter; it accidentally swallowed the Next.js source
+# lib in apps/web/src/lib/. Whitelisted here so the app's API client, auth
+# helpers, utils, and typed wrappers for AI Brief can be tracked.
+!apps/web/src/lib/
+!apps/web/src/lib/**/
 __pypackages__/
-
-# Other editor backup files
-*~ 
-*.swp
-*.swo
-
-# VSCode server (remote dev)
-.vscode-server/
-.vscode-remote/
-# Ignore only Copilot instructions, keep workflows
-.github/copilot-instructions.md
-
-
-
-# Me
-dev/
-tmp/
-out/
-
-# Vector database storage
-./data
-data/
-nltk_data/
-
-# Added by Task Master AI
-# Logs
-logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-dev-debug.log
-# Dependency directories
-node_modules/
-# Environment variables
-# Editor directories and files
-.idea
-.vscode
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-# OS specific
-# Task files
-tasks.json
-tasks/ 
-
-# TaskMaster AI generated files
-.taskmaster/tasks/
-.taskmaster/reports/
-.taskmaster/cache/
-.taskmaster/logs/
-.taskmaster/tmp/
-
-# Keep TaskMaster configuration and docs
-!.taskmaster/docs/
-!.taskmaster/config/
-!.taskmaster/templates/
-
-# New development artifacts and cache files
-*.pyc
-__pycache__/
 .pytest_cache/
-.coverage
 .mypy_cache/
-*.egg-info/
+.dmypy.json
+dmypy.json
+.pyre/
+.hypothesis/
+.coverage
+.coverage.*
+.cache
+htmlcov/
 .tox/
 .nox/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.prof
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
 
-# IDE and editor files
-.vscode/settings.json
-.vscode/launch.json
-.vscode/extensions.json
+# Virtual envs
+.venv/
+venv/
+env/
+ENV/
+.virtualenv/
+
+# ---------- Node / Next.js / pnpm ----------
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.eslintcache
+*.tsbuildinfo
+next-env.d.ts
+.next/
+out/
+.turbo/
+.vercel/
+
+# ---------- Environment & secrets ----------
+.env
+.env.*
+!.env.example
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.staging
+
+# ---------- IDE / editor ----------
+.vscode/
+.vscode-test/
+.vscode-insiders/
+.vscode-server/
+.vscode-remote/
+.history/
+*.code-workspace
 .idea/
 *.swp
 *.swo
 *~
 *.bak
 
-# OS-specific files
-.DS_Store
-Thumbs.db
-desktop.ini
-.Spotlight-V100
-.Trashes
+# ---------- AI / agent tooling (KEEP OUT — public repo) ----------
+.claude/
+CLAUDE.local.md
+CLAUDE.md
+.roomodes
+.roo/
+.windsurfrules
+.windsurf/
+.cursor/
+.aider*
+.aider.chat.history.md
+.aider.input.history
+.continue/
+.mcp.json
+**/mcp.json
 
-# Temporary and cache files
-*.tmp
-*.temp
-cache/
+# ---------- TaskMaster (fully ignored — workflow runs locally) ----------
+.taskmaster/
+
+# ---------- Personal agent notes (PRD/ADRs kept local — not for public repo) ----------
+.agent/
+
+# ---------- Internal design + research notes (not for public repo) ----------
+DESIGN.md
+docs/research/
+
+# ---------- Data & runtime artifacts ----------
+data/
+nltk_data/
+chroma_db/
+*.sqlite
+*.sqlite3
+*.db
+logs/
+*.log
+tmp/
 temp/
 .cache/
+.sass-cache/
+desktop.ini
+ehthumbs.db
+Thumbs.db
 
-# Documentation build artifacts
+# ---------- OS ----------
+.DS_Store
+.Spotlight-V100
+.Trashes
+Icon?
+.directory
+
+# ---------- Docker / build ----------
 docs/_build/
 site/
-.sass-cache/
+*.tar.gz
+*.zip
 
-# Package distribution artifacts
-dist/
-build/
-*.egg/
+# ---------- Celery (legacy, optional) ----------
+celerybeat-schedule
+celerybeat.pid
 
-# Virtual environment variations
-.venv/
-venv/
-env/
-.virtualenv/
-
-# Environment configuration variations
-.env.local
-.env.development
-.env.production
-.env.staging
-.env.test
+# TaskMaster task data (local MCP workflow state)
+tasks/
