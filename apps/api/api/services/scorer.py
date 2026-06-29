@@ -107,7 +107,12 @@ def _parse_score_response(raw: str) -> float | None:
     """
     if not raw:
         return None
-    match = re.search(r"0?\.\d+|1\.0+|0\.0+|1(?:\.0+)?", raw.strip())
+    # Match the first full number (integer or decimal), including the
+    # integer part. The previous regex `0?\.\d+|1\.0+|0\.0+|1(?:\.0+)?`
+    # silently failed on plain integers like "0" (no dot in pattern)
+    # and matched only the fractional part of out-of-range values like
+    # "1.5" (matched ".5" -> 0.5, not 1.5).
+    match = re.search(r"-?\d+(?:\.\d+)?", raw.strip())
     if not match:
         return None
     try:
