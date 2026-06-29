@@ -74,6 +74,10 @@ jobs:
       # TODO: regenerate locally with `poetry lock`, commit the lockfile,
       # and re-add --no-update for true frozen-mode parity (see 9edeaab).
       - run: poetry install --no-interaction --no-ansi
+      # Apply DB migrations before pytest so integration tests that
+      # INSERT into real tables don't fail with "relation does not exist".
+      # Migrations live in apps/api/alembic/versions/ and are idempotent.
+      - run: poetry run alembic upgrade head
       - run: poetry run pytest -v --tb=short
 
   web-build:
