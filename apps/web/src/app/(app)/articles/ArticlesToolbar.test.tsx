@@ -3,16 +3,18 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { ArticlesToolbar } from "@/app/(app)/articles/ArticlesToolbar";
 
 const replaceSpy = vi.fn();
+let mockSearch = "";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: replaceSpy }),
   usePathname: () => "/articles",
-  useSearchParams: () => new URLSearchParams(""),
+  useSearchParams: () => new URLSearchParams(mockSearch),
 }));
 
 describe("ArticlesToolbar", () => {
   beforeEach(() => {
     replaceSpy.mockReset();
+    mockSearch = "";
   });
 
   it("sets ?tier=<tier> when a chip is clicked", () => {
@@ -56,5 +58,24 @@ describe("ArticlesToolbar", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /Group by tier/i }));
     const url = String(replaceSpy.mock.calls[0]?.[0] ?? "");
     expect(url).not.toContain("group_by_tier=");
+  });
+
+  // Devil M#1, Task #9 review: filter/view changes must reset ?page.
+  it("resets ?page when a tier chip is clicked while on page 2+", () => {
+    mockSearch = "page=2";
+    render(<ArticlesToolbar activeTier={null} grouped={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Must Read" }));
+    const url = String(replaceSpy.mock.calls[0]?.[0] ?? "");
+    expect(url).toContain("tier=must_read");
+    expect(url).not.toContain("page=2");
+  });
+
+  it("resets ?page when toggling group_by_tier", () => {
+    mockSearch = "page=3";
+    render(<ArticlesToolbar activeTier={null} grouped={false} />);
+    fireEvent.click(screen.getByRole("checkbox", { name: /Group by tier/i }));
+    const url = String(replaceSpy.mock.calls[0]?.[0] ?? "");
+    expect(url).toContain("group_by_tier=true");
+    expect(url).not.toContain("page=3");
   });
 });

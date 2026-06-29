@@ -46,11 +46,13 @@ export function ArticlesToolbar({ activeTier, grouped }: { activeTier: Tier | nu
     [router, pathname, search],
   );
 
+  // Reset pagination on filter / view change — staying on page 2 of an
+  // empty filtered set is a UX bug (Devil M#1, Task #9 review).
   const onPickTier = (tier: Tier | null) => {
-    setParams({ tier: tier });
+    setParams({ tier: tier, page: null });
   };
   const onToggleGrouped = () => {
-    setParams({ group_by_tier: grouped ? null : "true" });
+    setParams({ group_by_tier: grouped ? null : "true", page: null });
   };
 
   return (
