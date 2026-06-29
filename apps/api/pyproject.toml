@@ -18,6 +18,7 @@ alembic = "^1.14.0"
 redis = {extras = ["hiredis"], version = "^5.2.0"}
 chromadb = "^0.5.20"
 openai = "^1.55.0"
+google-generativeai = "^0.8.0"
 langchain = "^0.3.7"
 langchain-openai = "^0.2.1"
 newspaper3k = "^0.2.8"
@@ -39,6 +40,7 @@ pytest-asyncio = "^0.24.0"
 pytest-cov = "^6.0.0"
 ruff = "^0.7.4"
 mypy = "^1.13.0"
+respx = "^0.21.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
