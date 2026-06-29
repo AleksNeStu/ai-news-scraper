@@ -51,8 +51,15 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     ASGITransport does not auto-run ``lifespan`` events, so we drive
     the lifespan context explicitly. Anything the app touches at
     startup will be exercised.
+
+    ``raise_app_exceptions=False`` — Starlette's ``ServerErrorMiddleware``
+    re-raises unhandled exceptions AFTER sending a 500 response (so
+    servers can log them). In test mode we want the response, not the
+    re-raise. Tests that explicitly assert exception behaviour use
+    ``pytest.raises(...)`` against ``ASGITransport(app=app)`` directly.
+    Production behaviour is unchanged — see starlette/middleware/errors.py.
     """
-    transport = ASGITransport(app=app)
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
     async with app.router.lifespan_context(app):
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             yield ac
