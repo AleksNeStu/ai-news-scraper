@@ -1,5 +1,12 @@
 'use client'
 
+// Next.js 15 requires useSearchParams() to be wrapped in <Suspense> for
+// static prerendering to work. This page reads ?token= and ?digest_id=
+// at render time, so we mark it dynamic to skip prerendering. (Wrapping
+// in <Suspense> at the page level is the alternative; this one-liner
+// avoids restructuring the whole component into a server/client split.)
+export const dynamic = 'force-dynamic'
+
 /**
  * One-click unsubscribe landing page (RFC 8058 §3.2).
  *
