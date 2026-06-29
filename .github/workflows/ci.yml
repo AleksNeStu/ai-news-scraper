@@ -5,6 +5,23 @@ on:
     branches: [dev, main]
   pull_request:
     branches: [dev, main]
+  # Manual trigger — useful when push events don't fire (e.g. branch
+  # protection interfering) or when re-running after a fix. Does not
+  # bypass the same jobs/checks that push and pull_request run.
+  workflow_dispatch:
+
+# Explicit minimal permissions. GitHub's default `GITHUB_TOKEN` is read-only
+# for `contents`, which is all this workflow needs (no deploys, no PR
+# comments, no releases). Declaring it here documents the intent and
+# protects against future accidental widening.
+permissions:
+  contents: read
+
+# Cancel in-flight runs on the same ref when a new commit lands. Saves CI
+# minutes when pushing follow-up commits before the previous run finishes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   api-lint:
@@ -72,7 +89,13 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          # Glob pattern resolves the pnpm monorepo's root lockfile
+          # regardless of which sub-package the job is running in.
+          # Plain `pnpm-lock.yaml` intermittently failed with
+          # "Some specified paths were not resolved" on setup-node v4
+          # (see actions/setup-node#490). The glob is the documented
+          # workaround.
+          cache-dependency-path: '**/pnpm-lock.yaml'
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm typecheck
