@@ -13,7 +13,7 @@ export default function DigestDetailPage() {
   const raw = params?.date ?? "";
   const date = DATE_RE.test(raw) ? raw : "";
 
-  const { data, loading, error } = useDigest(date || null);
+  const { data, loading, error, disabled } = useDigest(date || null);
 
   if (!date) {
     return <NotFoundState message="Invalid date format." />;
@@ -36,6 +36,26 @@ export default function DigestDetailPage() {
         <p className="rounded-lg border border-destructive/40 bg-canvas p-4 text-sm text-destructive">
           {error}
         </p>
+      </div>
+    );
+  }
+
+  if (disabled) {
+    return (
+      <div className="mx-auto max-w-3xl px-6 py-10">
+        <Link
+          href="/dashboard/brief"
+          className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to briefs
+        </Link>
+        <div className="rounded-lg border border-dashed border-border bg-canvas/50 p-10 text-center">
+          <Newspaper className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+          <h2 className="font-medium">Daily briefs are temporarily unavailable</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            We're working on it — check back soon.
+          </p>
+        </div>
       </div>
     );
   }

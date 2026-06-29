@@ -21,7 +21,15 @@ from alembic import context
 # Importing the models registers them on Base.metadata, which is what
 # autogenerate walks to produce migrations. Keep this list exhaustive.
 from api.db.database import Base  # noqa: E402
-from api.models import Article, Feed, FeedItem, User  # noqa: E402,F401
+from api.models import (  # noqa: E402,F401
+    Article,
+    Digest,
+    DigestUnsubscribeLog,
+    Feed,
+    FeedItem,
+    Notification,
+    User,
+)
 
 # --- Alembic config ---------------------------------------------------
 config = context.config
