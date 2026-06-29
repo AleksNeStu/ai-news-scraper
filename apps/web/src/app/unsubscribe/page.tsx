@@ -76,18 +76,20 @@ export default function UnsubscribePage() {
         <div className="mt-8 w-full">
           {phase.kind === "idle" || phase.kind === "pending" ? (
             <p className="text-sm text-muted-foreground">Working on it…</p>
-          ) : phase.kind === "ok" && phase.unsubscribed ? (
-            <SuccessCard
-              title="You've been unsubscribed"
-              body="No more daily briefs will be emailed to you. You can still view them in the dashboard."
-              at={phase.at}
-            />
-          ) : phase.kind === "ok" && !phase.unsubscribed ? (
-            <SuccessCard
-              title="You were already unsubscribed"
-              at={phase.at}
-              body="No further action needed — the link in your email is still valid, but your preference is already set."
-            />
+          ) : phase.kind === "ok" ? (
+            phase.unsubscribed ? (
+              <SuccessCard
+                title="You've been unsubscribed"
+                body="No more daily briefs will be emailed to you. You can still view them in the dashboard."
+                at={phase.at}
+              />
+            ) : (
+              <SuccessCard
+                title="You were already unsubscribed"
+                at={phase.at}
+                body="No further action needed — the link in your email is still valid, but your preference is already set."
+              />
+            )
           ) : (
             <ErrorCard message={phase.message} />
           )}

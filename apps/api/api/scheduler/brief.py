@@ -1,4 +1,4 @@
-"""APScheduler bridge for the AI Brief cron (Task #8, ADR-012 §12.3).
+"""APScheduler bridge for the AI Brief cron (Task #8, ADR-012 §12.3 + §12.10).
 
 The brief fires daily at 08:00 in the user's local timezone. Because
 APScheduler's ``BackgroundScheduler`` runs jobs in a *thread* but we
@@ -11,11 +11,21 @@ For the v1 scope this module ships a single per-user daily job plus a
 hand-rolled ``run_for_user(user_id, for_date)`` entry point the
 router can hit directly while we are still building out the end-to-end
 delivery path.
+
+M5 / ADR-012 §12.10 — cron logging contract: every callback sets the
+shared ``_request_id_var`` ContextVar (defined in
+``api.middleware.logging``) to a per-job value
+``cron-<uuid12>`` for the duration of the job and emits
+``extra={"job_id": ...}`` on the start / end / error log lines so
+log-search-to-job is a one-step lookup. The ContextVar wrap is the
+same one ``RequestIDMiddleware`` uses for HTTP requests, so the
+JSON formatter picks the id up automatically.
 """
 
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import date, datetime, time, timezone
 from typing import Any
 from uuid import UUID
@@ -24,7 +34,9 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
 
+from api.config import get_settings
 from api.db.database import AsyncSessionLocal
+from api.middleware.logging import _request_id_var
 from api.models.user import User
 from api.services.digest import generate_digest
 
@@ -43,6 +55,10 @@ class BriefScheduler:
 
     * ``await scheduler.start()`` — called from the FastAPI lifespan
       startup hook. Must NOT run at import time (test safety).
+      Refuses to start when ``settings.effective_digest_enabled`` is
+      ``False`` (M6 — defensive depth: callers can also gate this in
+      main.py, but the class itself checks so it is safe to use
+      directly in tests / scripts).
     * ``await scheduler.stop()`` — called from the lifespan shutdown.
     * ``scheduler.run_for_user(user_id, for_date)`` — ad-hoc entry
       point for the router and the scheduler tick itself.
@@ -58,17 +74,31 @@ class BriefScheduler:
         """Create the scheduler, register the daily tick, start the loop."""
         if self._sched is not None:
             return
+        s = get_settings()
+        # M6 — defensive: refuse to schedule when the brief subsystem is
+        # disabled. ``main.py`` already gates this, but the class checks
+        # too so it is safe to instantiate outside the lifespan.
+        if not s.effective_digest_enabled:
+            logger.warning(
+                "BriefScheduler: digest disabled "
+                "(settings.effective_digest_enabled=False); not started"
+            )
+            return
         sched = AsyncIOScheduler(timezone="UTC")
         # Master daily tick: 08:00 UTC. The tick body iterates users and
         # computes the per-user 08:00 from each user's stored tz. We keep
         # the master on UTC to avoid the DST gotcha documented in
         # ADR-012 §12.9 (the user-local hour is computed inside the job).
+        # ``from_crontab("0 8 * * *")`` mirrors the spec notation
+        # verbatim. ``misfire_grace_time=300`` (5 min) — the spec value;
+        # anything longer would mean a worker restart fires back-to-back
+        # catch-ups.
         sched.add_job(
             self._daily_tick,
-            CronTrigger(hour=8, minute=0),
+            CronTrigger.from_crontab("0 8 * * *"),
             id="brief-daily-tick",
             replace_existing=True,
-            misfire_grace_time=3600,
+            misfire_grace_time=300,
         )
         sched.start()
         self._sched = sched
@@ -96,30 +126,42 @@ class BriefScheduler:
             res = await session.execute(select(User.id))
             user_ids = [row[0] for row in res.all()]
         for uid in user_ids:
-            try:
-                await self.run_for_user(uid, today_utc)
-            except Exception:  # noqa: BLE001 — one user must not break the rest
-                logger.exception(
-                    "BriefScheduler: per-user run failed",
-                    extra={"user_id": str(uid), "for_date": today_utc.isoformat()},
-                )
-                # Re-raise is intentionally avoided — partial progress
-                # beats a single failure aborting the whole batch.
+            await self.run_for_user(uid, today_utc)
 
     async def run_for_user(self, user_id: UUID, for_date: date) -> Any:
-        """Run one (user, date) digest. Returns the persisted ``Digest``."""
-        async with AsyncSessionLocal() as session:
-            row = await generate_digest(session, user_id, for_date)
+        """Run one (user, date) digest. Returns the persisted ``Digest``.
+
+        M5 / ADR-012 §12.10: sets the request-id ContextVar to
+        ``cron-<uuid12>`` for the lifetime of the job and emits
+        ``extra={"job_id": ...}`` on start / end / error log lines.
+        Per-user failures are caught and logged but NOT re-raised —
+        partial progress beats aborting the whole batch.
+        """
+        job_id = f"digest-{user_id}-{for_date.isoformat()}"
+        rid = f"cron-{uuid.uuid4().hex[:12]}"
+        token = _request_id_var.set(rid)
+        logger.info("digest job start", extra={"job_id": job_id})
+        try:
+            async with AsyncSessionLocal() as session:
+                row = await generate_digest(session, user_id, for_date)
             logger.info(
-                "BriefScheduler: generated digest",
+                "digest job end",
                 extra={
-                    "user_id": str(user_id),
+                    "job_id": job_id,
                     "digest_id": str(row.id),
-                    "for_date": for_date.isoformat(),
                     "delivery_status": row.delivery_status,
                 },
             )
             return row
+        except Exception:  # noqa: BLE001 — per-user failure isolation
+            logger.exception(
+                "digest job failed",
+                extra={"job_id": job_id},
+            )
+            # Re-raise intentionally avoided — see _daily_tick note.
+            return None
+        finally:
+            _request_id_var.reset(token)
 
 
 # ---------------------------------------------------------------------------
