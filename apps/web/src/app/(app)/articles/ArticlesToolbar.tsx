@@ -14,6 +14,7 @@
  */
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { Route } from "next";
 import { useCallback } from "react";
 import { cn } from "@/lib/utils";
 import type { Tier } from "@ai-news-scraper/shared";
@@ -41,7 +42,12 @@ export function ArticlesToolbar({ activeTier, grouped }: { activeTier: Tier | nu
         else params.set(k, v);
       }
       const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      // typedRoutes requires a known Route literal; the dynamic
+      // `pathname` + querystring is not statically known, so we cast.
+      // Safe because the pathname comes from usePathname() — the typed
+      // routes feature only blocks bogus strings, not real ones.
+      const url = (qs ? `${pathname}?${qs}` : pathname) as Route;
+      router.replace(url, { scroll: false });
     },
     [router, pathname, search],
   );
