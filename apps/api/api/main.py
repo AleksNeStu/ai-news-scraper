@@ -40,21 +40,27 @@ async def lifespan(app: FastAPI):
     logger.info("API starting up (env=%s)", _settings.app_env)
     # AI Brief scheduler — Task #8 / ADR-012 §12.3 + §12.11. Created
     # inside lifespan (NOT at import time) so test imports don't start
-    # a background tick. Gated on `effective_digest_enabled` AND on the
-    # OpenAI key being real (not the placeholder). When disabled, the
-    # /digest router is also not mounted (see module-level below).
-    scheduler: BriefScheduler | None = None
-    if not _settings.effective_digest_enabled:
+    # a background tick. The cron is gated on ``digest_enabled`` and
+    # on the OpenAI key being real (not the placeholder). Per M6, the
+    # OPENAI-key downgrade flips a local ``digest_enabled`` var for the
+    # rest of the lifespan — the cached ``_settings`` is NOT mutated, so
+    # other consumers (pydantic dump, health endpoints) keep seeing the
+    # original config value. The router mount at module-level below uses
+    # the same effective check.
+    digest_enabled = _settings.effective_digest_enabled
+    if digest_enabled and not _settings.openai_key_usable:
+        logger.warning(
+            "openai_api_key missing/placeholder; downgrading "
+            "digest_enabled=False for this session; scheduler NOT started"
+        )
+        digest_enabled = False
+    elif not digest_enabled:
         logger.warning(
             "digest disabled (settings.effective_digest_enabled=False); "
-            "scheduler NOT started, /digest router NOT mounted"
+            "scheduler NOT started"
         )
-    elif not _settings.openai_key_usable:
-        logger.warning(
-            "openai_api_key missing/placeholder; downgrading digest_enabled=False "
-            "for this session; scheduler NOT started, /digest router NOT mounted"
-        )
-    else:
+    scheduler: BriefScheduler | None = None
+    if digest_enabled:
         scheduler = BriefScheduler()
         await scheduler.start()
     try:
