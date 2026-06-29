@@ -33,6 +33,7 @@ httpx = "^0.28.0"
 python-dotenv = "^1.0.1"
 tenacity = "^9.0.0"
 nltk = "^3.9.1"
+aiosmtplib = "^3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
