@@ -30,6 +30,12 @@ export interface Article {
   scored_at: string | null;
 }
 
+/** Web-side alias for the API's `ArticleOut` Pydantic schema. Identical
+ * shape to `Article`; kept distinct so web code can express "I'm
+ * expecting an Article from a `/articles/...` endpoint" without
+ * inventing a new type. */
+export type ArticleOut = Article;
+
 export interface ArticleListResponse {
   items: Article[];
   total: number;
