@@ -6,6 +6,11 @@
 
 export type ID = string;
 
+/** Curation tier for an article (Task #9). Derived from `Article.score`
+ * via `tier_from_score`; mirrored from the Python `Literal[...]` in
+ * `apps/api/api/schemas/article.py`. */
+export type Tier = 'must_read' | 'recommended' | 'worth_a_look' | 'low_priority';
+
 export interface Article {
   id: ID;
   url: string;
@@ -17,6 +22,12 @@ export interface Article {
   publish_date: string | null;
   indexed_at: string;
   user_id: ID | null;
+  /** LLM relevance score, 0.0..1.0. `null` when never scored. */
+  score: number | null;
+  /** Curation tier derived from `score`; `null` when never scored. */
+  tier: Tier | null;
+  /** When `score` was last computed (ISO 8601 UTC); `null` when never scored. */
+  scored_at: string | null;
 }
 
 export interface ArticleListResponse {

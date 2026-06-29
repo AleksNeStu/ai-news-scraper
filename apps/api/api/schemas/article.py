@@ -1,10 +1,14 @@
 """Article / scrape schemas."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+
+# Tier literal — mirrored from packages/shared/src/types.ts (ADR-013 §13.4).
+# Used by both the response schema and the router query-param parser.
+TierLiteral = Literal["must_read", "recommended", "worth_a_look", "low_priority"]
 
 
 class ArticleOut(BaseModel):
@@ -24,6 +28,13 @@ class ArticleOut(BaseModel):
     source_domain: Optional[str] = None
     publish_date: Optional[datetime] = None
     indexed_at: datetime
+    # Task #9 / ADR-013 §13.4 — tiered curation. All three fields are
+    # NULL until the first successful ``score_article`` call; the
+    # front-end ScoreRing renders an empty ring when ``score`` is null
+    # (ADR-013 §13.3 — never a 0.0 ring that lies).
+    score: Optional[float] = None
+    tier: Optional[TierLiteral] = None
+    scored_at: Optional[datetime] = None
 
 
 class ArticleListResponse(BaseModel):

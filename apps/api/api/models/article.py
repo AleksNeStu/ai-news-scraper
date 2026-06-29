@@ -3,7 +3,16 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ARRAY, DateTime, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    ARRAY,
+    DateTime,
+    Float,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -35,6 +44,17 @@ class Article(Base):
     indexed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
+    # Task #9 / ADR-013 §13.4 — tiered curation columns.
+    # ``score`` is 0.0..1.0; ``scored_at`` is when the score was last computed;
+    # ``tier`` is the denormalized bucket (must_read / recommended /
+    # worth_a_look / low_priority) so the composite index in the migration
+    # stays usable for ``WHERE tier = ?`` filters. All three are NULL until
+    # the first successful ``score_article`` call.
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    scored_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    tier: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
     user = relationship("User", back_populates="articles")
     feed_items = relationship("FeedItem", back_populates="article")
