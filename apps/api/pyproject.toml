@@ -5,6 +5,11 @@ description = "AI News Scraper — FastAPI backend (Python 3.12+)"
 authors = ["AleksNeStu"]
 license = "MIT"
 readme = "../../README.md"
+# Poetry 2.x refuses to install a project that has no `packages` declared
+# (`Error: No file/folder found for package ai-news-scraper-api`). The
+# `api/` directory holds the FastAPI app + tests, so include it as a
+# package.
+packages = [{include = "api"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
