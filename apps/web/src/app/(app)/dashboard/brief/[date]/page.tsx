@@ -1,22 +1,22 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { useParams } from "next/navigation";
-import { ArrowLeft, ExternalLink, Newspaper } from "lucide-react";
-import { useDigest } from "@/hooks/useDigest";
-import type { DigestSection } from "@ai-news-scraper/shared";
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+import { ArrowLeft, ExternalLink, Newspaper } from 'lucide-react'
+import { useDigest } from '@/hooks/useDigest'
+import type { DigestSection } from '@ai-news-scraper/shared'
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 export default function DigestDetailPage() {
-  const params = useParams<{ date: string }>();
-  const raw = params?.date ?? "";
-  const date = DATE_RE.test(raw) ? raw : "";
+  const params = useParams<{ date: string }>()
+  const raw = params?.date ?? ''
+  const date = DATE_RE.test(raw) ? raw : ''
 
-  const { data, loading, error, disabled } = useDigest(date || null);
+  const { data, loading, error, disabled } = useDigest(date || null)
 
   if (!date) {
-    return <NotFoundState message="Invalid date format." />;
+    return <NotFoundState message="Invalid date format." />
   }
 
   if (loading) {
@@ -27,7 +27,7 @@ export default function DigestDetailPage() {
         <div className="skeleton h-32 w-full rounded-lg" />
         <div className="skeleton h-32 w-full rounded-lg" />
       </div>
-    );
+    )
   }
 
   if (error) {
@@ -37,7 +37,7 @@ export default function DigestDetailPage() {
           {error}
         </p>
       </div>
-    );
+    )
   }
 
   if (disabled) {
@@ -53,15 +53,15 @@ export default function DigestDetailPage() {
           <Newspaper className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
           <h2 className="font-medium">Daily briefs are temporarily unavailable</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            We're working on it — check back soon.
+            We&apos;re working on it — check back soon.
           </p>
         </div>
       </div>
-    );
+    )
   }
 
   if (!data) {
-    return <NotFoundState date={date} />;
+    return <NotFoundState date={date} />
   }
 
   return (
@@ -76,7 +76,7 @@ export default function DigestDetailPage() {
       <header className="mb-8">
         <h1 className="headline-serif text-3xl">{formatLongDate(data.for_date)}</h1>
         <div className="mt-2 text-xs uppercase tracking-wider text-muted-foreground">
-          Daily brief · {data.sections.length} {data.sections.length === 1 ? "section" : "sections"}
+          Daily brief · {data.sections.length} {data.sections.length === 1 ? 'section' : 'sections'}
         </div>
       </header>
 
@@ -104,7 +104,7 @@ export default function DigestDetailPage() {
         </section>
       )}
     </article>
-  );
+  )
 }
 
 function DigestSectionCard({ section }: { section: DigestSection }) {
@@ -117,7 +117,7 @@ function DigestSectionCard({ section }: { section: DigestSection }) {
         <h3 className="headline-serif text-xl">{section.topic}</h3>
         {section.article_ids.length > 0 && (
           <span className="shrink-0 text-xs text-muted-foreground">
-            {section.article_ids.length} {section.article_ids.length === 1 ? "source" : "sources"}
+            {section.article_ids.length} {section.article_ids.length === 1 ? 'source' : 'sources'}
           </span>
         )}
       </div>
@@ -144,7 +144,7 @@ function DigestSectionCard({ section }: { section: DigestSection }) {
         </div>
       )}
     </section>
-  );
+  )
 }
 
 function NotFoundState({ date, message }: { date?: string; message?: string }) {
@@ -159,19 +159,22 @@ function NotFoundState({ date, message }: { date?: string; message?: string }) {
       <div className="rounded-lg border border-dashed border-border bg-canvas/50 p-10 text-center">
         <Newspaper className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
         <h2 className="font-medium">
-          {message ?? (date ? `No brief for ${formatLongDate(date)}` : "No brief")}
+          {message ?? (date ? `No brief for ${formatLongDate(date)}` : 'No brief')}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Digests are generated each morning at 08:00 (your local time).
         </p>
       </div>
     </div>
-  );
+  )
 }
 
 function formatLongDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`);
+  const d = new Date(`${iso}T00:00:00Z`)
   return d.toLocaleDateString(undefined, {
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
-  });
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
 }
