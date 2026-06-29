@@ -26,6 +26,12 @@ develop-eggs/
 .installed.cfg
 lib/
 lib64/
+# Next.js TypeScript source — DO NOT ignore. The global `lib/` rule above is
+# a Python build-output filter; it accidentally swallowed the Next.js source
+# lib in apps/web/src/lib/. Whitelisted here so the app's API client, auth
+# helpers, utils, and typed wrappers for AI Brief can be tracked.
+!apps/web/src/lib/
+!apps/web/src/lib/**/
 __pypackages__/
 .pytest_cache/
 .mypy_cache/
