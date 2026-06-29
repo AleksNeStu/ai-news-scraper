@@ -103,14 +103,13 @@ cd apps/api && poetry run ruff check .
 cd apps/web && pnpm lint && pnpm typecheck
 ```
 
-See [`AGENTS.md`](AGENTS.md) for agent-specific guidance and [`CONTRIBUTING.md`](CONTRIBUTING.md) for the PR process.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the PR process.
 
 ## 📚 Documentation
 
 | File | What |
 |---|---|
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Public contributing guide, PR process, commit convention |
-| [`AGENTS.md`](AGENTS.md) | AI agent guidance (Claude Code, Cursor, Aider, etc.) |
 | [`docs/PROJECT_RULES.md`](docs/PROJECT_RULES.md) | **Hard rules** — public/private boundary, git hygiene, branch discipline |
 | [`docs/PRD.md`](docs/PRD.md) | Product requirements (legacy v2.0) |
 | [`docs/CI-CD.md`](docs/CI-CD.md) | CI/CD documentation |
