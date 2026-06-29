@@ -87,6 +87,14 @@ export interface Feed {
   created_at: string;
 }
 
+/** Web-side alias for the API's `FeedOut` Pydantic schema. */
+export type FeedOut = Feed;
+
+export interface FeedListResponse {
+  items: Feed[];
+  total: number;
+}
+
 export interface FeedItem {
   id: ID;
   feed_id: ID;
@@ -96,6 +104,9 @@ export interface FeedItem {
   url: string;
   fetched_at: string;
 }
+
+/** Web-side alias for the API's `FeedItemOut` Pydantic schema. */
+export type FeedItemOut = FeedItem;
 
 export interface User {
   id: ID;
