@@ -165,7 +165,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     Behaviour:
 
     * If the request carries an ``X-Request-ID`` header that matches
-      ``^[A-Za-z0-9._\-]{1,64}$``, adopt it as-is.
+      ``^[A-Za-z0-9._-]{1,64}$``, adopt it as-is.
     * Otherwise (missing, malformed, or > 64 chars) mint a fresh
       ``uuid.uuid4().hex`` (32-char lowercase hex).
     * Stash the chosen ID in ``_request_id_var`` for the duration of the
