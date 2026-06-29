@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.config import get_settings
 from api.db.database import get_db
 from api.deps import get_current_user_id
 from api.models.article import Article
@@ -19,18 +18,11 @@ from api.services.vector_store import ChromaVectorStore
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/scrape", tags=["scrape"])
-_settings = get_settings()
 
 # Service singletons (init in lifespan; reuse)
 _scraper = ArticleScraper()
-_summarizer = ArticleSummarizer(
-    api_key=_settings.openai_api_key, model=_settings.openai_model
-)
-_embedder = ArticleEmbedder(
-    api_key=_settings.openai_api_key,
-    model=_settings.openai_embedding_model,
-    dimensions=_settings.embedding_dimensions,
-)
+_summarizer = ArticleSummarizer()
+_embedder = ArticleEmbedder()
 _vector_store = ChromaVectorStore()
 
 

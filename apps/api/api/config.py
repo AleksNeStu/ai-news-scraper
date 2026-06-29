@@ -45,6 +45,17 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     openai_embedding_model: str = "text-embedding-3-small"
     anthropic_api_key: str = ""
+    # Multi-provider selection (ADR-011 §11.5) — defaults to deepseek
+    # (cheapest direct chat path). ``openai_*`` keys above are kept
+    # for backward compatibility; the active provider is selected by
+    # ``LLM_PROVIDER`` and reads its key from the matching per-provider
+    # field below.
+    llm_provider: Literal["deepseek", "gemini", "openrouter"] = "deepseek"
+    llm_model: str | None = None  # override; otherwise provider default
+    deepseek_api_key: str = ""
+    gemini_api_key: str = ""
+    google_api_key: str = ""  # mirror, see ~/.claude/CLAUDE.md TaskMaster config
+    openrouter_api_key: str = ""
     embedding_dimensions: int = 1536
 
     # Auth
