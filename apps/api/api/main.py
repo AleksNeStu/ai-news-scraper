@@ -14,7 +14,17 @@ from api.middleware.logging import (
     configure_logging,
     get_request_id,
 )
-from api.routers import articles, auth, feeds, health, scrape, search
+from api.routers import (
+    articles,
+    auth,
+    digest,
+    feeds,
+    health,
+    notifications,
+    scrape,
+    search,
+)
+from api.scheduler.brief import BriefScheduler
 
 logger = logging.getLogger(__name__)
 _settings = get_settings()
@@ -28,8 +38,31 @@ async def lifespan(app: FastAPI):
     # ``configure_logging`` so we don't double-emit.
     configure_logging(_settings.log_level)
     logger.info("API starting up (env=%s)", _settings.app_env)
-    yield
-    logger.info("API shutting down")
+    # AI Brief scheduler — Task #8 / ADR-012 §12.3 + §12.11. Created
+    # inside lifespan (NOT at import time) so test imports don't start
+    # a background tick. Gated on `effective_digest_enabled` AND on the
+    # OpenAI key being real (not the placeholder). When disabled, the
+    # /digest router is also not mounted (see module-level below).
+    scheduler: BriefScheduler | None = None
+    if not _settings.effective_digest_enabled:
+        logger.warning(
+            "digest disabled (settings.effective_digest_enabled=False); "
+            "scheduler NOT started, /digest router NOT mounted"
+        )
+    elif not _settings.openai_key_usable:
+        logger.warning(
+            "openai_api_key missing/placeholder; downgrading digest_enabled=False "
+            "for this session; scheduler NOT started, /digest router NOT mounted"
+        )
+    else:
+        scheduler = BriefScheduler()
+        await scheduler.start()
+    try:
+        yield
+    finally:
+        if scheduler is not None:
+            await scheduler.stop()
+        logger.info("API shutting down")
 
 
 app = FastAPI(
@@ -183,10 +216,20 @@ def _title_for_status(status_code: int) -> str:
     }.get(status_code, "HTTP error")
 
 
-# Routers
+# Routers — auth/articles/scrape/search/feeds/health/notifications are
+# unconditional. The `/digest` router is gated on the same condition as
+# the scheduler (ADR-012 §12.11): when disabled or the OpenAI key is
+# missing, the endpoints 404 because the router simply isn't mounted.
+# `/notifications` is NOT gated — notifications are independent of the
+# brief pipeline.
 app.include_router(auth.router)
 app.include_router(articles.router)
 app.include_router(scrape.router)
 app.include_router(search.router)
 app.include_router(feeds.router)
 app.include_router(health.router)
+app.include_router(notifications.router)
+if _settings.effective_digest_enabled and _settings.openai_key_usable:
+    app.include_router(digest.router)
+else:
+    logger.warning("digest router NOT mounted (disabled or openai_api_key missing)")

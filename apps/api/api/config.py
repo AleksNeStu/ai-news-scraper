@@ -73,6 +73,39 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:3000"]
     )
 
+    # SMTP (Task #8 / ADR-012 §12.6) — outbound email transport.
+    # When ``smtp_host`` is unset the email worker logs and bails,
+    # leaving the digest ``delivery_status = "notified"`` (in-app only).
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+
+    # AI Brief (Task #8 / ADR-012 §12.11) — kill switches for the cron
+    # + router mount. ``digest_enabled`` is the primary setting;
+    # ``BRIEF_DISABLED=1`` env is a back-compat alias.
+    digest_enabled: bool = True
+    brief_disabled: bool = False
+
+    # RFC 8058 unsubscribe JWT secret (HS256). MUST be set in production;
+    # the unsubscribe endpoint refuses to mint tokens otherwise.
+    unsubscribe_jwt_secret: str = ""
+
+    @property
+    def effective_digest_enabled(self) -> bool:
+        """True iff the brief subsystem is allowed to start.
+
+        Both ``DIGEST_ENABLED=true`` AND ``BRIEF_DISABLED`` unset are
+        required. Used by lifespan to gate the cron AND the router mount.
+        """
+        return self.digest_enabled and not self.brief_disabled
+
+    @property
+    def openai_key_usable(self) -> bool:
+        """True iff ``OPENAI_API_KEY`` looks real (not the placeholder)."""
+        return self.openai_api_key not in ("", "sk-replace-me", None)
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
