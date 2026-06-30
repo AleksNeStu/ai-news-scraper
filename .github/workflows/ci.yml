@@ -68,12 +68,12 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install poetry
-      # NOTE: poetry.lock is not currently committed to this repo (no
-      # network access in dev sandboxes to generate it locally). We let
-      # CI generate it on first run via `poetry install` (no --no-update).
-      # TODO: regenerate locally with `poetry lock`, commit the lockfile,
-      # and re-add --no-update for true frozen-mode parity (see 9edeaab).
-      - run: poetry install --no-interaction --no-ansi
+      # Strict frozen-mode parity with pnpm's --frozen-lockfile (see
+      # 9edeaab). The lockfile is now committed, so any drift between
+      # pyproject.toml and poetry.lock fails the build instead of being
+      # silently resolved. Regenerate with `poetry lock` when network
+      # is available.
+      - run: poetry install --no-interaction --no-ansi --no-update
       # Apply DB migrations before pytest so integration tests that
       # INSERT into real tables don't fail with "relation does not exist".
       # Migrations live in apps/api/alembic/versions/ and are idempotent.
@@ -102,12 +102,10 @@ jobs:
           # (see actions/setup-node#490). The glob is the documented
           # workaround.
           cache-dependency-path: '**/pnpm-lock.yaml'
-      # Allow pnpm to update the lockfile on install. The Dependabot
-      # bumps only touch package.json; squash-merging discards the
-      # lockfile updates from the PR commits, so --frozen-lockfile
-      # would fail. Regenerate locally with `pnpm install --lockfile-only`
-      # and commit the lockfile to restore frozen-mode parity.
-      - run: pnpm install --no-frozen-lockfile
+      # Strict frozen-mode parity: any drift between package.json and
+      # pnpm-lock.yaml fails the build. Regenerate with
+      # `pnpm install --lockfile-only` when network is available.
+      - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm lint
