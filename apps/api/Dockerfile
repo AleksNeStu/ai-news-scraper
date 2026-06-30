@@ -8,7 +8,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     POETRY_HOME=/opt/poetry \
-    POETRY_VERSION=1.8.4
+    # Aligned with CI: ci.yml runs `pip install poetry` which always
+    # picks up the latest. Pin to 2.x so the Docker build matches
+    # what GitHub Actions installs (Poetry 1.8 silently tolerated
+    # the duplicate asyncpg dep that Poetry 2.x rejects — see
+    # commit 15eb638 for context).
+    POETRY_VERSION=2.1.3
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
