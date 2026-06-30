@@ -10,6 +10,13 @@ Key fixtures:
 Requires a reachable Postgres at ``$DATABASE_URL``. If the DB is
 unavailable the fixtures fail loudly so the missing service is
 obvious — never silently skip.
+
+Note on engine choice: the production ``engine`` (api.db.database) uses
+a connection pool sized for concurrent traffic. That pool holds
+connections bound to whichever event loop first used them, which
+breaks pytest-asyncio's per-test event loop. We build a
+``test_engine`` with ``NullPool`` so each connection is opened and
+closed within the calling event loop — no cross-loop reuse.
 """
 
 from __future__ import annotations
@@ -19,32 +26,61 @@ from typing import Any
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.pool import NullPool
 
-from api.db.database import AsyncSessionLocal, engine
+from api.config import get_settings
 from api.main import app
 from api.models.user import User
 from api.services.auth import create_token, hash_password
 
+_settings = get_settings()
 
-@pytest_asyncio.fixture(scope="function")
+# Test engine: NullPool (no pooling) so connections are scoped to a
+# single event loop. Created once at module import — pytest-asyncio
+# gives the fixture a function-scoped loop to run on, and NullPool
+# keeps each connection from outliving that loop.
+test_engine = create_async_engine(
+    _settings.database_url,
+    echo=False,
+    poolclass=NullPool,
+)
+TestAsyncSessionLocal = async_sessionmaker(
+    bind=test_engine,
+    expire_on_commit=False,
+    class_=AsyncSession,
+)
+
+
+@pytest_asyncio.fixture(scope="function", loop_scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Per-test DB session with transactional rollback.
 
     Opens a connection, begins a transaction, and binds a session to
     it. The transaction is rolled back at the end so tests never leak
     rows and never need DROP/CREATE.
+
+    ``loop_scope="function"`` aligns the fixture's event loop with the
+    test body's loop. The ``test_engine`` uses ``NullPool`` so each
+    ``engine.connect()`` creates a fresh connection bound to the
+    current event loop (the production pool would hold connections
+    across loops, raising 'Task ... got Future ... attached to a
+    different loop').
     """
-    async with engine.connect() as connection:
+    async with test_engine.connect() as connection:
         await connection.begin()
-        async with AsyncSessionLocal(bind=connection) as session:
+        async with TestAsyncSessionLocal(bind=connection) as session:
             try:
                 yield session
             finally:
                 await connection.rollback()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function", loop_scope="function")
 async def client() -> AsyncGenerator[AsyncClient, None]:
     """Lifespan-aware httpx AsyncClient against the FastAPI app.
 
@@ -65,7 +101,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
             yield ac
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function", loop_scope="function")
 async def auth_user(
     db_session: AsyncSession,
 ) -> AsyncGenerator[dict[str, Any], None]:
