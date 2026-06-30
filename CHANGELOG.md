@@ -5,6 +5,25 @@ All notable changes to **AI News Search** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Pre-release note (2026-06-30)
+
+The current `main` is tagged **`v0.1.0-pre`** to mark the monorepo
+as **pre-release** despite the `[0.1.0] - 2026-06-28` entry below
+calling it v0.1.0. Reasoning: the CHANGELOG entry was written before
+the migration was complete. The actual public v0.1.0 will be tagged
+when:
+
+- Web UI feature set matches the PRD
+- All 3 CI jobs green on `main` (achieved 2026-06-30)
+- The 4 pre-existing test failures are resolved (achieved 2026-06-30)
+
+All three gates are now met, so a follow-up release is imminent.
+Track progress on the [Releases page](https://github.com/AleksNeStu/ai-news-scraper/releases).
+
+The previous Stacklit + flat-structure era is preserved on the
+`legacy/streamlit` branch and tagged `v0.0.0-streamlit-final`. See
+README → Releases for the table.
+
 ## [Unreleased]
 
 ### Added
