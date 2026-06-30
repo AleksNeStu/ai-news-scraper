@@ -1,4 +1,4 @@
-"use client";
+'use client'
 
 /**
  * Top-right header bell. Shows unread count badge and a dropdown of the 10
@@ -10,47 +10,47 @@
  *   - First item is auto-focused on open for screen-reader handoff.
  */
 
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { Bell } from "lucide-react";
-import { useNotifications } from "@/hooks/useNotifications";
-import type { Notification } from "@ai-news-scraper/shared";
-import { cn } from "@/lib/utils";
+import Link from 'next/link'
+import { useEffect, useRef, useState } from 'react'
+import { Bell } from 'lucide-react'
+import { useNotifications } from '@/hooks/useNotifications'
+import type { Notification } from '@ai-news-scraper/shared'
+import { cn } from '@/lib/utils'
 
-const DROPDOWN_LIMIT = 10;
+const DROPDOWN_LIMIT = 10
 
 export function NotificationBell() {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const firstItemRef = useRef<HTMLAnchorElement | HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const firstItemRef = useRef<HTMLAnchorElement | HTMLButtonElement | null>(null)
 
-  const { data, markRead } = useNotifications({ limit: DROPDOWN_LIMIT });
+  const { data, markRead } = useNotifications({ limit: DROPDOWN_LIMIT })
   // Unread count derived from the polled list (the server returns up to 50,
   // so `unread` here is an accurate count for the dropdown window).
-  const unread = data.filter((n) => !n.read).length;
+  const unread = data.filter((n) => !n.read).length
 
   // Close on click outside / Escape.
   useEffect(() => {
-    if (!open) return;
+    if (!open) return
     function onDown(e: MouseEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === 'Escape') setOpen(false)
     }
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
     // Move focus into the dropdown on open.
-    firstItemRef.current?.focus();
+    firstItemRef.current?.focus()
     return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
 
   function onItemClick(n: Notification) {
-    if (!n.read) void markRead(n.id);
-    setOpen(false);
+    if (!n.read) void markRead(n.id)
+    setOpen(false)
   }
 
   return (
@@ -62,8 +62,8 @@ export function NotificationBell() {
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-primary/40",
-          open && "border-primary/40 text-foreground",
+          'relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-primary/40',
+          open && 'border-primary/40 text-foreground'
         )}
       >
         <Bell className="h-4 w-4" />
@@ -72,7 +72,7 @@ export function NotificationBell() {
             aria-hidden="true"
             className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-destructive px-1 text-[10px] font-semibold leading-[18px] text-destructive-foreground"
           >
-            {unread > 99 ? "99+" : unread}
+            {unread > 99 ? '99+' : unread}
           </span>
         )}
       </button>
@@ -87,29 +87,41 @@ export function NotificationBell() {
             Recent notifications
           </div>
           {data.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-muted-foreground">No new notifications</p>
+            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+              No new notifications
+            </p>
           ) : (
             <ul className="max-h-96 overflow-y-auto">
               {data.slice(0, DROPDOWN_LIMIT).map((n, i) => {
-                const isFirst = i === 0;
+                const isFirst = i === 0
                 const body = (
                   <>
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className={cn("line-clamp-1 text-sm font-medium", !n.read && "text-foreground")}>
+                      <span
+                        className={cn(
+                          'line-clamp-1 text-sm font-medium',
+                          !n.read && 'text-foreground'
+                        )}
+                      >
                         {n.title}
                       </span>
                       {!n.read && (
-                        <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-primary" />
+                        <span
+                          aria-hidden="true"
+                          className="h-2 w-2 shrink-0 rounded-full bg-primary"
+                        />
                       )}
                     </div>
                     <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{n.preview}</p>
                   </>
-                );
+                )
                 if (n.href) {
                   return (
                     <li key={n.id}>
                       <Link
-                        ref={isFirst ? (firstItemRef as React.RefObject<HTMLAnchorElement>) : undefined}
+                        ref={
+                          isFirst ? (firstItemRef as React.RefObject<HTMLAnchorElement>) : undefined
+                        }
                         href={n.href}
                         role="menuitem"
                         onClick={() => onItemClick(n)}
@@ -118,12 +130,14 @@ export function NotificationBell() {
                         {body}
                       </Link>
                     </li>
-                  );
+                  )
                 }
                 return (
                   <li key={n.id}>
                     <button
-                      ref={isFirst ? (firstItemRef as React.RefObject<HTMLButtonElement>) : undefined}
+                      ref={
+                        isFirst ? (firstItemRef as React.RefObject<HTMLButtonElement>) : undefined
+                      }
                       type="button"
                       role="menuitem"
                       onClick={() => onItemClick(n)}
@@ -132,7 +146,7 @@ export function NotificationBell() {
                       {body}
                     </button>
                   </li>
-                );
+                )
               })}
             </ul>
           )}
@@ -148,5 +162,5 @@ export function NotificationBell() {
         </div>
       )}
     </div>
-  );
+  )
 }
