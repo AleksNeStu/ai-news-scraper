@@ -10,41 +10,41 @@
  * surfaced in user-facing copy, never thrown.
  */
 
-import Link from "next/link";
-import { listArticles, topInTier } from "@/lib/api/articles";
-import { formatRelative } from "@/lib/utils";
-import { ScoreRing } from "@/components/ScoreRing";
-import type { Article, Tier } from "@ai-news-scraper/shared";
+import Link from 'next/link'
+import { listArticles, topInTier } from '@/lib/api/articles'
+import { formatRelative } from '@/lib/utils'
+import { ScoreRing } from '@/components/ScoreRing'
+import type { Article, Tier } from '@ai-news-scraper/shared'
 
-const HERO_LIMIT = 3;
-const SECTION_LIMIT = 5;
+const HERO_LIMIT = 3
+const SECTION_LIMIT = 5
 
 const TIER_HEADINGS: Record<Tier, string> = {
-  must_read: "Must Read",
-  recommended: "Recommended",
-  worth_a_look: "Worth a Look",
-  low_priority: "Low Priority",
-};
+  must_read: 'Must Read',
+  recommended: 'Recommended',
+  worth_a_look: 'Worth a Look',
+  low_priority: 'Low Priority',
+}
 
-export const revalidate = 300;
+export const revalidate = 300
 
-type Fetched = Awaited<ReturnType<typeof listArticles>>;
+type Fetched = Awaited<ReturnType<typeof listArticles>>
 async function safeFetch(opts: Parameters<typeof listArticles>[0]): Promise<Fetched> {
-  return listArticles(opts).catch(() => ({ items: [], total: 0, page: 1, page_size: 0 }));
+  return listArticles(opts).catch(() => ({ items: [], total: 0, page: 1, page_size: 0 }))
 }
 
 export default async function DashboardPage() {
   // Three independent fetches — all hit the same backend endpoint with
   // different `tier` filters. Server Components await in parallel by default.
   const [must_read, recommended, worth_a_look] = await Promise.all([
-    safeFetch({ tier: "must_read", pageSize: HERO_LIMIT }),
-    safeFetch({ tier: "recommended", pageSize: SECTION_LIMIT }),
-    safeFetch({ tier: "worth_a_look", pageSize: SECTION_LIMIT }),
-  ]);
+    safeFetch({ tier: 'must_read', pageSize: HERO_LIMIT }),
+    safeFetch({ tier: 'recommended', pageSize: SECTION_LIMIT }),
+    safeFetch({ tier: 'worth_a_look', pageSize: SECTION_LIMIT }),
+  ])
 
-  const hero = must_read.items.slice(0, HERO_LIMIT);
-  const recommendedList = topInTier(recommended.items, "recommended", SECTION_LIMIT);
-  const worthALookList = topInTier(worth_a_look.items, "worth_a_look", SECTION_LIMIT);
+  const hero = must_read.items.slice(0, HERO_LIMIT)
+  const recommendedList = topInTier(recommended.items, 'recommended', SECTION_LIMIT)
+  const worthALookList = topInTier(worth_a_look.items, 'worth_a_look', SECTION_LIMIT)
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -64,7 +64,10 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <section aria-labelledby="hero-heading" className="mb-10">
-          <h2 id="hero-heading" className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2
+            id="hero-heading"
+            className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground"
+          >
             Must Read
           </h2>
           <div className="grid gap-4 md:grid-cols-3">
@@ -75,14 +78,10 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {recommendedList.length > 0 && (
-        <TierSection tier="recommended" items={recommendedList} />
-      )}
-      {worthALookList.length > 0 && (
-        <TierSection tier="worth_a_look" items={worthALookList} />
-      )}
+      {recommendedList.length > 0 && <TierSection tier="recommended" items={recommendedList} />}
+      {worthALookList.length > 0 && <TierSection tier="worth_a_look" items={worthALookList} />}
     </main>
-  );
+  )
 }
 
 function HeroCard({ article }: { article: Article }) {
@@ -92,12 +91,7 @@ function HeroCard({ article }: { article: Article }) {
       className="flex flex-col gap-3 rounded-lg border border-border bg-canvas p-5 transition hover:border-primary/40"
     >
       <div className="flex items-center gap-3">
-        <ScoreRing
-          score={article.score}
-          tier={article.tier}
-          size="md"
-          showLabel
-        />
+        <ScoreRing score={article.score} tier={article.tier} size="md" showLabel />
         <span className="text-xs text-muted-foreground">{article.source_domain}</span>
       </div>
       <h3 className="headline-serif text-lg">{article.headline ?? article.url}</h3>
@@ -106,7 +100,7 @@ function HeroCard({ article }: { article: Article }) {
       )}
       <span className="mt-auto text-xs text-primary">Read →</span>
     </Link>
-  );
+  )
 }
 
 function TierSection({ tier, items }: { tier: Tier; items: Article[] }) {
@@ -116,7 +110,9 @@ function TierSection({ tier, items }: { tier: Tier; items: Article[] }) {
         <h2 id={`section-${tier}`} className="text-lg font-semibold headline-serif">
           {TIER_HEADINGS[tier]}
         </h2>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{items.length}</span>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+          {items.length}
+        </span>
       </header>
       <ul className="space-y-3">
         {items.map((a) => (
@@ -144,5 +140,5 @@ function TierSection({ tier, items }: { tier: Tier; items: Article[] }) {
         ))}
       </ul>
     </section>
-  );
+  )
 }
