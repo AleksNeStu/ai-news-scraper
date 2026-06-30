@@ -17,12 +17,5 @@
       { "prefer": "type-imports", "fixStyle": "inline-type-imports" }
     ]
   },
-  "ignorePatterns": [
-    "node_modules/",
-    ".next/",
-    "out/",
-    "dist/",
-    "coverage/",
-    "next-env.d.ts"
-  ]
+  "ignorePatterns": ["node_modules/", ".next/", "out/", "dist/", "coverage/", "next-env.d.ts"]
 }

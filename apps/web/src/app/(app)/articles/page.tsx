@@ -1,28 +1,30 @@
-import Link from "next/link";
-import { listArticles } from "@/lib/api/articles";
-import { formatRelative } from "@/lib/utils";
-import { ScoreRing } from "@/components/ScoreRing";
-import { ArticlesToolbar } from "@/app/(app)/articles/ArticlesToolbar";
-import { TIER_HEADINGS, TIER_ORDER, bucketByTier, isTier } from "@/app/(app)/articles/buckets";
-import type { Article } from "@ai-news-scraper/shared";
+import Link from 'next/link'
+import { listArticles } from '@/lib/api/articles'
+import { formatRelative } from '@/lib/utils'
+import { ScoreRing } from '@/components/ScoreRing'
+import { ArticlesToolbar } from '@/app/(app)/articles/ArticlesToolbar'
+import { TIER_HEADINGS, TIER_ORDER, bucketByTier, isTier } from '@/app/(app)/articles/buckets'
+import type { Article } from '@ai-news-scraper/shared'
 
 export default async function ArticlesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; tier?: string; group_by_tier?: string }>;
+  searchParams: Promise<{ page?: string; tier?: string; group_by_tier?: string }>
 }) {
-  const { page = "1", tier, group_by_tier } = await searchParams;
-  const grouped = group_by_tier === "true";
-  const activeTier = isTier(tier) ? tier : null;
-  const empty = { items: [] as Article[], total: 0, page: 1, page_size: 20 };
+  const { page = '1', tier, group_by_tier } = await searchParams
+  const grouped = group_by_tier === 'true'
+  const activeTier = isTier(tier) ? tier : null
+  const empty = { items: [] as Article[], total: 0, page: 1, page_size: 20 }
 
   const data = grouped
-    ? await listArticles({ page: Number(page) || 1, pageSize: 20, groupByTier: true }).catch(() => empty)
+    ? await listArticles({ page: Number(page) || 1, pageSize: 20, groupByTier: true }).catch(
+        () => empty
+      )
     : await listArticles({
         page: Number(page) || 1,
         pageSize: 20,
         tier: activeTier ?? undefined,
-      }).catch(() => empty);
+      }).catch(() => empty)
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -37,7 +39,7 @@ export default async function ArticlesPage({
         <FlatList items={data.items} />
       )}
     </main>
-  );
+  )
 }
 
 function FlatList({ items }: { items: Article[] }) {
@@ -47,15 +49,15 @@ function FlatList({ items }: { items: Article[] }) {
         <ArticleRow key={a.id} article={a} />
       ))}
     </ul>
-  );
+  )
 }
 
 function GroupedView({ items }: { items: Article[] }) {
-  const buckets = bucketByTier(items);
+  const buckets = bucketByTier(items)
   return (
     <div className="space-y-8">
       {TIER_ORDER.map((t) => {
-        const list = buckets[t];
+        const list = buckets[t]
         return (
           <section key={t} aria-labelledby={`tier-${t}`}>
             <header className="mb-3 flex items-baseline justify-between">
@@ -66,7 +68,8 @@ function GroupedView({ items }: { items: Article[] }) {
             </header>
             {list.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No {TIER_HEADINGS[t].toLowerCase()} articles yet — check back as we score incoming articles.
+                No {TIER_HEADINGS[t].toLowerCase()} articles yet — check back as we score incoming
+                articles.
               </p>
             ) : (
               <ul className="space-y-3">
@@ -76,10 +79,10 @@ function GroupedView({ items }: { items: Article[] }) {
               </ul>
             )}
           </section>
-        );
+        )
       })}
     </div>
-  );
+  )
 }
 
 function ArticleRow({ article }: { article: Article }) {
@@ -115,5 +118,5 @@ function ArticleRow({ article }: { article: Article }) {
         </div>
       </Link>
     </li>
-  );
+  )
 }
