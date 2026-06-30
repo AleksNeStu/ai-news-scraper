@@ -120,7 +120,6 @@ async def test_list_notifications_cursor_respects_limit(db_session) -> None:
     user = await _make_user(db_session, "n-limit@example.com")
     base = datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc)
     # Three items at 0/10/20 minutes; cursor at the newest.
-    n_oldest = _make_notification(db_session, user, created_at=base)
     n_middle = _make_notification(db_session, user, created_at=base + timedelta(minutes=10))
     n_newest = _make_notification(db_session, user, created_at=base + timedelta(minutes=20))
     await db_session.flush()
