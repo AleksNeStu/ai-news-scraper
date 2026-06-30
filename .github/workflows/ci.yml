@@ -79,7 +79,11 @@ jobs:
       # pyproject.toml and poetry.lock fails the build instead of being
       # silently resolved. Regenerate with `poetry lock` when network
       # is available.
-      - run: python -m poetry install --no-interaction --no-ansi --no-update
+      # Strict frozen-mode parity. In Poetry 2.x, `poetry install`
+      # refuses to proceed if pyproject.toml has drifted from
+      # poetry.lock (the equivalent of pnpm's --frozen-lockfile
+      # is built in — no extra flag needed).
+      - run: python -m poetry install --no-interaction --no-ansi
       # Apply DB migrations before pytest so integration tests that
       # INSERT into real tables don't fail with "relation does not exist".
       # Migrations live in apps/api/alembic/versions/ and are idempotent.
