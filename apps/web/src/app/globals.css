@@ -3,7 +3,7 @@
    News/data-feel palette (see DESIGN.md)
    ===================================================== */
 
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme inline {
   --color-background: hsl(222 47% 6%);
@@ -12,9 +12,9 @@
   --color-surface: hsl(222 32% 13%);
   --color-border: hsl(222 20% 22%);
 
-  --color-primary: hsl(187 92% 55%);          /* electric cyan */
+  --color-primary: hsl(187 92% 55%); /* electric cyan */
   --color-primary-foreground: hsl(222 47% 6%);
-  --color-secondary: hsl(192 80% 35%);       /* muted teal */
+  --color-secondary: hsl(192 80% 35%); /* muted teal */
   --color-secondary-foreground: hsl(60 20% 92%);
 
   --color-muted: hsl(222 30% 18%);
@@ -23,9 +23,9 @@
   --color-accent: hsl(187 92% 55%);
   --color-accent-foreground: hsl(222 47% 6%);
 
-  --color-destructive: hsl(38 92% 55%);      /* amber, not red */
+  --color-destructive: hsl(38 92% 55%); /* amber, not red */
   --color-destructive-foreground: hsl(222 47% 6%);
-  --color-success: hsl(160 84% 45%);          /* emerald */
+  --color-success: hsl(160 84% 45%); /* emerald */
 
   --radius: 0.5rem;
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
@@ -33,24 +33,59 @@
   --font-serif: var(--font-fraunces), Georgia, serif;
 }
 
-html, body { height: 100%; }
+html,
+body {
+  height: 100%;
+}
 
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
-  font-feature-settings: "rlig" 1, "calt" 1;
+  font-feature-settings:
+    'rlig' 1,
+    'calt' 1;
 }
 
 /* Editorial accent for article headlines */
-.headline-serif { font-family: var(--font-serif); font-weight: 600; letter-spacing: -0.02em; }
+.headline-serif {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
 
 /* Scrollbar — data-feel */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--color-canvas); }
-::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 5px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-muted-foreground); }
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-canvas);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
 
 /* Skeleton shimmer for loading states */
-@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-.skeleton { background: linear-gradient(90deg, var(--color-surface) 25%, var(--color-muted) 50%, var(--color-surface) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; }
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    var(--color-muted) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
