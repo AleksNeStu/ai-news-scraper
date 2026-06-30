@@ -6,8 +6,16 @@
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python%203.12-009688)](https://fastapi.tiangolo.com)
 [![ChromaDB](https://img.shields.io/badge/vector-ChromaDB-orange)](https://www.trychroma.com)
+[![version v0.1.0-pre](https://img.shields.io/badge/version-v0.1.0--pre-yellow)](https://github.com/AleksNeStu/ai-news-scraper/releases/tag/v0.1.0-pre)
 
 ---
+
+> ⚠️ **Pre-release** — this monorepo is tagged `v0.1.0-pre`.
+> API is stable; web UI feature work is in progress. Pin to
+> `v0.1.0-pre` (or a later tag) for reproducible builds. For the
+> previous Streamlit-based stack, see the [`legacy/streamlit`
+> branch](https://github.com/AleksNeStu/ai-news-scraper/tree/legacy/streamlit)
+> or tag [`v0.0.0-streamlit-final`](https://github.com/AleksNeStu/ai-news-scraper/releases/tag/v0.0.0-streamlit-final).
 
 ## What is this?
 
@@ -20,6 +28,15 @@ AI News Search is a **personal semantic news library**:
 - **Public OSS** — MIT license, this repo doubles as a portfolio signal.
 
 See [`docs/PROJECT_RULES.md`](docs/PROJECT_RULES.md) for the public/private boundary policy.
+
+## 📦 Releases
+
+| Tag | Date | What |
+|---|---|---|
+| [`v0.1.0-pre`](https://github.com/AleksNeStu/ai-news-scraper/releases/tag/v0.1.0-pre) | 2026-06-30 | First public monorepo (Next.js 16 + FastAPI). Pre-release: API stable, UI WIP. |
+| [`v0.0.0-streamlit-final`](https://github.com/AleksNeStu/ai-news-scraper/releases/tag/v0.0.0-streamlit-final) | 2025-05-07 | Final commit of the Streamlit + flat-structure era (`legacy/streamlit` branch). Frozen, not maintained. |
+
+See [Releases](https://github.com/AleksNeStu/ai-news-scraper/releases) for the full list.
 
 ## 🚀 Quick Start
 
