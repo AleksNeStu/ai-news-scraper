@@ -230,10 +230,18 @@ async def test_generate_digest_idempotent_per_user_date(
     """
     user = await _make_user(db_session, email="d1@example.com")
     base = datetime(2026, 6, 29, 9, 0, tzinfo=timezone.utc)
+    # Two articles so cluster_user_articles runs the LLM fast path
+    # is skipped (single-article). With one article, the LLM clustering
+    # call is short-circuited, so we'd only see 2 calls (clustering +
+    # section + overall). Two articles exercise the full pipeline:
+    # 1 clustering + 1 section + 1 overall = 3 calls.
     _make_article(db_session, user, headline="X", indexed_at=base)
+    _make_article(db_session, user, headline="Y", indexed_at=base)
     await db_session.flush()
 
-    clustering_response = json.dumps([{"topic": "Topic A", "article_indices": [0]}])
+    clustering_response = json.dumps(
+        [{"topic": "Topic A", "article_indices": [0, 1]}]
+    )
     section_response = "Brief prose for the single cluster."
     overall_response = "Overall brief prose."
 
