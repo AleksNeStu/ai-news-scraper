@@ -67,7 +67,10 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - run: pip install poetry
+      # Pin Poetry 2.x — the --no-update flag (needed for frozen-mode
+      # parity with pnpm's --frozen-lockfile) was added in 2.0. Poetry
+      # 1.x silently ignored it, leading to surprise lockfile drift.
+      - run: pip install 'poetry>=2.0,<3.0'
       # Strict frozen-mode parity with pnpm's --frozen-lockfile (see
       # 9edeaab). The lockfile is now committed, so any drift between
       # pyproject.toml and poetry.lock fails the build instead of being
