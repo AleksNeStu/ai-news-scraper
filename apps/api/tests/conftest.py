@@ -27,13 +27,20 @@ from api.models.user import User
 from api.services.auth import create_token, hash_password
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function", loop_scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Per-test DB session with transactional rollback.
 
     Opens a connection, begins a transaction, and binds a session to
     it. The transaction is rolled back at the end so tests never leak
     rows and never need DROP/CREATE.
+
+    ``loop_scope="function"`` aligns the fixture's event loop with the
+    test body's loop so shared resources (engine connection, session)
+    work across the setup/teardown boundary. pytest-asyncio 0.23+
+    introduced per-fixture loop scoping; without this argument,
+    fixtures default to their own loop scope and raise
+    'Task ... got Future ... attached to a different loop'.
     """
     async with engine.connect() as connection:
         await connection.begin()
@@ -44,7 +51,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
                 await connection.rollback()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function", loop_scope="function")
 async def client() -> AsyncGenerator[AsyncClient, None]:
     """Lifespan-aware httpx AsyncClient against the FastAPI app.
 
@@ -65,7 +72,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
             yield ac
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function", loop_scope="function")
 async def auth_user(
     db_session: AsyncSession,
 ) -> AsyncGenerator[dict[str, Any], None]:
