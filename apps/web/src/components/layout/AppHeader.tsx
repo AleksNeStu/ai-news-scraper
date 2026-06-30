@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { Route } from 'next'
 import { Newspaper, Search, Rss, Settings, LogOut } from 'lucide-react'
 import { logoutAction } from '@/lib/auth'
 import { NotificationBell } from '@/components/NotificationBell'
@@ -58,7 +59,7 @@ function NavLink({
 }) {
   return (
     <Link
-      href={href}
+      href={href as Route}
       className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-surface hover:text-foreground"
     >
       {icon} {children}

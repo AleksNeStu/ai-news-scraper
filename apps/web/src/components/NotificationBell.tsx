@@ -11,6 +11,7 @@
  */
 
 import Link from 'next/link'
+import type { Route } from 'next'
 import { useEffect, useRef, useState } from 'react'
 import { Bell } from 'lucide-react'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -122,7 +123,7 @@ export function NotificationBell() {
                         ref={
                           isFirst ? (firstItemRef as React.RefObject<HTMLAnchorElement>) : undefined
                         }
-                        href={n.href}
+                        href={n.href as Route}
                         role="menuitem"
                         onClick={() => onItemClick(n)}
                         className="block px-4 py-3 hover:bg-surface focus:bg-surface focus:outline-none"

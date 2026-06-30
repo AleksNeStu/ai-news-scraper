@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { Route } from 'next'
 import { api } from '@/lib/api'
 import { AppHeader } from '@/components/layout/AppHeader'
 import type { ArticleListResponse, FeedListResponse } from '@ai-news-scraper/shared'
@@ -49,7 +50,7 @@ export default async function DashboardPage() {
               articles.items.map((a) => (
                 <Link
                   key={a.id}
-                  href={`/articles/${a.id}`}
+                  href={`/articles/${a.id}` as Route}
                   className="block rounded-lg border border-border bg-canvas p-4 transition hover:border-primary/40"
                 >
                   <div className="flex items-baseline justify-between gap-3">
@@ -74,7 +75,7 @@ export default async function DashboardPage() {
 function StatCard({ label, value, href }: { label: string; value: number; href: string }) {
   return (
     <Link
-      href={href}
+      href={href as Route}
       className="rounded-lg border border-border bg-canvas p-5 transition hover:border-primary/40"
     >
       <div className="text-3xl font-semibold tabular-nums text-primary">{value}</div>
@@ -97,7 +98,7 @@ function EmptyState({
       <h4 className="font-medium">{title}</h4>
       <p className="mt-1 text-sm text-muted-foreground">{body}</p>
       <Link
-        href={cta.href}
+        href={cta.href as Route}
         className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
       >
         {cta.label}
