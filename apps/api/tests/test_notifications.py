@@ -90,19 +90,44 @@ async def test_list_notifications_unread_only(db_session) -> None:
 
 @pytest.mark.asyncio
 async def test_list_notifications_cursor_advances(db_session) -> None:
-    """Older-than-cursor filters out newer-than-cursor items."""
+    """Cursor excludes items at-or-newer than itself; older items remain.
+
+    Cursor semantics: strict-less-than on ``created_at`` (the cursor
+    timestamp is excluded). With default limit=50, all items strictly
+    older than the cursor come back, newest-first. The pagination
+    boundary is correctness of the WHERE clause, not the LIMIT.
+    """
     user = await _make_user(db_session, "n3@example.com")
     base = datetime(2026, 6, 29, 9, 0, tzinfo=timezone.utc)
     n1 = _make_notification(db_session, user, created_at=base)
     n2 = _make_notification(db_session, user, created_at=base + timedelta(minutes=10))
     n3 = _make_notification(db_session, user, created_at=base + timedelta(minutes=20))
     await db_session.flush()
-    # Newest-first; cursor at n3.created_at should yield [n2].
+    # Newest-first; cursor at n3.created_at returns [n2, n1] (both
+    # strictly older than n3). n3 itself is excluded by the cursor.
     rows = await list_notifications(db_session, user.id, cursor=n3.created_at)
     ids = [r.id for r in rows]
-    assert n2.id in ids
-    assert n3.id not in ids
-    assert n1.id not in ids
+    assert n3.id not in ids  # cursor item excluded
+    assert n2.id in ids      # newer-of-the-older items
+    assert n1.id in ids      # older item still qualifies
+    # Ordering: newest-of-the-older first.
+    assert ids == [n2.id, n1.id]
+
+
+@pytest.mark.asyncio
+async def test_list_notifications_cursor_respects_limit(db_session) -> None:
+    """Cursor + explicit limit returns up to ``limit`` older items, newest-first."""
+    user = await _make_user(db_session, "n-limit@example.com")
+    base = datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc)
+    # Three items at 0/10/20 minutes; cursor at the newest.
+    n_oldest = _make_notification(db_session, user, created_at=base)
+    n_middle = _make_notification(db_session, user, created_at=base + timedelta(minutes=10))
+    n_newest = _make_notification(db_session, user, created_at=base + timedelta(minutes=20))
+    await db_session.flush()
+    rows = await list_notifications(
+        db_session, user.id, cursor=n_newest.created_at, limit=1
+    )
+    assert [r.id for r in rows] == [n_middle.id]
 
 
 # ---------------------------------------------------------------------------
