@@ -1,4 +1,4 @@
-import { AppHeader } from "@/components/layout/AppHeader";
+import { AppHeader } from '@/components/layout/AppHeader'
 
 export default function AppGroupLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -6,5 +6,5 @@ export default function AppGroupLayout({ children }: { children: React.ReactNode
       <AppHeader />
       {children}
     </main>
-  );
+  )
 }
