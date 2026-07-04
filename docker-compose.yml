@@ -1,6 +1,20 @@
 # =====================================================
 # AI News Scraper — docker compose for local dev
 # =====================================================
+#
+# First-time setup is fully automatic: `migrate` runs Alembic upgrade
+# head then applies seed.sql, and the `api` service waits for it via
+# `service_completed_successfully`. After that, the full stack comes up
+# with one dev user (`alex@example.com` / `dev-only-do-not-use-in-prod`),
+# two RSS feeds, four articles, and four feed_items already loaded —
+# a fresh clone needs only `docker compose up`.
+#
+# Bind mounts on `api` and `web` are dev-only (live host-edit of source
+# without rebuilding). Production shape (Option A from
+# .agent/adr/014-deploy-target.md) drops these; ADR-014 §14.7 lists the
+# other prod-time hardening items (mem_limit, prod-env footguns, etc.)
+# out of scope for this change.
+# =====================================================
 
 services:
   db:
@@ -29,15 +43,47 @@ services:
       - "6379:6379"
     volumes:
       - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   chromadb:
-    image: chromadb/chroma:latest
+    # Pinned to 0.5.20 to match `chromadb = "^0.5.20"` in
+    # apps/api/pyproject.toml. Pinning note: chromadb v1.5.7+ removed
+    # `curl` from the image, breaking the cookbook-recommended
+    # healthcheck (chroma-core/chroma#6855). The 0.5.x line is what the
+    # Python client is built against.
+    image: chromadb/chroma:0.5.20
     container_name: ai-news-chroma
     restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
       - chromadata:/chroma/chroma
+
+  migrate:
+    # One-shot init: Alembic upgrade head, then apply seed.sql
+    # (idempotent — every INSERT uses ON CONFLICT DO NOTHING). api waits
+    # for this with `service_completed_successfully`. Re-runs on every
+    # `docker compose up`; both steps are no-ops if already at head.
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: ai-news-api:migrate
+    container_name: ai-news-migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/ai_news
+    command: ["sh", "-c", "alembic upgrade head && python -m api.scripts.seed"]
+    working_dir: /app/apps/api
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
+    restart: "no"
 
   api:
     build:
@@ -49,21 +95,44 @@ services:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       chromadb:
         condition: service_started
+      migrate:
+        condition: service_completed_successfully
     environment:
+      APP_ENV: development
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      API_HOST: 0.0.0.0
+      API_PORT: "8082"
+      API_INTERNAL_URL: http://api:8082
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/ai_news
+      DATABASE_URL_SYNC: postgresql://postgres:postgres@db:5432/ai_news
       REDIS_URL: redis://redis:6379/0
       CHROMA_HOST: chromadb
       CHROMA_PORT: "8000"
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # UNSUBSCRIBE_JWT_SECRET defaults to empty in config.py, which causes
+      # /unsubscribe to 500 (Devil's G3 / ADR-014 §14.7). Provide a dev
+      # placeholder so the digest-unsubscribe endpoint works locally.
+      UNSUBSCRIBE_JWT_SECRET: ${UNSUBSCRIBE_JWT_SECRET:-dev-unsubscribe-secret-change-me}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
       - "8082:8082"
     volumes:
+      # Dev-only bind mounts — live-edit source without rebuilding.
       - ./apps/api:/app/apps/api
       - ./packages:/app/packages
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request as u; u.urlopen('http://localhost:8082/health', timeout=2).read()"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   web:
     build:
@@ -79,8 +148,17 @@ services:
     ports:
       - "3000:3000"
     volumes:
+      # Dev-only bind mount — see api note.
       - ./apps/web:/app/apps/web
       - ./packages:/app/packages
+    healthcheck:
+      # node:22-alpine ships busybox `wget`. /api/backend/health rewrite
+      # is on the server side; the index route is enough for liveness.
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
   pgdata:
