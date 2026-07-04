@@ -74,7 +74,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AI News Search API",
     version="0.1.0",
-    description="Backend for AI News Scraper — Next.js 16 + FastAPI monorepo.",
+    description="Backend for AI News Scraper — Next.js 15 + FastAPI monorepo.",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",

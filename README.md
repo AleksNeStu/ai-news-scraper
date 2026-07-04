@@ -1,9 +1,9 @@
 # 📰 AI News Search
 
-> Scrape, summarize, and semantically search your personal news library. FastAPI + Next.js 16 + ChromaDB monorepo.
+> Scrape, summarize, and semantically search your personal news library. FastAPI + Next.js 15 + ChromaDB monorepo.
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Next.js 16](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
+[![Next.js 15](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python%203.12-009688)](https://fastapi.tiangolo.com)
 [![ChromaDB](https://img.shields.io/badge/vector-ChromaDB-orange)](https://www.trychroma.com)
 
@@ -40,7 +40,7 @@ That's it — Postgres + Redis + ChromaDB + API + Web come up together. Register
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Next.js 16 (App Router)         localhost:3000 │
+│  Next.js 15 (App Router)         localhost:3000 │
 │  • /scrape   • /search   • /articles            │
 │  • /feeds    • /settings • /login  • /register │
 └────────────────┬────────────────────────────────┘
@@ -60,7 +60,7 @@ Monorepo layout:
 ```
 apps/
 ├── api/          FastAPI backend (port 8082)
-└── web/          Next.js 16 frontend (port 3000)
+└── web/          Next.js 15 frontend (port 3000)
 packages/
 └── shared/       TS types shared between api + web
 docs/             Project documentation
@@ -71,7 +71,7 @@ docs/             Project documentation
 
 | Layer | Choice |
 |---|---|
-| Frontend | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui |
+| Frontend | Next.js 15, React 19, TypeScript, Tailwind v4, shadcn/ui |
 | Backend | FastAPI, Pydantic v2, SQLAlchemy 2.x async, asyncpg |
 | Vector DB | ChromaDB (persistent, metadata filtering) |
 | RDB | Postgres 16 |
