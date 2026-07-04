@@ -1,0 +1,86 @@
+[
+  {
+    "id": "aaaaaaaa-0000-0000-0000-000000000001",
+    "url": "https://hnrss.org/newest/item-001",
+    "headline": "Show HN: A faster async Python ORM built on top of SQLAlchemy 2.0",
+    "summary": "A solo developer published a thin async wrapper around SQLAlchemy 2.0 that promises 30 percent faster bulk inserts by bypassing the unit-of-work pattern and streaming rows directly to asyncpg. Early benchmarks on a 1M-row dataset show a 1.4x speedup at the cost of an opinionated API surface. The author has open-sourced the project and is asking for feedback on whether to upstream the ideas into SQLAlchemy itself or keep it as a separate package.",
+    "topics": ["python", "sqlalchemy", "orm", "async", "performance", "open-source", "databases"]
+  },
+  {
+    "id": "aaaaaaaa-0000-0000-0000-000000000002",
+    "url": "https://hnrss.org/newest/item-002",
+    "headline": "Postgres 17 adds logical replication failover slots",
+    "summary": "Postgres 17 ships a long-awaited feature: failover-enabled logical replication slots. Operators can now promote a standby without losing replication state, closing a gap that has forced many shops to script their own failover flows. The release also tightens the contract around replication origin tracking, making it safer to mix physical and logical replication in the same cluster.",
+    "topics": ["postgres", "databases", "replication", "devops", "reliability", "release-notes"]
+  },
+  {
+    "id": "aaaaaaaa-0000-0000-0000-000000000003",
+    "url": "https://www.theverge.com/item-003",
+    "headline": "OpenAI unveils a smaller, cheaper embedding model aimed at retrieval-heavy apps",
+    "summary": "OpenAI introduced a new embedding model positioned between text-embedding-3-small and text-embedding-3-large. The new tier targets retrieval-augmented generation pipelines that need higher fidelity than the small model offers but cannot justify the cost or latency of the large one. Pricing lands at roughly half the cost of the large model, with a 256-dimension option for teams that want to compress vector storage further.",
+    "topics": ["openai", "embeddings", "rag", "ai", "llm", "retrieval", "pricing", "vector-search"]
+  },
+  {
+    "id": "aaaaaaaa-0000-0000-0000-000000000004",
+    "url": "https://www.theverge.com/item-004",
+    "headline": "Apple silicon Macs now officially boot Fedora Asahi Remix 41",
+    "summary": "The Asahi Linux project released Fedora Asahi Remix 41, the first distribution to ship full mainline kernel support for M3-series Apple silicon. The release includes GPU drivers that accelerate Wayland compositing and a working Wi-Fi stack. It is a milestone for hobbyists who want a fully open-source operating system on Mac hardware without giving up modern chipsets.",
+    "topics": ["linux", "apple", "fedora", "asahi", "open-source", "hardware", "drivers"]
+  },
+  {
+    "id": "aaaaaaaa-0000-0000-0000-000000000005",
+    "url": "https://hnrss.org/newest/item-005",
+    "headline": "Django 5.1 ships async ORM by default",
+    "summary": "Django 5.1 promotes the async ORM from experimental to default-on. Querysets now expose async iteration natively, and the admin uses async views for list pages. The release notes call out a 2x throughput improvement on I/O-bound views, with a small caveat around connection pool sizing under sustained load.",
+    "topics": ["python", "django", "orm", "async", "web-framework", "release-notes"]
+  },
+  {
+    "id": "aaaaaaaa-0000-0000-0000-000000000006",
+    "url": "https://www.theverge.com/item-006",
+    "headline": "MySQL 9.0 adds native vector type for similarity search",
+    "summary": "MySQL 9.0 ships a native vector column type backed by HNSW indexes. Operators can now run k-nearest-neighbor queries inside MySQL without bolting on a separate vector database. Benchmarks from Oracle's team show comparable recall to a standalone vector DB on datasets under 10M rows; performance degrades past that scale, and Oracle recommends a separate store for larger workloads.",
+    "topics": ["mysql", "databases", "vector-search", "ai", "release-notes", "hnsw"]
+  },
+  {
+    "id": "aaaaaaaa-0000-0000-0000-000000000007",
+    "url": "https://hnrss.org/newest/item-007",
+    "headline": "Anthropic publishes Claude 3.5 pricing breakdown",
+    "summary": "Anthropic published a public pricing matrix for the Claude 3.5 family. The Sonnet tier lands at three dollars per million input tokens, undercutting GPT-4o on a per-token basis while matching it on coding benchmarks. The Opus tier remains substantially more expensive, and Anthropic is positioning Sonnet as the default for production workloads.",
+    "topics": ["anthropic", "claude", "llm", "pricing", "ai"]
+  },
+  {
+    "id": "aaaaaaaa-0000-0000-0000-000000000008",
+    "url": "https://www.theverge.com/item-008",
+    "headline": "Pinecone launches serverless vector database",
+    "summary": "Pinecone announced a fully serverless vector database tier with per-query billing. The free tier covers up to one million vectors and 10,000 queries per month. Compared to self-hosted ChromaDB, Pinecone's serverless tier trades higher per-query cost for zero infrastructure overhead and built-in replication.",
+    "topics": ["pinecone", "vector-search", "databases", "serverless", "ai"]
+  },
+  {
+    "id": "aaaaaaaa-0000-0000-0000-000000000009",
+    "url": "https://hnrss.org/newest/item-009",
+    "headline": "Raspberry Pi 5 benchmarks show 3x CPU uplift over Pi 4",
+    "summary": "Independent benchmarks of the Raspberry Pi 5's Broadcom BCM2712 SoC show a roughly 3x single-thread CPU uplift over the Pi 4. Multi-thread gains are smaller, around 2.2x, limited by the chip's four cores. Real-world workloads that were CPU-bound on the Pi 4 — image processing, lightweight compilers, and small language model inference — now fit comfortably in the headroom.",
+    "topics": ["raspberry-pi", "hardware", "benchmarks", "open-source"]
+  },
+  {
+    "id": "aaaaaaaa-0000-0000-0000-000000000010",
+    "url": "https://www.theverge.com/item-010",
+    "headline": "Ubuntu 24.10 introduces immutable desktop variant",
+    "summary": "Ubuntu 24.10 ships an immutable desktop variant where the root filesystem is a read-only OSTree snapshot. Updates apply atomically and roll back automatically on boot failure. The variant targets developers who want to reproduce their workstation setup across machines and IT shops that need to lock down endpoints without abandoning apt entirely.",
+    "topics": ["ubuntu", "linux", "release-notes", "immutable", "open-source"]
+  },
+  {
+    "id": "aaaaaaaa-0000-0000-0000-000000000011",
+    "url": "https://hnrss.org/newest/item-011",
+    "headline": "FastAPI 0.115 simplifies dependency injection typing",
+    "summary": "FastAPI 0.115 relaxes the dependency injection type system: callable dependencies no longer require an explicit TypeAdapter wrapper, and Annotated-based generics are now first-class. The release also ships a faster route-resolution path that the maintainers say cuts per-request overhead by roughly 8 percent on large route tables.",
+    "topics": ["python", "fastapi", "web-framework", "release-notes", "typing"]
+  },
+  {
+    "id": "aaaaaaaa-0000-0000-0000-000000000012",
+    "url": "https://www.theverge.com/item-012",
+    "headline": "SQLite 3.50 lands incremental BLOB backup",
+    "summary": "SQLite 3.50 introduces incremental BLOB backup, allowing operators to ship only the changed pages of large attached databases on each backup cycle. The feature targets embedded analytics deployments where full-database snapshots have become too costly to run hourly. Backup windows drop by an order of magnitude on the project's 50GB test database.",
+    "topics": ["sqlite", "databases", "backup", "release-notes", "embedded"]
+  }
+]
