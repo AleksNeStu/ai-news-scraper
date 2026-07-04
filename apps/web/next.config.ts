@@ -2,6 +2,11 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // standalone output required by apps/web/Dockerfile:27, which COPYs
+  // from .next/standalone. Without this key, `next build` does not emit
+  // .next/standalone and the web container fails to build. Documented
+  // in .agent/adr/014-deploy-target.md §14.7 as a pre-deploy blocker.
+  output: 'standalone',
   // typedRoutes disabled: every <Link href={dynamicString}> and
   // router.replace(templateString) call fails TS2322 ("Type 'string' is
   // not assignable to type 'RouteImpl<string>'"). The cost of casting
