@@ -56,7 +56,7 @@ Do **NOT** include AI co-author lines (`Co-Authored-By: Claude ...`). Solo proje
 1. Branch from `dev`.
 2. Implement + test locally (`poetry run pytest`, `pnpm test`, `pnpm build`).
 3. Run linters (`ruff check`, `pnpm lint`).
-4. Push to `main` remote `dev` branch — pre-push hook cascades to mirrors.
+4. Push to `main` remote `dev` branch.
 5. Open PR `dev → main` against `AleksNeStu/ai-news-scraper`.
 6. **Fill the PR template** — the public/private boundary checkbox is the most important field.
 7. CI must pass (api lint + test, web build/typecheck/lint).

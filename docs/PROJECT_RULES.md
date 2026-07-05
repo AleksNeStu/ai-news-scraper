@@ -73,7 +73,6 @@ These are the **project owner's personal notes and tooling state**. An AI agent 
 - **`main`** — canonical, frozen-ish. Only updated via PR `dev → main`.
 - **No direct push to `main`** by anyone (including the owner).
 - **No force-push to `main`** under any circumstance.
-- **Force-push to mirrors** (`mirror1` / `mirror2`) requires explicit owner approval and must use `--force-with-lease`.
 
 Branch naming: `feat/<scope>-<desc>`, `fix/<scope>-<desc>`, `chore/<scope>-<desc>`, `docs/<scope>-<desc>`, `refactor/<scope>-<desc>`.
 
@@ -132,7 +131,6 @@ Things an agent will do wrong if it doesn't read this file:
 - ❌ **DO NOT** push directly to `main`.
 - ❌ **DO NOT** force-push to `main` — history is append-only.
 - ❌ **DO NOT** modify `legacy/streamlit/` — frozen for historical reference.
-- ❌ **DO NOT** mirror the reference repo (`ai-real-estate-assistant`) verbatim — it uses zinc palette + Fraunces only; this project uses news/data-feel (deep navy + cyan + amber warn).
 - ❌ **DO NOT** skip the public/private boundary check in the PR template.
 
 ---

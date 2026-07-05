@@ -57,25 +57,6 @@ This brings up the docker-compose services (`db`, `redis`),
 runs pytest, then runs `pnpm build` + `typecheck` + `lint`.
 If everything passes, push should be safe.
 
-## Install the local pre-push hook
-
-To make `make ci-local` run automatically before every push:
-
-```bash
-# Option A — symlink the Makefile target into the git pre-push hook
-ln -sf ../../Makefile .git/hooks/pre-push
-
-# Option B — wrap in a tiny shell hook
-cat > .git/hooks/pre-push <<'EOF'
-#!/usr/bin/env bash
-make ci-local || exit 1
-EOF
-chmod +x .git/hooks/pre-push
-```
-
-Note: this replaces the canonical RepoALX pre-push cascade hook.
-Don't enable it on multiple clones — pick one or the other.
-
 ## When to skip Docker
 
 If Docker isn't available, set `SKIP_DOCKER=1`:

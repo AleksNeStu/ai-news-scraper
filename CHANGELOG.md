@@ -34,7 +34,6 @@ Initial public monorepo release.
 - **Dependabot** — weekly security updates for pip, npm, GitHub Actions.
 - **Documentation** — `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `SECURITY.md`, `docs/PROJECT_RULES.md`, `docs/PRD.md`, `docs/CI-CD.md`, `docs/COMPREHENSIVE_TODO.md`, `docs/COMPETITIVE_ANALYSIS.md`, `docs/TASKMASTER_GUIDE.md`, `docs/TASK_MANAGEMENT.md`.
 - **License** — MIT.
-- **Push matrix** — 3 remotes (`AleksNeStu` canonical + `dev-scaler` + `nest-ai-dev` mirrors), pre-push hook cascades automatically.
 
 ### Changed
 - **Vector DB** — FAISS → ChromaDB (persistent, queryable metadata).
