@@ -14,6 +14,7 @@ from api.middleware.logging import (
     configure_logging,
     get_request_id,
 )
+from api.middleware.security_headers import SecurityHeadersMiddleware
 from api.routers import (
     articles,
     auth,
@@ -92,6 +93,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Security headers ride on every response including CORS preflights.
+# Registering after CORS places this innermost so the headers wrap
+# preflight responses too (Starlette's middleware ordering = inverse
+# of execution order).
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 # ---------------------------------------------------------------------------
