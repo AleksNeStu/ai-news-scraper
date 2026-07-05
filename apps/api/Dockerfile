@@ -38,6 +38,22 @@ WORKDIR /app/apps/api
 RUN poetry config virtualenvs.create false \
     && poetry install --no-interaction --no-ansi --only main
 
+# ---- Non-root runtime user ------------------------------------------------
+# Production hardening: drop root before CMD. Build steps above
+# (apt-get, poetry install) need root; pivot to ``appuser`` here so the
+# uvicorn worker runs unprivileged. /app is chowned to appuser so
+# dev bind-mounts remain writable.
+RUN groupadd -r appuser \
+    && useradd -r -g appuser -d /app -s /sbin/nologin appuser \
+    && chown -R appuser:appuser /app
+
+# ---- Healthcheck ----------------------------------------------------------
+# In-container probe mirroring the docker-compose probe. Stdlib only.
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=30s \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8082/health', timeout=2).read()"
+
+USER appuser
+
 EXPOSE 8082
 
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8082"]
