@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.config import get_settings
 from api.db.database import get_db
 from api.deps import AUTH_COOKIE_NAME, get_current_user_id
+from api.middleware.rate_limit import rate_limit_ip
 from api.models.user import User
 from api.schemas.auth import AuthResponse, UserCreate, UserLogin, UserOut
 from api.services.auth import create_token
@@ -16,7 +17,10 @@ _settings = get_settings()
 
 
 @router.post(
-    "/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED
+    "/register",
+    response_model=AuthResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit_ip("register", limit=5, window_s=3600))],
 )
 async def register(
     payload: UserCreate, response: Response, db: AsyncSession = Depends(get_db)

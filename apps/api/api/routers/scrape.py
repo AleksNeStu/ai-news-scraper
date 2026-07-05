@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db.database import get_db
 from api.deps import get_current_user_id
+from api.middleware.rate_limit import rate_limit_user
 from api.models.article import Article
 from api.schemas.article import ArticleOut, BatchScrapeRequest, ScrapeRequest
 from api.services.embedder import ArticleEmbedder
@@ -104,6 +105,7 @@ async def scrape(
     user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
+    await rate_limit_user("scrape", user_id, limit=30, window_s=3600)
     article = await _process_one(str(payload.url), user_id, db)
     return ArticleOut.model_validate(article)
 
@@ -114,6 +116,7 @@ async def scrape_batch(
     user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
+    await rate_limit_user("scrape", user_id, limit=30, window_s=3600)
     out: list[ArticleOut] = []
     for url in payload.urls:
         try:
