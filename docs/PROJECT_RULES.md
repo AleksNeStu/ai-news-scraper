@@ -155,4 +155,4 @@ If any of these fail, **do not push**. Fix the leak first.
 
 ## 11. Changelog
 
-- 2026-06-28 — Initial hard rules document. Public/private boundary codified. Mirrors structure of `ai-real-estate-assistant` (CONTRIBUTING, SECURITY, CODEOWNERS, FUNDING).
+- 2026-06-28 — Initial hard rules document. Public/private boundary codified.
