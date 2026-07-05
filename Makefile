@@ -31,7 +31,7 @@
 #   SKIP_DOCKER=1 skips docker-compose targets if Docker is unavailable
 # =====================================================
 
-.PHONY: help check test-api test-web ci-local pre-push clean-deps
+.PHONY: help check test-api test-web ci-local pre-push clean-deps gen-prod-env
 
 PY     ?= python
 PNPM   ?= pnpm
@@ -124,3 +124,11 @@ clean-deps:
 	@docker compose down -v 2>&1 || true
 	@echo "→ Clearing pnpm cache..."
 	@cd apps/web && $(PNPM) store prune 2>&1 || true
+
+# ----- Ops: generate a production .env ------------------------------------
+
+# gen-prod-env  Walks .env.example and prompts for prod-only values
+#               (JWT secrets, CORS, provider keys, SMTP). Writes a
+#               chmod 600 .env.production. Never committed (gitignored).
+gen-prod-env:
+	@bash scripts/gen-prod-env.sh
