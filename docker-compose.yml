@@ -54,7 +54,9 @@ services:
     # apps/api/pyproject.toml. Pinning note: chromadb v1.5.7+ removed
     # `curl` from the image, breaking the cookbook-recommended
     # healthcheck (chroma-core/chroma#6855). The 0.5.x line is what the
-    # Python client is built against.
+    # Python client is built against. To work around the missing curl we
+    # call the heartbeat via ``python -c`` (python3:3.12-alpine ships in
+    # the image); ``start_period`` tolerates the slow first boot.
     image: chromadb/chroma:0.5.20
     container_name: ai-news-chroma
     restart: unless-stopped
@@ -62,6 +64,16 @@ services:
       - "8000:8000"
     volumes:
       - chromadata:/chroma/chroma
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request as u; u.urlopen('http://localhost:8000/api/v1/heartbeat', timeout=2).read()"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   migrate:
     # One-shot init: Alembic upgrade head, then apply seed.sql
@@ -97,7 +109,7 @@ services:
       redis:
         condition: service_healthy
       chromadb:
-        condition: service_started
+        condition: service_healthy
       migrate:
         condition: service_completed_successfully
     environment:
