@@ -209,6 +209,26 @@ curl -fsS -X POST https://ai-news-scraper-web.onrender.com/api/backend/scrape \
 Expect an `ArticleOut`-shaped JSON. Cold start can add ~30-60s on the
 free tier; bump `--max-time` if needed.
 
+### 4.6 One-shot smoke battery — `make smoke-e2e`
+
+For the canonical G1 acceptance battery (Task #24), `scripts/smoke-e2e.sh`
+chains the four steps above plus a `/search` recall assertion in one
+run:
+
+```bash
+BASE_URL=https://ai-news-scraper-web.onrender.com make smoke-e2e
+# Default: one URL + paraphrase pair (Wikipedia: Cloud computing).
+# Pass --full (via the script) to cycle through three pairs.
+BASE_URL=https://ai-news-scraper-web.onrender.com bash scripts/smoke-e2e.sh --full
+```
+
+The script requires `jq`, `curl`, and the `openssl` CLI on PATH. It
+asserts `summary.length ∈ [100, 600]` (PRD range 100-300 with NLTK-fallback
+tolerance for long pages) and that the scraped article surfaces in the
+top-3 of `/search` results for a paraphrase. The recall assertion will
+fail without an LLM provider key in the dashboard — the script prints a
+hint when `/search` returns zero results.
+
 ## 5. Rollback procedure
 
 There is no automated rollback path on Render. To revert a bad release:
