@@ -18,7 +18,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from api.services.auth import decode_token
 
-AUTH_COOKIE_NAME = "ai_news_auth"
+# Single source of truth: web + API share this cookie name so the
+# API's Set-Cookie is what the web middleware reads.
+AUTH_COOKIE_NAME = "auth_token"
 _bearer = HTTPBearer(auto_error=False)
 
 

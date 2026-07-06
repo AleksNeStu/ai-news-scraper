@@ -19,7 +19,6 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from api.services.auth import (
-        AuthService,
         create_token,
         decode_token,
         hash_password,
@@ -38,7 +37,6 @@ __all__ = [
     "ChromaVectorStore",
     "BaseVectorStore",
     "FeedParser",
-    "AuthService",
     "hash_password",
     "verify_password",
     "create_token",
@@ -52,7 +50,6 @@ _LAZY_MAP: dict[str, str] = {
     "ChromaVectorStore": "api.services.vector_store",
     "BaseVectorStore": "api.services.vector_store",
     "FeedParser": "api.services.feed_parser",
-    "AuthService": "api.services.auth",
     "hash_password": "api.services.auth",
     "verify_password": "api.services.auth",
     "create_token": "api.services.auth",
