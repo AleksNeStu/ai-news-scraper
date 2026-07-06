@@ -1,0 +1,163 @@
+# Render Blueprint — AI News Scraper
+#
+# Provisions the production stack on Render's free tier using the existing
+# Dockerfiles (no rebuild needed). Render watches the canonical `main`
+# branch and auto-deploys on every push. For local dev the same compose
+# setup in docker-compose.yml is unchanged.
+#
+# Sources of truth by file:
+#   - Env var schema:        .env.example
+#   - Port + middleware:     apps/api/api/main.py, apps/web/src/lib/api.ts
+#   - Runbook (deploy steps): docs/operations/deploy.md
+#
+# NOTE: DATABASE_URL / DATABASE_URL_SYNC derive from `fromDatabase`, which
+# returns a bare `postgresql://` URL without an asyncpg/psycopg2 driver
+# prefix. If SQLAlchemy errors with "no async driver specified", set these
+# to explicit `postgresql+asyncpg://...` / `postgresql+psycopg2://...`
+# strings via the Render dashboard (mark as sync: false and paste). On
+# failure, alembic upgrade head at first boot will surface the mismatch.
+#
+# NOTE: ChromaDB ships embedded inside the api container
+# (chromadb.PersistentClient at /tmp/chroma). The vector_store fallback at
+# apps/api/api/services/vector_store.py:53-59 handles the no-HTTP-server
+# case automatically. /tmp/chroma is ephemeral on Render free — durable
+# storage needs a paid tier with a persistent disk (filed as follow-up).
+
+services:
+  # ----- API (FastAPI / uvicorn, port 8082) -------------------------------
+  - type: web
+    name: ai-news-scraper-api
+    plan: free
+    branch: main
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    repo: https://github.com/AleksNeStu/ai-news-scraper
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        value: "8082"
+      - key: API_INTERNAL_URL
+        value: https://ai-news-scraper-api.onrender.com
+      # ChromaDB runs embedded — PersistentClient (chroma_server is absent
+      # on the free tier).
+      - key: CHROMA_HOST
+        value: localhost
+      - key: CHROMA_PORT
+        value: "8000"
+      - key: CHROMA_PERSIST_DIR
+        value: /tmp/chroma
+      # Secrets — generateValue mints a random string at first provision.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: UNSUBSCRIBE_JWT_SECRET
+        generateValue: true
+      # Postgres connection — see NOTE at top of file re driver prefix.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ai-news-scraper-db
+          property: connectionString
+      - key: DATABASE_URL_SYNC
+        fromDatabase:
+          name: ai-news-scraper-db
+          property: connectionString
+      # CORS allowlists only the web origin. Same-origin preferred; widen
+      # via dashboard if a third-party client (OAuth, Slack bot, ...) ships.
+      - key: CORS_ALLOW_ORIGINS
+        value: '["https://ai-news-scraper-web.onrender.com"]'
+      # Operator-set secrets — empty default until the dashboard is filled.
+      - key: REDIS_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: LLM_PROVIDER
+        value: deepseek
+      - key: LLM_MODEL
+        value: ""
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: EMBEDDING_DIMENSIONS
+        value: "1536"
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRES_MIN
+        value: "1440"
+      - key: RSS_POLL_INTERVAL_SEC
+        value: "900"
+      - key: RSS_MAX_ITEMS_PER_POLL
+        value: "50"
+      - key: RSS_USER_AGENT
+        value: ai-news-scraper/0.1
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: DIGEST_ENABLED
+        value: "true"
+      - key: BRIEF_DISABLED
+        value: "false"
+
+  # ----- Web (Next.js standalone, port 10000 per Render default) ----------
+  - type: web
+    name: ai-news-scraper-web
+    plan: free
+    branch: main
+    runtime: docker
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    repo: https://github.com/AleksNeStu/ai-news-scraper
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      # Render web-service contract: container must listen on $PORT.
+      # Next.js standalone honours process.env.PORT; defaults to 3000.
+      - key: PORT
+        value: "10000"
+      - key: HOSTNAME
+        value: 0.0.0.0
+      # Server-side rewrite target — see apps/web/next.config.ts:18-21.
+      - key: API_INTERNAL_URL
+        value: https://ai-news-scraper-api.onrender.com
+      # Same-origin relative proxy. Browser fetches /api/backend/* which
+      # Next.js rewrites to API_INTERNAL_URL.
+      - key: NEXT_PUBLIC_API_URL
+        value: /api/backend
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://ai-news-scraper-web.onrender.com
+      - key: NEXT_PUBLIC_APP_NAME
+        value: "AI News Scraper"
+
+databases:
+  - name: ai-news-scraper-db
+    plan: free
+    databaseName: ai_news_scraper
+    user: ai_news_scraper
