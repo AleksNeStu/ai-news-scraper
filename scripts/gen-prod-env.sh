@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
 # =====================================================
-# gen-prod-env.sh — generate a production .env file
+# gen-prod-env.sh — mint a production-shaped .env (local-parity)
 # =====================================================
 #
 # Reads .env.example, validates production-critical vars, prompts for
 # the values that must be unique to prod (JWT secrets, CORS, SMTP,
-# provider keys, ...), and writes a chmod 600 .env.production.
+# provider keys, ...), and writes a chmod 600 file.
 #
 # Usage:
 #   ./scripts/gen-prod-env.sh              # writes .env.production
 #   ./scripts/gen-prod-env.sh .env.staging # writes .env.staging
 #
-# The output file is NEVER committed (.env* is gitignored). This script
-# exists so the operator doesn't accidentally copy dev secrets into
-# production — every prod-critical var is prompted explicitly.
+# The output file is NEVER committed (.env* is gitignored).
+#
+# IMPORTANT: this script is now a LOCAL-PARITY mint, not the runtime
+# source-of-truth for production. On Render, secrets live in the
+# dashboard's per-service "sync: false" entries (see render.yaml and
+# docs/operations/deploy.md §2). Use the values minted here as the
+# inputs to paste into the Render dashboard.
 # =====================================================
 
 set -euo pipefail

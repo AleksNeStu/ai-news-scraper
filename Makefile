@@ -31,7 +31,7 @@
 #   SKIP_DOCKER=1 skips docker-compose targets if Docker is unavailable
 # =====================================================
 
-.PHONY: help check test-api test-web ci-local pre-push clean-deps gen-prod-env
+.PHONY: help check test-api test-web ci-local pre-push clean-deps gen-prod-env render-validate
 
 PY     ?= python
 PNPM   ?= pnpm
@@ -130,5 +130,20 @@ clean-deps:
 # gen-prod-env  Walks .env.example and prompts for prod-only values
 #               (JWT secrets, CORS, provider keys, SMTP). Writes a
 #               chmod 600 .env.production. Never committed (gitignored).
+#               Local-prod parity mint; the runtime source-of-truth for
+#               Render is the dashboard's sync: false entries (see
+#               render.yaml + docs/operations/deploy.md).
 gen-prod-env:
 	@bash scripts/gen-prod-env.sh
+
+# render-validate  Lint render.yaml against Render's blueprint schema if
+#                  the Render CLI is installed. Skips silently otherwise
+#                  so the gate still passes for local dev environments.
+render-validate:
+	@if command -v render >/dev/null 2>&1; then \
+	  echo "→ Validating render.yaml against Render Blueprint schema..."; \
+	  render blueprint validate --path render.yaml; \
+	else \
+	  echo "→ Render CLI not installed — skipping render.yaml schema check."; \
+	  echo "  Install from https://render.com/docs/cli to enable this gate."; \
+	fi

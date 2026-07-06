@@ -107,39 +107,21 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the PR process.
 
 ## 🚀 Production deploy
 
-Production runs on a single VPS via Dokploy, with all five services (`web`, `api`, `postgres`, `redis`, `chromadb`) managed by one `docker-compose.yml`.
+Production runs on Render free tier via Blueprint (`render.yaml`). Render auto-deploys on every push to `main`. Same `docker-compose.yml` powers local dev.
 
-- **Single source of truth.** The same compose file powers local dev and production — only env values differ.
-- **No vendor-specific features in use.** The web does not use `next/image`, Edge runtime, or classic ISR. Server-side renders run on a long-lived Node process; nothing ties the app to a particular host.
-- **Server-side fetches stay on the Docker network.** The web calls the API over the internal compose network (`http://api:8082`), not the public internet.
-- **Ops surface stays small.** One dashboard, one TLS cert (managed by Dokploy's bundled reverse proxy), one restart story.
+- **Live URL**: `https://ai-news-scraper-web.onrender.com` (api: `https://ai-news-scraper-api.onrender.com`).
+- **Blueprint definition**: `render.yaml` at repo root.
+- **Runbook**: [`docs/operations/deploy.md`](docs/operations/deploy.md).
 
 ### What runs where
 
-| Service | Image | Port |
-|---|---|---|
-| `web` | Next.js standalone Node | 3000 |
-| `api` | FastAPI on uvicorn | 8082 |
-| `postgres` | Postgres 16 | 5432 |
-| `redis` | Redis | 6379 |
-| `chromadb` | ChromaDB | 8000 |
+| Service | Render resource | Plan | Port |
+|---|---|---|---|
+| `web` (Next.js) | `type: web` (`ai-news-scraper-web`) | free | 10000 (Render default) |
+| `api` (FastAPI) | `type: web` (`ai-news-scraper-api`) | free | 8082 |
+| `postgres` | `databases:` (`ai-news-scraper-db`) | free | 5432 (managed) |
 
-All five containers live on the same VPS and share one Docker network. TLS terminates in front of the stack at Dokploy's reverse proxy (Caddy or Traefik, depending on the Dokploy image); the app itself speaks plain HTTP on the internal network.
-
-### Deploy procedure
-
-```bash
-# On the VPS, from the project checkout
-git pull
-docker compose pull
-docker compose up -d
-
-# Smoke-test
-curl -fsS https://<your-domain>/api/backend/health
-# Expect: {"status":"ok","checks":{"postgres":"ok","chroma":"ok"}}
-```
-
-Before the first deploy, set `JWT_SECRET` **and** `UNSUBSCRIBE_JWT_SECRET` in Dokploy's secret store — do not rely on the `dev-secret-change-me` default that ships in `.env.example`.
+Render auto-provisions TLS on `*.onrender.com` and reads `JWT_SECRET` / `UNSUBSCRIBE_JWT_SECRET` from `generateValue: true`. Per-provider API keys are operator-set via the dashboard (the `sync: false` keys in `render.yaml`). ChromaDB runs embedded inside the api container (PersistentClient) on Render free — durable storage needs a paid tier with persistent disk (filed as follow-up).
 
 ## 📚 Documentation
 
