@@ -69,26 +69,39 @@ async def _check_postgres() -> tuple[str, str | None]:
 
 
 async def _check_chroma() -> tuple[str, str | None]:
-    """HTTP heartbeat against the ChromaDB server.
-
-    Constructs ``chromadb.HttpClient`` directly (per ADR-008 §8.4) so we
-    do not pull in the ``ChromaVectorStore`` HTTP→persistent fallback
-    path — that conflates "store available" with "HTTP server up."
-    ``.heartbeat()`` is synchronous in chromadb 0.5.x, so we wrap it in
+    """Heartbeat against ChromaDB — HTTP if a server is reachable, otherwise
+    fall back to the embedded ``PersistentClient`` path used by
+    ``ChromaVectorStore`` (vector_store.py:53-59). On Render free no separate
+    chromadb container exists, so the embedded branch is the common case.
+    ``.heartbeat()`` is synchronous in chromadb 0.5.x, wrapped in
     ``asyncio.to_thread`` to keep the event loop cooperative.
     """
+    # HTTP-server path: try first when the configured host is anything other
+    # than the localhost default (which signals embedded mode).
+    if settings.chroma_host not in ("", "localhost", "127.0.0.1"):
+        try:
+            client = chromadb.HttpClient(
+                host=settings.chroma_host,
+                port=settings.chroma_port,
+            )
+            await asyncio.wait_for(
+                asyncio.to_thread(client.heartbeat),
+                timeout=_CHECK_TIMEOUT_S,
+            )
+            return ("ok", None)
+        except Exception as e:  # noqa: BLE001 — probe must catch everything
+            logger.warning("health check failed: chroma http", exc_info=True)
+            return ("error", _format_error(e))
+    # Embedded path: PersistentClient points at the on-disk index.
     try:
-        client = chromadb.HttpClient(
-            host=settings.chroma_host,
-            port=settings.chroma_port,
-        )
+        client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
         await asyncio.wait_for(
             asyncio.to_thread(client.heartbeat),
             timeout=_CHECK_TIMEOUT_S,
         )
         return ("ok", None)
     except Exception as e:  # noqa: BLE001 — probe must catch everything
-        logger.warning("health check failed: chroma", exc_info=True)
+        logger.warning("health check failed: chroma embedded", exc_info=True)
         return ("error", _format_error(e))
 
 
