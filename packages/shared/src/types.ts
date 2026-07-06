@@ -119,6 +119,21 @@ export interface AuthResponse {
   token: string;
 }
 
+/** Payload for `POST /auth/login`. Mirrors Pydantic `UserLogin`
+ * (`apps/api/api/schemas/auth.py`): `email: EmailStr`, `password: str`. */
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+/** Payload for `POST /auth/register`. Mirrors Pydantic `UserCreate`
+ * (`apps/api/api/schemas/auth.py`): `email: EmailStr`,
+ * `password: str` (min 8, max 128 on the server). */
+export interface RegisterRequest {
+  email: string;
+  password: string;
+}
+
 export interface ApiError {
   detail: string;
   code?: string;
