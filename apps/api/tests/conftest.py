@@ -21,6 +21,18 @@ closed within the calling event loop — no cross-loop reuse.
 
 from __future__ import annotations
 
+# IMPORTANT: must run BEFORE the api.* imports below. database.engine
+# is created at module import time with the production
+# AsyncAdaptedQueuePool; pytest-asyncio gives each test a
+# function-scoped event loop, so the pool's cached connections end
+# up bound to a closed loop and asyncpg raises "Event loop is
+# closed" -> Starlette 500. The env-var branch in api/db/database.py
+# reads DATABASE_NULL_POOL at import time and uses NullPool when
+# set. Do not move this below the imports.
+import os
+
+os.environ.setdefault("DATABASE_NULL_POOL", "1")
+
 from collections.abc import AsyncGenerator
 from typing import Any
 

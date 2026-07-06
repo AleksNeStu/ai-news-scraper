@@ -1,17 +1,34 @@
 """SQLAlchemy async database engine and session factory."""
 
 from collections.abc import AsyncGenerator
+import os
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import DeclarativeBase
 
 from api.config import get_settings
 
 _settings = get_settings()
+
+# Under pytest-asyncio with function-scoped event loops, the default
+# AsyncAdaptedQueuePool keeps connections bound to whichever loop
+# first used them. asyncpg then schedules a cancel callback on that
+# closed loop and raises "RuntimeError: Event loop is closed", which
+# Starlette surfaces as a 500. Setting DATABASE_NULL_POOL=1 (done by
+# tests/conftest.py before any api imports resolve) swaps the pool
+# for NullPool so each engine.connect() opens a connection scoped to
+# the calling loop and disposes it on return. Production behaviour
+# is unchanged - the env var is unset in every runtime env
+# (Docker compose, deploy) and the default branch keeps
+# pool_size=10 / max_overflow=20.
+_pool_kwargs: dict = {}
+if os.getenv("DATABASE_NULL_POOL") == "1":
+    _pool_kwargs["poolclass"] = NullPool
 
 engine = create_async_engine(
     _settings.database_url,
@@ -19,6 +36,7 @@ engine = create_async_engine(
     pool_size=10,
     max_overflow=20,
     pool_pre_ping=True,
+    **_pool_kwargs,
 )
 
 AsyncSessionLocal = async_sessionmaker(
