@@ -26,17 +26,23 @@ _settings = get_settings()
 # is unchanged - the env var is unset in every runtime env
 # (Docker compose, deploy) and the default branch keeps
 # pool_size=10 / max_overflow=20.
-_pool_kwargs: dict = {}
 if os.getenv("DATABASE_NULL_POOL") == "1":
-    _pool_kwargs["poolclass"] = NullPool
+    _engine_kwargs: dict = {
+        "echo": False,
+        "pool_pre_ping": True,
+        "poolclass": NullPool,
+    }
+else:
+    _engine_kwargs = {
+        "echo": False,
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_pre_ping": True,
+    }
 
 engine = create_async_engine(
     _settings.database_url,
-    echo=False,
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,
-    **_pool_kwargs,
+    **_engine_kwargs,
 )
 
 AsyncSessionLocal = async_sessionmaker(
