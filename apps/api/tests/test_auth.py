@@ -185,7 +185,9 @@ async def test_login_unknown_email_returns_401_same_body(
 ) -> None:
     """Unknown email → 401 with the SAME body as wrong-password.
 
-    Prevents account enumeration via differential responses.
+    Prevents account enumeration via differential responses. The
+    ``instance`` field is the per-request id and is expected to differ
+    between the two requests, so we compare everything else.
     """
     bad = await auth_client.post(
         "/auth/login",
@@ -203,7 +205,15 @@ async def test_login_unknown_email_returns_401_same_body(
         json={"email": "real@example.com", "password": "badpass12"},
     )
     assert wrong.status_code == 401, wrong.text
-    assert bad.json() == wrong.json()
+
+    def _strip_instance(body: dict) -> dict:
+        # instance is the per-request id; it MUST differ between requests,
+        # so we drop it before comparing.
+        body = dict(body)
+        body.pop("instance", None)
+        return body
+
+    assert _strip_instance(bad.json()) == _strip_instance(wrong.json())
 
 
 # ---------------------------------------------------------------------------
@@ -317,15 +327,22 @@ async def test_me_after_logout_returns_401(auth_client: AsyncClient) -> None:
 
 
 @pytest_asyncio.fixture
-async def rl_429_client(
-    monkeypatch: pytest.MonkeyPatch,
-) -> AsyncGenerator[AsyncClient, None]:
-    """Client whose /auth/register rate-limiter always blocks.
+async def rl_429_client() -> AsyncGenerator[AsyncClient, None]:
+    """Client whose /auth/register rate-limiter always returns 429.
 
     The real ``rate_limit_ip`` short-circuits in test mode (``app_env
-    == "test"``), so we install a stub dependency that raises 429.
+    == "test"``). We swap the actual checker the route depends on
+    via FastAPI's ``app.dependency_overrides`` so the running route
+    uses our stub instead of the bypass-and-redis path.
     """
-    from api.middleware import rate_limit as rate_limit_module
+    # Locate the /auth/register route on the running app.
+    register_route = next(
+        r for r in app.routes if getattr(r, "path", "") == "/auth/register"
+    )
+    # The route's first dependency is the closure produced by
+    # rate_limit_ip("register", ...) — that is the callable FastAPI
+    # invokes per request.
+    original_checker = register_route.dependant.dependencies[0].call
 
     async def _always_429(request: Request) -> None:
         raise HTTPException(
@@ -334,29 +351,14 @@ async def rl_429_client(
             headers={"Retry-After": "60"},
         )
 
-    # Build a fresh dependency matching the call shape used by the
-    # router (no args, returns a coroutine checker). The router wraps
-    # rate_limit_ip(name, limit, window_s) at import time, so we
-    # override the *resolved* callable on app.router.
-    monkeypatch.setattr(
-        rate_limit_module, "rate_limit_ip", lambda *a, **kw: _always_429
-    )
-
-    # Re-import the auth router module so the lambda resolves at call
-    # time, not import time.
-    import importlib
-
-    from api.routers import auth as auth_module
-
-    importlib.reload(auth_module)
-
-    transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with app.router.lifespan_context(app):
-        async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            yield ac
-
-    # Restore the original router so other tests see the real dep.
-    importlib.reload(auth_module)
+    app.dependency_overrides[original_checker] = _always_429
+    try:
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with app.router.lifespan_context(app):
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                yield ac
+    finally:
+        app.dependency_overrides.pop(original_checker, None)
 
 
 @pytest.mark.asyncio
