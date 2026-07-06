@@ -29,7 +29,7 @@ from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, status
 from httpx import ASGITransport, AsyncClient
 
 from api.deps import AUTH_COOKIE_NAME
@@ -327,56 +327,44 @@ async def test_me_after_logout_returns_401(auth_client: AsyncClient) -> None:
 
 
 @pytest_asyncio.fixture
-async def rl_429_client() -> AsyncGenerator[AsyncClient, None]:
+async def rl_429_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> AsyncGenerator[AsyncClient, None]:
     """Client whose /auth/register rate-limiter always returns 429.
 
     The real ``rate_limit_ip`` short-circuits in test mode (``app_env
-    == "test"``). We swap the actual checker the route depends on
-    via FastAPI's ``app.dependency_overrides`` so the running route
-    uses our stub instead of the bypass-and-redis path.
+    == "test"``). We disable the bypass by flipping ``app_env`` to
+    ``"production"`` for the duration of the fixture and replace the
+    Redis-backed ``_enforce`` call with a stub that always raises 429.
+
+    Patching the module is more portable than reaching into FastAPI's
+    route internals: FastAPI/Starlette have reshuffled how ``app.routes``
+    is exposed across several upgrades (e.g. FastAPI 0.13x), and the
+    closure FastAPI stores for the rate-limit dependency is identity-keyed
+    by ``app.dependency_overrides`` so we cannot rebuild it from outside
+    the route decoration site. The module-level knobs are stable.
     """
+    from api.config import get_settings
+    from api.middleware import rate_limit as rate_limit_module
 
-    def _route_path(route) -> str:
-        # FastAPI/Starlette has shipped the route path on .path or
-        # .path_format at various points (newer FastAPI moved templated
-        # paths to .path_format). Try both so this fixture stays
-        # portable across FastAPI upgrades.
-        for attr in ("path", "path_format"):
-            val = getattr(route, attr, None)
-            if isinstance(val, str) and val:
-                return val
-        return ""
+    settings = get_settings()
+    # The check inside _checker skips enforcement when app_env == "test";
+    # flip it so the stub is actually consulted.
+    monkeypatch.setattr(settings, "app_env", "production")
 
-    # Locate the /auth/register route on the running app.
-    register_route = next(
-        (r for r in app.routes if _route_path(r) == "/auth/register"),
-        None,
-    )
-    if register_route is None:
-        seen = [_route_path(r) for r in app.routes]
-        raise RuntimeError(
-            f"could not locate /auth/register on app.routes; saw: {seen}"
-        )
-    # The route's first dependency is the closure produced by
-    # rate_limit_ip("register", ...) — that is the callable FastAPI
-    # invokes per request.
-    original_checker = register_route.dependant.dependencies[0].call
-
-    async def _always_429(request: Request) -> None:
+    async def _always_429(spec: object) -> None:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Rate limit exceeded",
             headers={"Retry-After": "60"},
         )
 
-    app.dependency_overrides[original_checker] = _always_429
-    try:
-        transport = ASGITransport(app=app, raise_app_exceptions=False)
-        async with app.router.lifespan_context(app):
-            async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                yield ac
-    finally:
-        app.dependency_overrides.pop(original_checker, None)
+    monkeypatch.setattr(rate_limit_module, "_enforce", _always_429)
+
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            yield ac
 
 
 @pytest.mark.asyncio
