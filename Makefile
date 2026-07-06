@@ -31,7 +31,7 @@
 #   SKIP_DOCKER=1 skips docker-compose targets if Docker is unavailable
 # =====================================================
 
-.PHONY: help check test-api test-web ci-local pre-push clean-deps gen-prod-env render-validate
+.PHONY: help check test-api test-web ci-local pre-push clean-deps gen-prod-env render-validate smoke-e2e
 
 PY     ?= python
 PNPM   ?= pnpm
@@ -147,3 +147,20 @@ render-validate:
 	  echo "→ Render CLI not installed — skipping render.yaml schema check."; \
 	  echo "  Install from https://render.com/docs/cli to enable this gate."; \
 	fi
+
+# smoke-e2e  Probe a live production deploy end-to-end. Hits /health, then
+#            registers a temp user, scrapes one URL (override with URL/
+#            PARAPHRASE), and asserts the article lands in /search top-3.
+#            Pass --full to cycle through three URL/paraphrase pairs.
+#
+#            Requires: BASE_URL set (Render web origin), jq + curl + the
+#            BSD/GNU openssl CLI installed, and an LLM provider key
+#            configured in the Render dashboard — otherwise the embedding
+#            step silently returns None and the search assertion fails.
+#
+#            For daily CI / production acceptance, the full battery is
+#            the Phase-2 --full sweep; for deploy-time verification the
+#            default single-URL pass is enough.
+smoke-e2e:
+	@BASE_URL=$${BASE_URL:?Set BASE_URL=https://ai-news-scraper-web.onrender.com} \
+	  bash scripts/smoke-e2e.sh
