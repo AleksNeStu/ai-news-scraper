@@ -335,10 +335,28 @@ async def rl_429_client() -> AsyncGenerator[AsyncClient, None]:
     via FastAPI's ``app.dependency_overrides`` so the running route
     uses our stub instead of the bypass-and-redis path.
     """
+
+    def _route_path(route) -> str:
+        # FastAPI/Starlette has shipped the route path on .path or
+        # .path_format at various points (newer FastAPI moved templated
+        # paths to .path_format). Try both so this fixture stays
+        # portable across FastAPI upgrades.
+        for attr in ("path", "path_format"):
+            val = getattr(route, attr, None)
+            if isinstance(val, str) and val:
+                return val
+        return ""
+
     # Locate the /auth/register route on the running app.
     register_route = next(
-        r for r in app.routes if getattr(r, "path", "") == "/auth/register"
+        (r for r in app.routes if _route_path(r) == "/auth/register"),
+        None,
     )
+    if register_route is None:
+        seen = [_route_path(r) for r in app.routes]
+        raise RuntimeError(
+            f"could not locate /auth/register on app.routes; saw: {seen}"
+        )
     # The route's first dependency is the closure produced by
     # rate_limit_ip("register", ...) — that is the callable FastAPI
     # invokes per request.
