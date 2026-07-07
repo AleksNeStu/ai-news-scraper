@@ -52,7 +52,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
         priority: path === '/' ? 1.0 : 0.7,
         alternates: {
           languages: Object.fromEntries(
-            routing.locales.map((alt) => [alt, `${SITE_URL}${getPathname({ locale: alt, href: path })}`])
+            routing.locales.map((alt) => [
+              alt,
+              `${SITE_URL}${getPathname({ locale: alt, href: path })}`,
+            ])
           ),
           // x-default points to the bare (default-locale) variant.
           canonical: url,
