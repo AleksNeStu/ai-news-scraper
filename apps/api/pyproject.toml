@@ -46,6 +46,20 @@ python-dotenv = "^1.0.1"
 tenacity = "^9.0.0"
 nltk = "^3.9.1"
 aiosmtplib = "^3.0.0"
+# Sentry SDK — ADR-016 §16.5 + §16.9 rule 3. Optional install so test
+# environments run without it (``init_sentry()`` short-circuits on
+# ImportError). Operators enable via ``poetry install --extras observability``
+# (mirrored in the api Dockerfile).
+#
+# MAJ-7 (Devil review 2026-07-07): pin tighter than ``^2.0``. The 2.0→2.40
+# minor range carries documented breaking changes to ``before_send`` /
+# ``before_send_transaction`` signatures in past SDK releases; ``~2.20``
+# keeps the resolved version on the current 2.20.x line. Bump explicitly
+# when the project needs a newer minor.
+sentry-sdk = {version = "~2.20", optional = true}
+
+[tool.poetry.extras]
+observability = ["sentry-sdk"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"

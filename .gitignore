@@ -73,6 +73,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .next/
+# Sentry — schema-only `.sentryclirc.example` is tracked, the
+# real `.sentryclirc` and SDK-emitted `.next/sentry*` artefacts are not.
+# See ADR-016 §16.7.
+.sentryclirc
+.next/sentry*
 out/
 .turbo/
 .vercel/

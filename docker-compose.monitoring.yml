@@ -1,0 +1,42 @@
+# =====================================================
+# AI News Scraper — Uptime Kuma monitoring stack
+# =====================================================
+#
+# Per ADR-016 §16.3. Kept as a SEPARATE compose file (NOT part of
+# docker-compose.yml) so the monitoring stack never starts accidentally
+# on a developer's machine and never couples its lifecycle to the app
+# stack. Bring it up alongside the app stack only on the deploy host:
+#
+#   docker compose -f docker-compose.yml \
+#                  -f docker-compose.monitoring.yml up -d
+#
+# Kuma probes the api's /health (ADR-008) and the web's
+# /api/backend/health rewrite every 60s; the operator configures
+# probes + alert channels via the UI on first login (out of scope for
+# this file).
+#
+# MIN-4 (Devil review 2026-07-07): pinned to a specific patch version
+# to avoid the SQLite-volume schema break that the ``:1`` floating
+# tag would silently introduce when 2.x ships. Bump via Renovate or
+# a follow-up PR; never drop the version pin without a tested
+# volume-migration step.
+#
+# Host bind ``127.0.0.1:3001:3001`` keeps the Kuma UI off the public
+# internet; the operator reaches it through the Dokploy admin VPN
+# (Kuma's OSS UI has no auth proxy).
+# =====================================================
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1.23.16
+    container_name: ai-news-uptime-kuma
+    restart: unless-stopped
+    # No depends_on — Kuma must be deployable in isolation, including
+    # before the api + web come up (the ADR-016 §16.3 isolation rule).
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - uptime-kuma-data:/app/data
+
+volumes:
+  uptime-kuma-data:

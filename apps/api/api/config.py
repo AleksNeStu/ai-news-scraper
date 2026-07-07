@@ -113,6 +113,14 @@ class Settings(BaseSettings):
     # the unsubscribe endpoint refuses to mint tokens otherwise.
     unsubscribe_jwt_secret: str = ""
 
+    # Observability — ADR-016 §16.5. Sentry server-side DSN. Empty default
+    # means ``init_sentry()`` is a no-op so dev environments can run without
+    # the SDK installed (the dependency is an optional ``[observability]``
+    # extra). The release identifier is set at deploy time from
+    # ``SENTRY_RELEASE`` and shared with the web side.
+    sentry_dsn: str = ""
+    sentry_release: str = ""
+
     @property
     def effective_digest_enabled(self) -> bool:
         """True iff the brief subsystem is allowed to start.

@@ -1,0 +1,10 @@
+# Schema reference for local wizard debugging. Copy to .sentryclirc
+# (gitignored) and fill in your local values. NEVER commit .sentryclirc.
+# See ADR-016 §16.7 for the source-map upload contract.
+[defaults]
+org=${SENTRY_ORG}
+project=${SENTRY_PROJECT}
+url=https://sentry.io/
+
+[auth]
+token=${SENTRY_AUTH_TOKEN}

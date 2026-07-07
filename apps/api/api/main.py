@@ -38,6 +38,15 @@ async def lifespan(app: FastAPI):
     # earlier ``logging.basicConfig`` are detached inside
     # ``configure_logging`` so we don't double-emit.
     configure_logging(_settings.log_level)
+    # Per ADR-016 §16.5: Sentry init runs as the second statement of
+    # lifespan, BEFORE the AI Brief scheduler block. Both runs are the
+    # first lines of startup so the rest of the lifespan — scheduler
+    # ticks, request handling — happens inside Sentry capture. The
+    # init is wrapped in try/except at the source (§16.9 rule 1) so a
+    # missing SDK or unreachable Sentry cannot block app startup.
+    from api.sentry_init import init_sentry  # late import — see §16.9
+
+    init_sentry()  # must not raise; Sentry-down is graceful
     logger.info("API starting up (env=%s)", _settings.app_env)
     # AI Brief scheduler — Task #8 / ADR-012 §12.3 + §12.11. Created
     # inside lifespan (NOT at import time) so test imports don't start

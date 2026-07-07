@@ -36,7 +36,11 @@ COPY apps/api /app/apps/api
 WORKDIR /app/apps/api
 
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi --only main
+    # ADR-016 §16.11: install the optional ``observability`` extra so
+    # the api ships with sentry-sdk wired in. The extra is declared
+    # in pyproject.toml (``[tool.poetry.extras] observability``) and
+    # adds only sentry-sdk; the rest of the api's deps are unchanged.
+    && poetry install --no-interaction --no-ansi --only main --extras observability
 
 # ---- Non-root runtime user ------------------------------------------------
 # Production hardening: drop root before CMD. Build steps above
