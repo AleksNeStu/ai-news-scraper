@@ -18,8 +18,13 @@ import type { ArticleListResponse, FeedListResponse } from '@ai-news-scraper/sha
  * static-rendered page; the `[locale]/layout.tsx` also calls it, but
  * the docs recommend also calling it in every page for static export.
  */
-export default async function HomePage({ params }: { params: { locale: string } }) {
-  const { locale } = params
+export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale: rawLocale } = await params
+  // Cast to the routing-locales literal union so `setRequestLocale` and
+  // the typed route generators accept it. The router middleware has
+  // already validated the locale segment is in `routing.locales` by
+  // the time we reach the page.
+  const locale = rawLocale as 'en' | 'ru'
   setRequestLocale(locale)
   const t = await getTranslations('Home')
   const [articles, feeds] = await Promise.all([

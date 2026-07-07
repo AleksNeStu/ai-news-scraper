@@ -15,12 +15,9 @@ import UnsubscribeForm from './UnsubscribeForm'
  * i18n (Task #32): the fallback "Loading…" copy now flows from the
  * `Common` namespace via `getTranslations`.
  */
-export default async function UnsubscribePage({
-  params,
-}: {
-  params: { locale: string }
-}) {
-  const { locale } = params
+export default async function UnsubscribePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale: rawLocale } = await params
+  const locale = rawLocale as 'en' | 'ru'
   setRequestLocale(locale)
   const t = await getTranslations('Common')
   return (

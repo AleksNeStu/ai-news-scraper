@@ -1,12 +1,9 @@
 import { Settings as SettingsIcon } from 'lucide-react'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 
-export default async function SettingsPage({
-  params,
-}: {
-  params: { locale: string }
-}) {
-  const { locale } = params
+export default async function SettingsPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale: rawLocale } = await params
+  const locale = rawLocale as 'en' | 'ru'
   setRequestLocale(locale)
   const t = await getTranslations('Settings')
   return (

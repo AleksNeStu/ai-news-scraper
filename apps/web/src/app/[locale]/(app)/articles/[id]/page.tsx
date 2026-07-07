@@ -30,12 +30,13 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string; locale: string }>
 }): Promise<Metadata> {
-  const { id, locale } = await params
+  const { id, locale: rawLocale } = await params
+  const locale = rawLocale as 'en' | 'ru'
   const a = await api.get<ArticleOut>(`/articles/${id}`).catch(() => null)
   const headline = a?.headline ?? a?.url ?? 'Article'
   const description = a?.summary ?? undefined
   const path = `/articles/${id}`
-  const canonical = `${SITE_URL}${getPathname({ locale: locale as 'en' | 'ru', href: path })}`
+  const canonical = `${SITE_URL}${getPathname({ locale, href: path })}`
   return {
     title: headline,
     ...(description ? { description } : {}),
@@ -63,16 +64,17 @@ export default async function ArticleDetailPage({
 }: {
   params: Promise<{ id: string; locale: string }>
 }) {
-  const { id, locale } = await params
+  const { id, locale: rawLocale } = await params
+  const locale = rawLocale as 'en' | 'ru'
   setRequestLocale(locale)
   const a = await api.get<ArticleOut>(`/articles/${id}`).catch(() => null)
   if (!a) notFound()
 
   const t = await getTranslations('ArticleDetail')
 
-  const articlePath = getPathname({ locale: locale as 'en' | 'ru', href: `/articles/${id}` })
-  const articlesIndexPath = getPathname({ locale: locale as 'en' | 'ru', href: '/articles' })
-  const homePath = getPathname({ locale: locale as 'en' | 'ru', href: '/' })
+  const articlePath = getPathname({ locale, href: `/articles/${id}` })
+  const articlesIndexPath = getPathname({ locale, href: '/articles' })
+  const homePath = getPathname({ locale, href: '/' })
   const headline = a.headline ?? a.url
 
   return (
@@ -88,7 +90,7 @@ export default async function ArticleDetailPage({
             datePublished: a.publish_date ?? a.indexed_at,
             ...(a.summary ? { description: a.summary } : {}),
             ...(a.topics.length > 0 ? { keywords: a.topics.join(', ') } : {}),
-            locale: locale as 'en' | 'ru',
+            locale,
             canonicalPath: articlePath,
           }),
           buildBreadcrumbJsonLd([

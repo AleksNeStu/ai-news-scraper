@@ -31,7 +31,7 @@ import { useSearchParams } from 'next/navigation'
 import { Languages } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/navigation'
-import { routing, type Pathnames } from '@/i18n/routing'
+import { routing } from '@/i18n/routing'
 
 export function LocaleSwitcher() {
   const locale = useLocale()
@@ -51,10 +51,10 @@ export function LocaleSwitcher() {
       // the locale-stripped canonical form, so we forward it verbatim
       // and let next-intl re-prefix based on `next`.
       const query = search ? Object.fromEntries(search.entries()) : {}
-      router.replace(
-        { pathname: pathname as Pathnames, query },
-        { locale: next }
-      )
+      // `next` is the `<select>` value (typed `string`). It only ever
+      // carries one of `routing.locales` because the `<option>` list
+      // is generated from that array, so the cast is safe at runtime.
+      router.replace({ pathname, query }, { locale: next as 'en' | 'ru' })
     })
   }
 

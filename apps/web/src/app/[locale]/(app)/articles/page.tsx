@@ -35,9 +35,10 @@ import type { Article, Tier } from '@ai-news-scraper/shared'
 export async function generateMetadata({
   params,
 }: {
-  params: { locale: string }
+  params: Promise<{ locale: string }>
 }): Promise<Metadata> {
-  const { locale } = params
+  const { locale: rawLocale } = await params
+  const locale = rawLocale as 'en' | 'ru'
   const path = '/articles'
   const canonical = `${SITE_URL}${getPathname({ locale: locale as 'en' | 'ru', href: path })}`
   return {
@@ -64,10 +65,11 @@ export default async function ArticlesPage({
   params,
   searchParams,
 }: {
-  params: { locale: string }
+  params: Promise<{ locale: string }>
   searchParams: Promise<{ page?: string; tier?: string; group_by_tier?: string }>
 }) {
-  const { locale } = params
+  const { locale: rawLocale } = await params
+  const locale = rawLocale as 'en' | 'ru'
   setRequestLocale(locale)
   const { page = '1', tier, group_by_tier } = await searchParams
   const grouped = group_by_tier === 'true'
@@ -91,7 +93,7 @@ export default async function ArticlesPage({
   // BreadcrumbList. `getPathname` honours `localePrefix: 'as-needed'`
   // so the default `en` locale resolves to `/articles` and `ru` to
   // `/ru/articles`.
-  const articlesPath = getPathname({ locale: locale as 'en' | 'ru', href: '/articles' })
+  const articlesPath = getPathname({ locale, href: '/articles' })
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -102,11 +104,11 @@ export default async function ArticlesPage({
           buildCollectionPageJsonLd({
             name: t('pageTitle'),
             description: SITE_DESCRIPTION,
-            locale: locale as 'en' | 'ru',
+            locale,
             canonicalPath: articlesPath,
           }),
           buildBreadcrumbJsonLd([
-            { name: 'Home', path: getPathname({ locale: locale as 'en' | 'ru', href: '/' }) },
+            { name: 'Home', path: getPathname({ locale, href: '/' }) },
             { name: t('pageTitle'), path: articlesPath },
           ]),
         ]}

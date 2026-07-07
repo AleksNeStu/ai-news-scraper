@@ -7,7 +7,6 @@ import { routing } from '@/i18n/routing'
 import { SITE_URL } from '@/lib/site'
 import { StructuredData } from '@/components/StructuredData'
 import { buildOrganizationJsonLd, buildWebSiteJsonLd } from '@/lib/structured-data/builders'
-import type { LlmsLocale } from '@ai-news-scraper/shared'
 
 /**
  * Locale-aware `<head>` metadata (Task #32). The App Router's
@@ -30,9 +29,12 @@ import type { LlmsLocale } from '@ai-news-scraper/shared'
 export async function generateMetadata({
   params,
 }: {
-  params: { locale: string }
+  params: Promise<{ locale: string }>
 }): Promise<Metadata> {
-  const { locale } = params
+  const { locale: rawLocale } = await params
+  // Routing-locales are a literal union; casting here keeps the
+  // downstream `setRequestLocale` / `getTranslations` types happy.
+  const locale = rawLocale as 'en' | 'ru'
   setRequestLocale(locale)
   const t = await getTranslations('Metadata')
   const path = '/' // root layout — title applies to every page through Next's template
@@ -95,12 +97,11 @@ export async function generateMetadata({
  * left at its default (true), an unlisted locale segment still 404s
  * via `notFound()` above.
  *
- * NOTE on `params`: Next.js 15 keeps `params` as a SYNCHRONOUS object
- * (the `Promise<{...}>` shape only lands in Next 16). When this app
- * upgrades to Next 16, the signature becomes
- *   `{ children, params }: { children, params: Promise<{ locale: string }> }`
- * and the body awaits `params`. Architect chose the sync form
- * deliberately to match the installed Next version.
+ * NOTE on `params`: Next.js 15.5+ ships typed routes with
+ * `params: Promise<{...}>` as the default (the sync shape was the
+ * Next 14 / pre-15.5 form). The App Router awaits the promise
+ * internally before invoking the layout, so the body just awaits
+ * and proceeds synchronously from there.
  */
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }))
@@ -111,13 +112,18 @@ export default async function LocaleLayout({
   params,
 }: {
   children: React.ReactNode
-  params: { locale: string }
+  params: Promise<{ locale: string }>
 }) {
-  const { locale } = params
+  const { locale: rawLocale } = await params
 
-  if (!hasLocale(routing.locales, locale)) {
+  if (!hasLocale(routing.locales, rawLocale)) {
     notFound()
   }
+
+  // Runtime-narrowed: `hasLocale` confirmed `rawLocale` is one of
+  // `routing.locales`. TS can't follow the runtime check, so we cast
+  // once and use `locale` (the narrow union) everywhere downstream.
+  const locale = rawLocale as 'en' | 'ru'
 
   // MUST come before any `useTranslations` call in the tree.
   setRequestLocale(locale)
@@ -128,9 +134,7 @@ export default async function LocaleLayout({
         {/* GEO readiness (Task #28): Organization + WebSite JSON-LD on
             every page, rendered server-side so the initial HTML carries
             the structured data crawlers and AI agents consume. */}
-        <StructuredData
-          data={[buildOrganizationJsonLd(), buildWebSiteJsonLd(locale as LlmsLocale)]}
-        />
+        <StructuredData data={[buildOrganizationJsonLd(), buildWebSiteJsonLd(locale)]} />
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>

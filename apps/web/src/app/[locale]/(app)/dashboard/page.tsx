@@ -49,11 +49,12 @@ async function safeFetch(opts: Parameters<typeof listArticles>[0]): Promise<Fetc
 export async function generateMetadata({
   params,
 }: {
-  params: { locale: string }
+  params: Promise<{ locale: string }>
 }): Promise<Metadata> {
-  const { locale } = params
+  const { locale: rawLocale } = await params
+  const locale = rawLocale as 'en' | 'ru'
   const path = '/dashboard'
-  const canonical = `${SITE_URL}${getPathname({ locale: locale as 'en' | 'ru', href: path })}`
+  const canonical = `${SITE_URL}${getPathname({ locale, href: path })}`
   return {
     title: 'Dashboard',
     description: SITE_DESCRIPTION,
@@ -74,8 +75,9 @@ export async function generateMetadata({
   }
 }
 
-export default async function DashboardPage({ params }: { params: { locale: string } }) {
-  const { locale } = params
+export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale: rawLocale } = await params
+  const locale = rawLocale as 'en' | 'ru'
   setRequestLocale(locale)
   const t = await getTranslations('Dashboard')
   const tTiers = await getTranslations('Tiers')
