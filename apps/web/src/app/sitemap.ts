@@ -20,9 +20,7 @@
 import type { MetadataRoute } from 'next'
 import { getPathname } from '@/i18n/navigation'
 import { routing } from '@/i18n/routing'
-
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'http://localhost:3000'
+import { SITE_URL } from '@/lib/site'
 
 // Canonical paths for every public + auth-gated route. Each one emits
 // both the bare-en and prefixed-ru variant via getPathname().

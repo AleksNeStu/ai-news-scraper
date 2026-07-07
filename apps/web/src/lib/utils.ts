@@ -142,9 +142,12 @@ function formatRelativeUnit(
     days: 'day',
   } as const
   if (unit === 'just-now') {
-    // English: "just now" / Russian: "только что". RelativeTimeFormat doesn't
-    // have a "just now" slot; use the localized literal instead.
-    return tag.startsWith('ru') ? 'только что' : 'just now'
+    // English: "now" / Russian: "только что" / German: "jetzt" / etc.
+    // `numeric: 'auto'` lets Intl produce the locale-appropriate word
+    // for the present-tense zero-second offset — replaces the prior
+    // `tag.startsWith('ru') ? 'только что' : 'just now'` ternary
+    // (Devil-6 finding: adding a third locale required editing code).
+    return new Intl.RelativeTimeFormat(tag, { numeric: 'auto' }).format(0, 'second')
   }
   return rtf.format(-(value ?? 0), map[unit])
 }

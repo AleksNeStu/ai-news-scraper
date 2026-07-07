@@ -4,9 +4,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { getPathname } from '@/i18n/navigation'
 import { routing } from '@/i18n/routing'
-
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'http://localhost:3000'
+import { SITE_URL } from '@/lib/site'
 
 /**
  * Locale-aware `<head>` metadata (Task #32). The App Router's
