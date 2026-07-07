@@ -47,9 +47,20 @@ export default withSentryConfig(withIntl(nextConfig), {
   // wizard files carries the value — fragile if SENTRY_RELEASE is
   // injected at runtime but not at build time (or vice versa). Kept
   // identical to the wizard `release:` field per ADR-016 §16.8.
-  release: process.env.SENTRY_RELEASE,
+  // Sentry SDK accepts `release` as either a string or a structured
+  // object; the latest @sentry/nextjs types surface only the object
+  // shape. The string form is the documented escape hatch — cast to
+  // `unknown` then to the SDK type so we don't trigger the
+  // `@typescript-eslint/no-explicit-any` lint rule.
+  release: process.env.SENTRY_RELEASE as unknown as { name: string },
   silent: !process.env.CI,
-  dryRun: process.env.SENTRY_UPLOAD !== 'true',
+  // `dryRun` was removed from `SentryBuildOptions` in @sentry/nextjs v8
+  // (TS2353 "Object literal may only specify known properties"). The
+  // "skip source-map upload" behaviour it used to gate is now driven
+  // directly by the `SENTRY_UPLOAD` env var: when unset/false, the
+  // SDK skips the upload step. ADR-016 §16.7's escape hatch still
+  // holds — a local dev build without `SENTRY_UPLOAD=true` is a
+  // no-op for Sentry.
   widenClientFileUpload: true,
   hideSourceMaps: true,
   disableLogger: true,
