@@ -268,6 +268,76 @@ async def test_login_eleventh_call_is_429(
     assert "retry-after" in {k.lower() for k in last.headers.keys()}
 
 
+@pytest.mark.asyncio
+async def test_login_rate_limit_ignores_xff_when_peer_untrusted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """H2 — X-Forwarded-For is HONORED only when the immediate peer is
+    inside a ``trusted_proxy_cidrs`` range (per ADR-015 §15.8).
+
+    With the default empty allow-list, the limiter keys on the
+    immediate peer — an attacker spoofing ``X-Forwarded-For`` to a
+    fresh IP must NOT trick the limiter into a new bucket. We
+    exercise ``_client_ip`` directly with a forged header and the
+    real (empty) trusted-proxy allow-list, asserting the resolved IP
+    is the immediate peer.
+    """
+    from api.middleware.rate_limit import _client_ip
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "trusted_proxy_cidrs", [])
+
+    class _FakeClient:
+        host = "203.0.113.7"  # the immediate peer (RFC 5737 documentation range)
+
+    class _FakeRequest:
+        headers = {"x-forwarded-for": "198.51.100.42, 10.0.0.1"}
+        client = _FakeClient()
+
+    resolved = _client_ip(_FakeRequest())  # type: ignore[arg-type]
+    assert resolved == "203.0.113.7", (
+        f"XFF must be ignored when peer is untrusted; got {resolved!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_login_rate_limit_honors_xff_when_peer_trusted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """H2 — X-Forwarded-For is HONORED when the immediate peer falls
+    inside a configured trusted CIDR.
+
+    Operators behind Dokploy / Traefik (ADR-014) need XFF to be
+    trusted so per-IP caps work correctly across the proxy layer.
+    This test pins that behavior — without it, a future refactor
+    could regress to "always ignore XFF" and silently DoS the
+    rate-limit bucket under the proxy's egress IP.
+    """
+    from api.middleware.rate_limit import _client_ip
+
+    settings = get_settings()
+    monkeypatch.setattr(
+        settings, "trusted_proxy_cidrs", ["10.0.0.0/8", "172.16.0.0/12"]
+    )
+    # Force the module to re-parse the configured networks on the
+    # next call.
+    import api.middleware.rate_limit as rl
+
+    monkeypatch.setattr(rl, "_trusted_networks", None)
+
+    class _FakeClient:
+        host = "10.0.0.5"  # inside 10.0.0.0/8
+
+    class _FakeRequest:
+        headers = {"x-forwarded-for": "198.51.100.42, 10.0.0.1"}
+        client = _FakeClient()
+
+    resolved = _client_ip(_FakeRequest())  # type: ignore[arg-type]
+    assert resolved == "198.51.100.42", (
+        f"XFF must be honored when peer is trusted; got {resolved!r}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # H3 — server-side logout via refresh_tokens
 # ---------------------------------------------------------------------------
@@ -306,7 +376,6 @@ async def registered_user(
 
 @pytest.mark.asyncio
 async def test_register_sets_two_cookies(registered_user: dict[str, Any]) -> None:
-    """POST /auth/register sets BOTH ``auth_token`` AND ``auth_refresh``."""
     assert registered_user["auth_token_cookie"].get("name") == AUTH_COOKIE_NAME
     assert (
         registered_user["auth_refresh_cookie"].get("name") == AUTH_REFRESH_COOKIE_NAME

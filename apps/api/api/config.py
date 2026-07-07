@@ -79,6 +79,21 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:3000"]
     )
 
+    # Trusted proxy CIDRs for ``X-Forwarded-For`` resolution.
+    # Per ADR-015 §15.8, the rate-limiter at
+    # ``apps/api/api/middleware/rate_limit.py::_client_ip`` only
+    # honors an XFF header when the IMMEDIATE peer (``request.client.host``)
+    # falls inside one of these CIDR ranges. When the list is empty
+    # XFF is ignored entirely and the per-IP cap is keyed on the
+    # peer's address. Operators behind Dokploy / Traefik (per
+    # ADR-014) MUST set this to the Traefik container network, e.g.
+    # ``TRUSTED_PROXY_CIDRS=["172.16.0.0/12","10.0.0.0/8"]`` —
+    # otherwise the rate-limiter buckets every request under the
+    # proxy's egress IP and a single attacker can DoS the bucket.
+    # Default empty list is the SAFE choice: it means XFF is never
+    # trusted, so the limiter cannot be bypassed by header spoofing.
+    trusted_proxy_cidrs: list[str] = Field(default_factory=list)
+
     # SMTP (Task #8 / ADR-012 §12.6) — outbound email transport.
     # When ``smtp_host`` is unset the email worker logs and bails,
     # leaving the digest ``delivery_status = "notified"`` (in-app only).

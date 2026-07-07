@@ -42,6 +42,8 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
+import ipaddress
+
 import redis.asyncio as redis_async
 from fastapi import HTTPException, Request, status
 
@@ -53,6 +55,37 @@ _settings = get_settings()
 # Single shared async client — Redis async connections are safe to reuse
 # across coroutines.
 _redis: redis_async.Redis | None = None
+
+# Parsed-once set of trusted proxy networks (CIDR ranges) used by
+# ``_client_ip`` to decide whether ``X-Forwarded-For`` is honest.
+# Rebuilt lazily from settings — see ``_is_trusted_proxy``.
+_trusted_networks: tuple[ipaddress._BaseNetwork, ...] | None = None
+
+
+def _is_trusted_proxy(peer: str) -> bool:
+    """True iff ``peer`` falls inside any ``trusted_proxy_cidrs`` range.
+
+    Parses the configured CIDRs once and caches the result on the
+    module. Invalid CIDR strings are logged and skipped (the limiter
+    stays correct on the conservative path — XFF is not honored for
+    an unparseable entry).
+    """
+    global _trusted_networks
+    if _trusted_networks is None:
+        parsed: list[ipaddress._BaseNetwork] = []
+        for raw in _settings.trusted_proxy_cidrs:
+            try:
+                parsed.append(ipaddress.ip_network(raw, strict=False))
+            except ValueError:
+                logger.warning("trusted_proxy_cidrs: invalid CIDR %r — skipping", raw)
+        _trusted_networks = tuple(parsed)
+    if not _trusted_networks:
+        return False
+    try:
+        addr = ipaddress.ip_address(peer)
+    except ValueError:
+        return False
+    return any(addr in net for net in _trusted_networks)
 
 
 def _get_redis() -> redis_async.Redis:
@@ -80,17 +113,25 @@ class _RateSpec:
 
 
 def _client_ip(request: Request) -> str:
-    """Return the canonical client IP, honouring ``X-Forwarded-For``.
+    """Return the canonical client IP, honouring ``X-Forwarded-For`` only
+    when the request came from a trusted proxy.
 
     First-hop is the original client when the request sits behind a
     proxy (Dokploy / Traefik). Falls back to ``request.client.host``.
+
+    Per ADR-015 §15.8, an untrusted peer can otherwise spoof XFF and
+    bypass the per-IP rate limit. The allow-list is configured via
+    ``Settings.trusted_proxy_cidrs`` (see ``apps/api/api/config.py``).
+    When the list is empty (the safe default) XFF is ignored entirely
+    and every request is keyed on the immediate peer — operators
+    behind a known proxy MUST populate the list at deploy time.
     """
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        return xff.split(",")[0].strip() or (
-            request.client.host if request.client else "unknown"
-        )
-    return request.client.host if request.client else "unknown"
+    peer = request.client.host if request.client else "unknown"
+    if _is_trusted_proxy(peer):
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            return xff.split(",")[0].strip() or peer
+    return peer
 
 
 async def _enforce(spec: _RateSpec) -> None:
