@@ -5,6 +5,9 @@ import type { Metadata } from 'next'
 import { getPathname } from '@/i18n/navigation'
 import { routing } from '@/i18n/routing'
 import { SITE_URL } from '@/lib/site'
+import { StructuredData } from '@/components/StructuredData'
+import { buildOrganizationJsonLd, buildWebSiteJsonLd } from '@/lib/structured-data/builders'
+import type { LlmsLocale } from '@ai-news-scraper/shared'
 
 /**
  * Locale-aware `<head>` metadata (Task #32). The App Router's
@@ -50,6 +53,19 @@ export async function generateMetadata({
     alternates: {
       canonical,
       languages,
+    },
+    openGraph: {
+      title: t('title'),
+      description: t('description'),
+      type: 'website',
+      url: canonical,
+      siteName: 'ai-news-scraper',
+      locale: locale === 'en' ? 'en_US' : 'ru_RU',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: t('title'),
+      description: t('description'),
     },
   }
 }
@@ -109,6 +125,12 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className="dark">
       <body className="min-h-screen bg-background text-foreground antialiased">
+        {/* GEO readiness (Task #28): Organization + WebSite JSON-LD on
+            every page, rendered server-side so the initial HTML carries
+            the structured data crawlers and AI agents consume. */}
+        <StructuredData
+          data={[buildOrganizationJsonLd(), buildWebSiteJsonLd(locale as LlmsLocale)]}
+        />
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>

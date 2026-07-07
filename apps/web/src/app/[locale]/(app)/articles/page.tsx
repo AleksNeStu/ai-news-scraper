@@ -1,10 +1,18 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server'
-import { Link } from '@/i18n/navigation'
+import type { Metadata } from 'next'
+import { Link, getPathname } from '@/i18n/navigation'
 import { listArticles } from '@/lib/api/articles'
 import { formatRelative } from '@/lib/utils'
 import { ScoreRing } from '@/components/ScoreRing'
+import { StructuredData } from '@/components/StructuredData'
 import { ArticlesToolbar } from '@/app/[locale]/(app)/articles/ArticlesToolbar'
 import { TIER_ORDER, bucketByTier, isTier } from '@/app/[locale]/(app)/articles/buckets'
+import { SITE_URL } from '@/lib/site'
+import {
+  buildBreadcrumbJsonLd,
+  buildCollectionPageJsonLd,
+  SITE_DESCRIPTION,
+} from '@/lib/structured-data/builders'
 import type { Article, Tier } from '@ai-news-scraper/shared'
 
 /**
@@ -16,7 +24,42 @@ import type { Article, Tier } from '@ai-news-scraper/shared'
  *   and dashboard/page.tsx).
  * - `formatRelative(article.indexed_at, locale)` resolves in the active
  *   locale (default `en`) via the Intl-backed helper in `lib/utils`.
+ *
+ * GEO readiness (Task #28): per-page metadata + JSON-LD
+ *   - `generateMetadata` adds canonical + og:* + twitter:*
+ *   - the rendered tree carries a CollectionPage + BreadcrumbList pair
+ *     so crawlers can resolve the index surface in a single hop.
  */
+
+/** Page metadata (Task #28): canonical + og:* + twitter:*. */
+export async function generateMetadata({
+  params,
+}: {
+  params: { locale: string }
+}): Promise<Metadata> {
+  const { locale } = params
+  const path = '/articles'
+  const canonical = `${SITE_URL}${getPathname({ locale: locale as 'en' | 'ru', href: path })}`
+  return {
+    title: 'Articles',
+    description: SITE_DESCRIPTION,
+    alternates: { canonical },
+    openGraph: {
+      title: 'Articles',
+      description: SITE_DESCRIPTION,
+      type: 'website',
+      url: canonical,
+      siteName: 'ai-news-scraper',
+      locale: locale === 'en' ? 'en_US' : 'ru_RU',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'Articles',
+      description: SITE_DESCRIPTION,
+    },
+  }
+}
+
 export default async function ArticlesPage({
   params,
   searchParams,
@@ -44,8 +87,30 @@ export default async function ArticlesPage({
   const t = await getTranslations('Articles')
   const tTiers = await getTranslations('Tiers')
 
+  // Locale-internal path used by both the CollectionPage and the
+  // BreadcrumbList. `getPathname` honours `localePrefix: 'as-needed'`
+  // so the default `en` locale resolves to `/articles` and `ru` to
+  // `/ru/articles`.
+  const articlesPath = getPathname({ locale: locale as 'en' | 'ru', href: '/articles' })
+
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
+      {/* GEO readiness (Task #28): CollectionPage identifies the index,
+          BreadcrumbList points crawlers at the Home → Articles trail. */}
+      <StructuredData
+        data={[
+          buildCollectionPageJsonLd({
+            name: t('pageTitle'),
+            description: SITE_DESCRIPTION,
+            locale: locale as 'en' | 'ru',
+            canonicalPath: articlesPath,
+          }),
+          buildBreadcrumbJsonLd([
+            { name: 'Home', path: getPathname({ locale: locale as 'en' | 'ru', href: '/' }) },
+            { name: t('pageTitle'), path: articlesPath },
+          ]),
+        ]}
+      />
       <h1 className="mb-6 text-2xl font-semibold headline-serif">{t('pageTitle')}</h1>
       <ArticlesToolbar activeTier={activeTier} grouped={grouped} />
 

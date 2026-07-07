@@ -21,10 +21,14 @@
  */
 
 import { getTranslations, setRequestLocale } from 'next-intl/server'
-import { Link } from '@/i18n/navigation'
+import type { Metadata } from 'next'
+import { Link, getPathname } from '@/i18n/navigation'
 import { listArticles, topInTier } from '@/lib/api/articles'
 import { formatRelative } from '@/lib/utils'
 import { ScoreRing } from '@/components/ScoreRing'
+import { StructuredData } from '@/components/StructuredData'
+import { SITE_URL } from '@/lib/site'
+import { buildSoftwareApplicationJsonLd, SITE_DESCRIPTION } from '@/lib/structured-data/builders'
 import type { Article, Tier } from '@ai-news-scraper/shared'
 
 const HERO_LIMIT = 3
@@ -35,6 +39,39 @@ export const revalidate = 300
 type Fetched = Awaited<ReturnType<typeof listArticles>>
 async function safeFetch(opts: Parameters<typeof listArticles>[0]): Promise<Fetched> {
   return listArticles(opts).catch(() => ({ items: [], total: 0, page: 1, page_size: 0 }))
+}
+
+/**
+ * Page metadata (Task #28): canonical + og:* + twitter:*. Reuses the
+ * /dashboard path across both locales via `getPathname` so the absolute
+ * URL respects `localePrefix: 'as-needed'`.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: { locale: string }
+}): Promise<Metadata> {
+  const { locale } = params
+  const path = '/dashboard'
+  const canonical = `${SITE_URL}${getPathname({ locale: locale as 'en' | 'ru', href: path })}`
+  return {
+    title: 'Dashboard',
+    description: SITE_DESCRIPTION,
+    alternates: { canonical },
+    openGraph: {
+      title: 'Dashboard',
+      description: SITE_DESCRIPTION,
+      type: 'website',
+      url: canonical,
+      siteName: 'ai-news-scraper',
+      locale: locale === 'en' ? 'en_US' : 'ru_RU',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'Dashboard',
+      description: SITE_DESCRIPTION,
+    },
+  }
 }
 
 export default async function DashboardPage({ params }: { params: { locale: string } }) {
@@ -57,6 +94,9 @@ export default async function DashboardPage({ params }: { params: { locale: stri
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
+      {/* GEO readiness (Task #28): SoftwareApplication JSON-LD surfaces
+          the app + dashboard as a first-class schema.org entity. */}
+      <StructuredData data={buildSoftwareApplicationJsonLd()} />
       <header className="mb-8">
         <h1 className="text-3xl font-semibold headline-serif">{t('topPicksHeading')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('topPicksSubheading')}</p>
