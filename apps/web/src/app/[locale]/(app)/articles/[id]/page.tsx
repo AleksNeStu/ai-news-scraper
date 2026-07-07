@@ -1,7 +1,7 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { ArrowLeft } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
 import { api } from '@/lib/api'
 import { formatDate, formatRelative } from '@/lib/utils'
 import type { ArticleOut } from '@ai-news-scraper/shared'

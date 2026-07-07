@@ -1,9 +1,9 @@
 'use client'
 
 import { useActionState, useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
 import { Newspaper } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
 import { loginAction, type LoginState } from '@/lib/auth'
 
 const initialState: LoginState = { ok: false }

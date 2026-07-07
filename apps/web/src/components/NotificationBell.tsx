@@ -16,11 +16,11 @@
  *     render grammatically correct in both en and ru.
  */
 
-import Link from 'next/link'
 import type { Route } from 'next'
 import { useEffect, useRef, useState } from 'react'
 import { Bell } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { useNotifications } from '@/hooks/useNotifications'
 import type { Notification } from '@ai-news-scraper/shared'
 import { cn } from '@/lib/utils'

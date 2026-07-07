@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import type { Route } from 'next'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import { api } from '@/lib/api'
 import { AppHeader } from '@/components/layout/AppHeader'
 import type { ArticleListResponse, FeedListResponse } from '@ai-news-scraper/shared'
@@ -18,11 +18,7 @@ import type { ArticleListResponse, FeedListResponse } from '@ai-news-scraper/sha
  * static-rendered page; the `[locale]/layout.tsx` also calls it, but
  * the docs recommend also calling it in every page for static export.
  */
-export default async function HomePage({
-  params,
-}: {
-  params: { locale: string }
-}) {
+export default async function HomePage({ params }: { params: { locale: string } }) {
   const { locale } = params
   setRequestLocale(locale)
   const t = await getTranslations('Home')
@@ -44,11 +40,7 @@ export default async function HomePage({
         </section>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <StatCard
-            label={t('stat.totalArticles')}
-            value={articles.total}
-            href="/articles"
-          />
+          <StatCard label={t('stat.totalArticles')} value={articles.total} href="/articles" />
           <StatCard
             label={t('stat.activeFeeds')}
             value={feeds.items.filter((f) => f.active).length}

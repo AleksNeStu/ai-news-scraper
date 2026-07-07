@@ -1,7 +1,7 @@
-import Link from 'next/link'
 import type { Route } from 'next'
 import { Newspaper, Search, Rss, Settings } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import { NotificationBell } from '@/components/NotificationBell'
 import { LogoutButton } from '@/components/auth/LogoutButton'
 import { LocaleSwitcher } from '@/components/LocaleSwitcher'

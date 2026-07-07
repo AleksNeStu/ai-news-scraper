@@ -23,10 +23,10 @@
  */
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { CheckCircle2, MailMinus, AlertTriangle } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
 import { unsubscribeDigest } from '@/lib/api/digest'
 import { ApiError } from '@/lib/api'
 import { formatTimestamp } from '@/lib/utils'

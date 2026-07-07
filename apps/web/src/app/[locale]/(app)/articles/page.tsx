@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import { listArticles } from '@/lib/api/articles'
 import { formatRelative } from '@/lib/utils'
 import { ScoreRing } from '@/components/ScoreRing'
@@ -94,9 +94,7 @@ function GroupedView({
               <span className="text-xs text-muted-foreground">{list.length}</span>
             </header>
             {list.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {t('tierEmpty', { tier: label })}
-              </p>
+              <p className="text-sm text-muted-foreground">{t('tierEmpty', { tier: label })}</p>
             ) : (
               <ul className="space-y-3">
                 {list.map((a) => (

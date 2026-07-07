@@ -24,9 +24,9 @@
  */
 
 import { useActionState, useEffect, useRef } from 'react'
-import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
 import { Newspaper } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
 import { registerAction, type RegisterState } from '@/lib/auth'
 
 const initialState: RegisterState = { ok: false }

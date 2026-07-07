@@ -20,8 +20,8 @@
  *   - `formatRelative` takes the active locale.
  */
 
-import Link from 'next/link'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import { listArticles, topInTier } from '@/lib/api/articles'
 import { formatRelative } from '@/lib/utils'
 import { ScoreRing } from '@/components/ScoreRing'

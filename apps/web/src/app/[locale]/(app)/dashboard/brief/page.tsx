@@ -1,8 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { Newspaper, Loader2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { useDigestList } from '@/hooks/useDigest'
 import { formatLongDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'

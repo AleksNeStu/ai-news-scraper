@@ -1,9 +1,9 @@
 'use client'
 
-import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ArrowLeft, ExternalLink, Newspaper } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { useDigest } from '@/hooks/useDigest'
 import { formatLongDate } from '@/lib/utils'
 import type { DigestSection } from '@ai-news-scraper/shared'
@@ -186,7 +186,10 @@ function NotFoundState({
       <div className="rounded-lg border border-dashed border-border bg-canvas/50 p-10 text-center">
         <Newspaper className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
         <h2 className="font-medium">
-          {message ?? (date ? t('notFound.titleWithDate', { date: formatLongDate(date, locale) }) : t('notFound.title'))}
+          {message ??
+            (date
+              ? t('notFound.titleWithDate', { date: formatLongDate(date, locale) })
+              : t('notFound.title'))}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">{t('notFound.body')}</p>
       </div>
