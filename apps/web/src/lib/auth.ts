@@ -250,15 +250,17 @@ export async function logoutAction(
   const t = await tFor(locale)
   const result = await performLogout()
   if (result.kind === 'error') {
-    // `result.message` from performLogout is the English fallback
-    // (performLogout has no locale context). Re-localize it here so the
-    // UI sees the same key both for network/5xx (where performLogout
-    // returns the English fallback) and for the (currently impossible)
-    // case where performLogout ever returns a localized string.
-    if (result.message === 'Logout failed. Please try again.') {
+    // `performLogout` returns a discriminated `code`, not a
+    // pre-formatted English message (Devil-4 finding). Map the code
+    // to a translation key here so the UI reads in the active locale
+    // regardless of whether the failure was a 5xx or a network error.
+    if (result.code === 'logout_failed') {
       return { ok: false, error: t('Auth.Logout.failed') }
     }
-    return { ok: false, error: result.message }
+    // Exhaustiveness guard — if a new code is added later, TS will
+    // fail this branch until handled.
+    const _exhaustive: never = result
+    return { ok: false, error: t('Auth.Logout.failed') }
   }
   // Unreachable — ``performLogout`` either returns an error or
   // calls ``redirect('/login')``, both of which are typed

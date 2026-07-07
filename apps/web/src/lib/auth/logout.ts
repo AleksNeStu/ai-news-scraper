@@ -25,9 +25,25 @@
  */
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { api, ApiError } from '@/lib/api'
+import { api } from '@/lib/api'
 
-export type LogoutResult = { kind: 'ok' } | { kind: 'error'; message: string }
+/**
+ * Discriminated logout result.
+ *
+ * - `kind: 'ok'` — server revoked the refresh row; ``performLogout``
+ *   redirects to /login and never returns this branch to the caller.
+ * - `kind: 'error', code: 'logout_failed'` — server returned a non-2xx
+ *   OR a network error prevented the round-trip. The cookie is left
+ *   intact so the user is not accidentally logged out when the revoke
+ *   may or may not have succeeded.
+ *
+ * The `code` field (not a pre-formatted message) is intentional: the
+ * caller (``logoutAction`` in ``auth.ts``) maps the code to a
+ * translation key so the inline error reads in the active locale.
+ * Pre-formatting the message here would couple this helper to a
+ * single English string and break the i18n contract (Devil-4 finding).
+ */
+export type LogoutResult = { kind: 'ok' } | { kind: 'error'; code: 'logout_failed' }
 
 export const AUTH_COOKIE_NAME = 'auth_token'
 export const AUTH_REFRESH_COOKIE_NAME = 'auth_refresh'
@@ -54,24 +70,17 @@ export const AUTH_REFRESH_COOKIE_NAME = 'auth_refresh'
 export async function performLogout(): Promise<LogoutResult> {
   try {
     await api.post('/auth/logout')
-  } catch (e) {
-    if (e instanceof ApiError) {
-      // 5xx (and any non-204 the server happens to send) is a server
-      // problem — the refresh row may or may not be revoked; we
-      // cannot know, so we DO NOT clear the local cookie. The
-      // caller (header button) shows the error and the user can
-      // retry.
-      return {
-        kind: 'error',
-        message: 'Logout failed. Please try again.',
-      }
-    }
-    // Network / unknown — surface a generic message but do not
-    // clear local state.
-    return {
-      kind: 'error',
-      message: 'Logout failed. Please try again.',
-    }
+  } catch {
+    // 5xx (and any non-204 the server happens to send) is a server
+    // problem — the refresh row may or may not be revoked; we
+    // cannot know, so we DO NOT clear the local cookie. The
+    // caller (header button) shows the error and the user can
+    // retry.
+    //
+    // Network errors are bundled into the same code path so the
+    // caller does not need to distinguish — both leave local state
+    // intact and surface the same retry UX.
+    return { kind: 'error', code: 'logout_failed' }
   }
 
   // 2xx: server revoked the refresh row. Clear the local access-token
