@@ -2,6 +2,8 @@
 
 Single source of truth for cross-router dependency callables:
     * ``AUTH_COOKIE_NAME`` — the HTTP-only cookie that carries the JWT.
+    * ``AUTH_REFRESH_COOKIE_NAME`` — the HTTP-only cookie that carries
+      the opaque refresh token (ADR-015 §15.9).
     * ``get_current_user_id`` — Bearer-or-cookie JWT decoder that
       resolves to the authenticated user's UUID (or raises 401).
 
@@ -18,9 +20,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from api.services.auth import decode_token
 
-# Single source of truth: web + API share this cookie name so the
+# Single source of truth: web + API share these cookie names so the
 # API's Set-Cookie is what the web middleware reads.
 AUTH_COOKIE_NAME = "auth_token"
+AUTH_REFRESH_COOKIE_NAME = "auth_refresh"
 _bearer = HTTPBearer(auto_error=False)
 
 
@@ -66,4 +69,4 @@ def get_current_user_id(token: str = Depends(_extract_token)) -> UUID:
         ) from exc
 
 
-__all__ = ["AUTH_COOKIE_NAME", "get_current_user_id"]
+__all__ = ["AUTH_COOKIE_NAME", "AUTH_REFRESH_COOKIE_NAME", "get_current_user_id"]

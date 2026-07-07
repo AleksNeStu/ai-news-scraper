@@ -58,10 +58,16 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     embedding_dimensions: int = 1536
 
-    # Auth
+    # Auth — JWT lifetime shortened from 24h to 15 min as part of
+    # ADR-015 (H3) so a stolen access token self-expires quickly.
+    # ``jwt_expires_min`` is kept as a back-compat alias for any
+    # operator-side env override (JWT_EXPIRES_MIN); the router reads
+    # ``access_token_expires_min`` directly.
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
-    jwt_expires_min: int = 1440  # 24h
+    access_token_expires_min: int = 15
+    jwt_expires_min: int = 15  # alias — see ADR-015 §15.11
+    refresh_token_expires_days: int = 7
 
     # RSS
     rss_poll_interval_sec: int = 900
