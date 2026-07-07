@@ -156,3 +156,103 @@ If any of these fail, **do not push**. Fix the leak first.
 ## 11. Changelog
 
 - 2026-06-28 — Initial hard rules document. Public/private boundary codified.
+- 2026-07-08 — §12 added: CI green before claiming done.
+  Origin: user request to fix failing CI actions and codify the
+  "local CI before claim" discipline at the project level.
+
+## 12. CI green before claiming done
+
+### 12.1 The rule
+
+**Every "done", "fixed", "passing", or "green" claim MUST be backed by
+fresh, locally-reproduced CI evidence.** Specifically: before claiming a
+task complete, run the project's local CI reproduction (see §12.3) and
+observe a clean exit before responding.
+
+This is the project-level enforcement of the global
+`verification-before-completion` philosophy (no shortcuts, evidence
+before assertions). There is no shortcut.
+
+### 12.2 Required gates
+
+The local CI surface mirrors the GitHub Actions `ci.yml` jobs:
+
+| CI job | Local command | What it catches |
+|---|---|---|
+| `API — lint` | `make check` (→ `ruff check .`) | Python lint (unused imports, undefined names, complexity) |
+| `Web — build` | `make test-web` | pnpm build, tsc typecheck, eslint, prettier |
+| `API — test` | `make test-api` | pytest with Postgres + Redis via docker-compose |
+| (combined) | `make ci-local` | All three above — `Safe to push` line on green |
+
+`make check` is the fast no-Docker gate that runs in <30s; run it
+before commit. `make test-web` adds the production build and full
+typecheck; run it before push. `make test-api` brings up the
+`db` and `redis` containers and runs pytest inside the api container;
+it needs Docker. `make ci-local` runs all three.
+
+The full gate table, including per-tool failure modes, lives in
+[`LOCAL_VERIFICATION.md`](../LOCAL_VERIFICATION.md). This section
+sets the rule; that file documents how.
+
+### 12.3 When
+
+Run before any of:
+
+- `git commit` — even with `--amend` or after a fix.
+- `git push` — any remote (including mirrors).
+- Claiming a task complete, fixed, passing, or green.
+- Opening or merging a PR.
+- Responding with words like "done", "fixed", "works", "passes".
+
+The order:
+
+```bash
+make check         # ~30s, no Docker.
+make test-web      # ~1 min, no Docker.
+make test-api      # ~3 min first run, ~30s after (needs Docker).
+make ci-local      # all three, before push.
+```
+
+If Docker is unavailable: `SKIP_DOCKER=1 make ci-local` — pytest
+prints a notice and skips, but `check` + `test-web` still run and
+catch ~80% of regressions. Document the skip in the commit body.
+
+### 12.4 Override
+
+Add `[skip-local-ci]` to the commit message AND explain in chat.
+Overuse of the override is a smell — track how often it appears
+in a week; if it's >1× per PR, the rule is being routed around.
+
+### 12.5 Cross-references
+
+- [`LOCAL_VERIFICATION.md`](../LOCAL_VERIFICATION.md) — the canonical
+  how-to for the gates named in §12.2.
+- `Makefile` — targets `check` (line 52), `test-api` (86), `test-web`
+  (101), `ci-local` (114), `pre-push` (118).
+- `scripts/check.sh` — Windows-friendly bash wrapper around the Makefile.
+- `.pre-commit-config.yaml` — commit-time hooks (subset of `make check`).
+- `.github/workflows/ci.yml` — the GHA jobs these targets mirror.
+- The platform's local-CI skill (`nest-ci-local`, defined under the
+  user's global skills directory) — same idea at a multi-project
+  scope. This repo uses `make ci-local` because the skill's
+  backing `scripts/ci/run-local-ci.ps1` helper is not present here
+  yet; if a future refactor wires that helper in, swap the §12.3
+  commands to it.
+- The `verification-before-completion` skill (same global skills
+  directory) — the philosophy; this section is the project-level
+  enforcement.
+
+### 12.6 Lessons
+
+- 2026-07-08 — §12 added. Origin: user request during plan mode to
+  (a) fix failing CI actions and (b) make "CI green before claiming
+  done" an enforced rule. The rule lives in `docs/PROJECT_RULES.md`
+  (not a private rules directory) because this repo's private
+  agent-state path is gitignored (§3 + `.gitignore` line 132),
+  and this rule must be visible to every contributor on the public
+  repo. The fix arc that landed with this rule shipped 7 atomic
+  commits covering the i18n / Next-15.5 async-params migration,
+  Sentry config, prettier drift, ESLint type-imports, and a
+  regenerated `apps/api/poetry.lock` (the observability extra
+  added in a recent monitoring commit had drifted the lock out
+  of sync).
