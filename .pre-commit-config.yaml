@@ -104,6 +104,11 @@ repos:
   # the commit lands; stage (b) scans the prepared commit message before
   # the ref advances. Both stages share the same script entry-point so any
   # rule change touches only scripts/private-leak-check.sh.
+  #
+  # The pre-commit (file) stage EXCLUDES the script's own path from the
+  # diff because the script's source contains the canonical pattern list
+  # as a heredoc — without the exclusion the hook would self-flag every
+  # commit that touches the script.
   - repo: local
     hooks:
       - id: leak-check-files
@@ -112,7 +117,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        entry: bash -c 'git diff --cached | bash scripts/private-leak-check.sh'
+        entry: bash -c 'git diff --cached -- . ":!scripts/private-leak-check.sh" | bash scripts/private-leak-check.sh'
       - id: leak-check-msg
         name: private-leak-check (commit-msg)
         stages: [commit-msg]

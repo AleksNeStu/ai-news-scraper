@@ -39,7 +39,12 @@ jobs:
       - name: scan tracked files
         run: |
           set -euo pipefail
-          git ls-files -z | xargs -0 cat \
+          # Exclude the script itself — its source contains the canonical
+          # pattern list as a heredoc, so a naive scan produces self-flags.
+          # The script is reviewed manually; CI enforces the rule on
+          # everything ELSE in the tracked tree.
+          git ls-files -z -- ':!scripts/private-leak-check.sh' \
+            | xargs -0 cat \
             | bash scripts/private-leak-check.sh
 
       - name: scan commit messages (push)
@@ -54,7 +59,7 @@ jobs:
             BEFORE=$(git rev-list --max-parents=0 HEAD)
           fi
           git log "${BEFORE}..${AFTER}" --format=%B \
-            | bash scripts/private-leak-check.sh --message /dev/stdin
+            | bash scripts/private-leak-check.sh --message -
 
       - name: scan commit messages (pull_request)
         if: github.event_name == 'pull_request'
@@ -63,4 +68,4 @@ jobs:
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
           git log "${BASE}..${HEAD}" --format=%B \
-            | bash scripts/private-leak-check.sh --message /dev/stdin
+            | bash scripts/private-leak-check.sh --message -

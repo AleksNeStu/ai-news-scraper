@@ -44,93 +44,132 @@ EOF
 
 # ---------- Helpers ----------
 
-# Normalise one line: lowercase, trim, collapse internal whitespace, drop
-# trailing comment introduced by #. Keeps the original line untouched so
-# the leak report can show the user what their file actually contains.
+# Normalise one line in pure bash (no subshell forks). Lowercase, trim
+# leading/trailing whitespace, collapse interior whitespace runs, strip a
+# leading "#" comment. The original line is preserved elsewhere so the
+# leak report can show what the file actually contains.
 normalise() {
     local s=$1
     # lowercase
     s=${s,,}
-    # trim leading/trailing whitespace
+    # trim leading whitespace
     s=${s#"${s%%[![:space:]]*}"}
+    # trim trailing whitespace
     s=${s%"${s##*[![:space:]]}"}
-    # collapse internal runs of spaces/tabs to a single space
-    s=$(printf '%s' "$s" | tr -s ' \t' ' ')
-    # strip a leading "#" comment after the above steps
+    # collapse interior whitespace runs to a single space — pure bash so
+    # we avoid the per-call fork that `printf | tr -s` would cost (which
+    # turned O(n) subshells into the O(n²) hang that bit the first revision).
+    local out="" prev='x' len=${#s} j=0 ch
+    while (( j < len )); do
+        ch=${s:j:1}
+        if [[ $ch == ' ' || $ch == $'\t' ]]; then
+            if [[ $prev != ' ' ]]; then
+                out+=' '
+                prev=' '
+            fi
+        else
+            out+="$ch"
+            prev="$ch"
+        fi
+        j=$((j+1))
+    done
+    s=$out
+    # strip a leading "#" comment
     s=${s##\#*}
     s=${s#"${s%%[![:space:]]*}"}
     s=${s%"${s##*[![:space:]]}"}
     printf '%s\n' "$s"
 }
 
-# Match one line against the pattern list. Uses two passes — original and
-# normalised — so case + whitespace bypasses both fail.
-# Args: $1 = raw line, $2 = normalised line, $3 = source label ("file" / "commit-msg")
-# LEAK messages go to stderr so callers can capture stdout separately.
-match_line() {
-    local raw=$1
-    local norm=$2
-    local source=$3
-    # Pass 1: raw line
-    if printf '%s\n' "$raw" | grep -iEq "$PATTERNS" 2>/dev/null; then
-        printf 'LEAK: %s: %s\n' "$source" "$raw" >&2
-        return 0
-    fi
-    # Pass 2: normalised line
-    if printf '%s\n' "$norm" | grep -iEq "$PATTERNS" 2>/dev/null; then
-        printf 'LEAK: %s (normalised): %s\n' "$source" "$raw" >&2
-        return 0
-    fi
-    return 1
-}
-
 # Scan an input stream. Source label distinguishes file vs commit-msg in
 # the leak report. Three passes per input:
 #   (a) every raw line
 #   (b) every normalised line
-#   (c) every normalised pair of consecutive non-empty lines (the
-#       "line-wrap bypass" — split a forbidden token across two lines)
-# All LEAK messages go to stderr; only the integer count reaches stdout,
-# so callers can safely `capture=$(scan_stream ...)` without picking up
-# leak text in the captured value.
+#   (c) every normalised pair of consecutive lines (the "line-wrap bypass"
+#       — a forbidden token split across two adjacent lines)
+# All work happens in bash memory; we call grep ONCE against the combined
+# buffer to keep the scan O(1) forks regardless of input size. The previous
+# version spawned a printf+grep subshell per line + per pair, which was
+# O(n²) forks and effectively unusable beyond ~50 lines on platforms where
+# fork() is expensive (notably Git Bash on Windows).
+#
+# Only the integer count reaches stdout; LEAK messages go to stderr so
+# callers can safely `count=$(scan_stream ...)` without capturing leak
+# text in the returned string.
 scan_stream() {
     local source=$1
-    local count=0
-    local lines=()
-    local norms=()
-    local line norm
+    local lines=() line
+    local norms=() norm
 
-    # First pass: read all lines into arrays
+    # 1. Read everything into bash memory (no subshell during read).
     while IFS= read -r line || [[ -n $line ]]; do
         lines+=("$line")
-        norm=$(normalise "$line")
-        norms+=("$norm")
     done
 
-    local i
-    for ((i = 0; i < ${#lines[@]}; i++)); do
-        # Per-line check (raw + normalised)
-        if match_line "${lines[$i]}" "${norms[$i]}" "$source"; then
-            count=$((count + 1))
-            continue
-        fi
-        # Pair check: line[i] + line[i+1] (normalised). Defeats the
-        # line-wrap bypass where a forbidden token is split across two
-        # adjacent lines. We try both "with-space" and "no-space" joins
-        # so the bypass is robust against any separator the user inserts.
-        if (( i + 1 < ${#lines[@]} )); then
-            local a="${norms[$i]}"
-            local b="${norms[$i+1]}"
-            local joined_sp="$a $b"
-            local joined_ns="$a$b"
-            if printf '%s\n%s\n' "$joined_sp" "$joined_ns" | grep -iEq "$PATTERNS" 2>/dev/null; then
-                printf 'LEAK: %s (line-wrap %d+%d): %s + %s\n' \
-                    "$source" "$((i+1))" "$((i+2))" \
-                    "${lines[$i]}" "${lines[$i+1]}" >&2
-                count=$((count + 1))
-            fi
-        fi
+    local n=${#lines[@]}
+    if (( n == 0 )); then
+        printf '0'
+        return
+    fi
+
+    # 2. Normalise each line (no subshell — pure bash string ops via
+    # normalise()).
+    local i out_buf="" norm_buf="" pair_buf="" a b
+    for ((i = 0; i < n; i++)); do
+        norm=$(normalise "${lines[$i]}")
+        norms+=("$norm")
+        out_buf+=${lines[$i]}$'\n'
+        norm_buf+="$norm"$'\n'
     done
+    for ((i = 0; i < n - 1; i++)); do
+        a=${norms[$i]} b=${norms[$((i + 1))]}
+        pair_buf+="$a $b"$'\n'
+        pair_buf+="$a$b"$'\n'
+    done
+
+    # 3. Convert newline-separated PATTERNS to ERE alternation. Done once
+    # per scan_stream call (cheap, single paste fork).
+    local pat_re
+    pat_re=$(printf '%s\n' "$PATTERNS" | paste -sd'|' -)
+
+    # 4. ONE grep call against the combined buffer. -iE for case-insensitive
+    # ERE; -n adds line numbers so we can attribute the leak.
+    local hits
+    hits=$(printf '%s\n%s\n%s' "$out_buf" "$norm_buf" "$pair_buf" \
+        | grep -inE "$pat_re" 2>/dev/null || true)
+
+    local count=0
+    if [[ -n $hits ]]; then
+        while IFS= read -r hit; do
+            [[ -z $hit ]] && continue
+            local ln=${hit%%:*} rest=${hit#*:}
+            # The combined buffer's line numbering is offset: out_buf spans
+            # 1..n, norm_buf spans n+1..2n, pair_buf spans 2n+1..end.
+            # Translate to the original-file line for the report.
+            local orig_ln=0 kind="raw"
+            if (( ln >= 1 && ln <= n )); then
+                orig_ln=$ln
+                kind="raw"
+            elif (( ln > n && ln <= 2 * n )); then
+                orig_ln=$((ln - n))
+                kind="normalised"
+            else
+                # pair_buf: each pair is two lines, only the first of which
+                # identifies the leaked raw span.
+                local pair_idx=$((ln - 2 * n - 1))
+                local pair_pair=$((pair_idx / 2))
+                orig_ln=$((pair_pair + 1))
+                if (( pair_idx % 2 == 0 )); then
+                    kind="line-wrap (sp)"
+                else
+                    kind="line-wrap (no-sp)"
+                fi
+            fi
+            printf 'LEAK: %s line %d (%s): %s\n' \
+                "$source" "$orig_ln" "$kind" "$rest" >&2
+            count=$((count + 1))
+        done <<< "$hits"
+    fi
     printf '%d' "$count"
 }
 
@@ -140,7 +179,8 @@ private-leak-check — scan for forbidden private-infrastructure identifiers
 
 USAGE:
   bash scripts/private-leak-check.sh                  # file-scan (stdin)
-  bash scripts/private-leak-check.sh --message <file> # commit-msg
+  bash scripts/private-leak-check.sh --message <file> # commit-msg from file
+  bash scripts/private-leak-check.sh --message -      # commit-msg from stdin
   bash scripts/private-leak-check.sh --self-test      # smoke test
   bash scripts/private-leak-check.sh --help           # this banner
 
@@ -274,15 +314,36 @@ main() {
             ;;
         --message)
             if [[ $# -ne 2 ]]; then
-                printf 'usage: --message <file>\n' >&2
+                printf 'usage: --message <file|->\n' >&2
                 return 2
             fi
-            if [[ ! -f $2 ]]; then
+            # "-" reads from stdin and snapshots it to a temp file. The
+            # snapshot lets scan_stream operate uniformly against either a
+            # real path or stdin, and avoids relying on /dev/stdin — which
+            # is not a usable path on Windows Git Bash.
+            local msg_file cleanup=""
+            if [[ $2 == "-" ]]; then
+                msg_file=$(mktemp)
+                cleanup=$msg_file
+                cat > "$msg_file"
+            elif [[ -f $2 ]]; then
+                msg_file=$2
+            else
                 printf 'error: file not found: %s\n' "$2" >&2
                 return 2
             fi
-            local count=0
-            count=$(scan_stream "commit-msg" < "$2")
+            # scan_stream prints LEAK lines on stderr and the integer count
+            # on stdout. Capture both via process substitution so we can
+            # forward the LEAKs and use the count to set the exit code.
+            local count leak_lines
+            leak_lines=$(scan_stream "commit-msg" < "$msg_file" 2>&1 >/dev/null || true)
+            count=$(scan_stream "commit-msg" < "$msg_file" 2>/dev/null || echo 0)
+            if [[ -n $leak_lines ]]; then
+                printf '%s\n' "$leak_lines"
+            fi
+            if [[ ${cleanup:-} && -f $cleanup ]]; then
+                rm -f "$cleanup"
+            fi
             if [[ $count -gt 0 ]]; then
                 printf 'blocked: %d leaks\n' "$count" >&2
                 return 1
