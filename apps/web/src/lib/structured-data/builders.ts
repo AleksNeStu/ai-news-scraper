@@ -33,7 +33,7 @@ import type {
   SoftwareApplication,
   WebSite,
 } from '@ai-news-scraper/shared'
-import type { Article as ArticleLd } from '@ai-news-scraper/shared/src/structured-data'
+import type { ArticleJsonLd as ArticleLd } from '@ai-news-scraper/shared/src/structured-data'
 
 /**
  * Project display name. Centralized so the Organization, WebSite, and

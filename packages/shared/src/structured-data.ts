@@ -82,7 +82,7 @@ export interface SoftwareApplication extends WithContext<'SoftwareApplication'> 
   offers?: Offer;
 }
 
-export interface Article extends WithContext<'Article'> {
+export interface ArticleJsonLd extends WithContext<'Article'> {
   /** Article headline (recommended ≤ 110 chars). */
   headline: string;
   /** ISO 8601 publication timestamp. */
@@ -130,7 +130,7 @@ export type StructuredDataNode =
   | Organization
   | WebSite
   | SoftwareApplication
-  | Article
+  | ArticleJsonLd
   | BreadcrumbList
   | CollectionPage;
 
