@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import type { Route } from 'next'
-import { Newspaper, Search, Rss, Settings, LogOut } from 'lucide-react'
-import { logoutAction } from '@/lib/auth'
+import { Newspaper, Search, Rss, Settings } from 'lucide-react'
 import { NotificationBell } from '@/components/NotificationBell'
+import { LogoutButton } from '@/components/auth/LogoutButton'
 
 /**
  * Global app header. Server component (only renders JSX; the bell child is
@@ -37,11 +37,7 @@ export function AppHeader() {
             Settings
           </NavLink>
           <NotificationBell />
-          <form action={logoutAction}>
-            <button className="ml-2 inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:border-primary/40">
-              <LogOut className="h-4 w-4" /> Logout
-            </button>
-          </form>
+          <LogoutButton />
         </nav>
       </div>
     </header>

@@ -1,8 +1,8 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 import { api, ApiError } from './api'
+import { performLogout } from './auth/logout'
 
 const COOKIE_NAME = 'auth_token'
 const COOKIE_MAX_AGE = 60 * 60 * 24 // 1d mirror of API
@@ -117,12 +117,21 @@ export async function registerAction(
  * left intact and the action returns an error state — the caller (header
  * logout button) surfaces the failure to the user instead of silently
  * swallowing it.
+ *
+ * Returns ``never`` on the success path because ``performLogout`` calls
+ * ``redirect('/login')`` which is a typed ``never`` (per Next's
+ * ``navigate``-style helpers). The error path returns a discriminated
+ * object the caller can render.
  */
-export async function logoutAction(): Promise<{ ok: false; error: string }> {
-  // Pre-H3 implementation: cookie-only clear. H3 ships in the next
-  // commit and replaces this with a server-confirmed flow.
-  ;(await cookies()).delete(COOKIE_NAME)
-  redirect('/login')
+export async function logoutAction(): Promise<never | { ok: false; error: string }> {
+  const result = await performLogout()
+  if (result.kind === 'error') {
+    return { ok: false, error: result.message }
+  }
+  // Unreachable — ``performLogout`` either returns an error or
+  // calls ``redirect('/login')``, both of which are typed
+  // appropriately.
+  return { ok: false, error: 'Logout failed' }
 }
 
 /** Read the Retry-After header (seconds). Defaults to 60 if missing/invalid. */
