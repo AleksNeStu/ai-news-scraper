@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers'
 import { api, ApiError } from './api'
 import { performLogout } from './auth/logout'
+import { createTranslator } from 'next-intl'
 
 const COOKIE_NAME = 'auth_token'
 const REFRESH_COOKIE_NAME = 'auth_refresh'
@@ -102,7 +103,31 @@ export type LoginState = {
   retryAfter?: number
 }
 
-export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
+/**
+ * Build a server-side translator for the active locale (Task #32).
+ *
+ * Server actions do NOT automatically receive the active locale — next-intl
+ * exposes `getLocale()` from `next-intl/server` which we call inside the
+ * action and pass through to this helper. We then load the matching
+ * `messages/{locale}.json` and wrap `createTranslator` so we can resolve
+ * ICU placeholders in the action's error strings (e.g. the 429 cooldown
+ * message with the `{seconds, plural, ...}` plural).
+ *
+ * For an invalid/unknown locale we fall back to `en` rather than throw,
+ * so a malformed query never crashes the server action.
+ */
+async function tFor(locale: string | undefined) {
+  const safe = locale && (locale === 'en' || locale === 'ru') ? locale : 'en'
+  const messages = (await import(`@/messages/${safe}.json`)).default
+  return createTranslator({ locale: safe, messages })
+}
+
+export async function loginAction(
+  _prev: LoginState,
+  formData: FormData,
+  locale?: string
+): Promise<LoginState> {
+  const t = await tFor(locale)
   const email = String(formData.get('email') ?? '')
   const password = String(formData.get('password') ?? '')
   try {
@@ -129,12 +154,12 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
           ok: false,
           code: 'rate_limited',
           retryAfter,
-          error: `Too many attempts. Try again in ${retryAfter} second${retryAfter === 1 ? '' : 's'}.`,
+          error: t('Auth.Login.error.cooldown', { seconds: retryAfter }),
         }
       }
       return { ok: false, error: e.message }
     }
-    return { ok: false, error: 'Login failed' }
+    return { ok: false, error: t('Auth.Login.error.failed') }
   }
 }
 
@@ -158,8 +183,10 @@ export type RegisterState = {
 
 export async function registerAction(
   _prev: RegisterState,
-  formData: FormData
+  formData: FormData,
+  locale?: string
 ): Promise<RegisterState> {
+  const t = await tFor(locale)
   const email = String(formData.get('email') ?? '')
   const password = String(formData.get('password') ?? '')
   try {
@@ -192,7 +219,7 @@ export async function registerAction(
       }
       return { ok: false, error: e.message }
     }
-    return { ok: false, error: 'Registration failed' }
+    return { ok: false, error: t('Auth.Register.error.failed') }
   }
 }
 
@@ -208,16 +235,35 @@ export async function registerAction(
  * ``redirect('/login')`` which is a typed ``never`` (per Next's
  * ``navigate``-style helpers). The error path returns a discriminated
  * object the caller can render.
+ *
+ * i18n (Task #32):
+ *   - The error message is resolved via `tFor(locale)` so the inline
+ *     error on the logout button reads "Logout failed. Please try again."
+ *     in EN and "Не удалось выйти. Попробуйте ещё раз." in RU. The
+ *     default fallback in `performLogout` stays English-only because
+ *     performLogout does not have access to the locale; the action
+ *     wrapper here catches that path and re-localizes before returning.
  */
-export async function logoutAction(): Promise<never | { ok: false; error: string }> {
+export async function logoutAction(
+  locale?: string
+): Promise<never | { ok: false; error: string }> {
+  const t = await tFor(locale)
   const result = await performLogout()
   if (result.kind === 'error') {
+    // `result.message` from performLogout is the English fallback
+    // (performLogout has no locale context). Re-localize it here so the
+    // UI sees the same key both for network/5xx (where performLogout
+    // returns the English fallback) and for the (currently impossible)
+    // case where performLogout ever returns a localized string.
+    if (result.message === 'Logout failed. Please try again.') {
+      return { ok: false, error: t('Auth.Logout.failed') }
+    }
     return { ok: false, error: result.message }
   }
   // Unreachable — ``performLogout`` either returns an error or
   // calls ``redirect('/login')``, both of which are typed
   // appropriately.
-  return { ok: false, error: 'Logout failed' }
+  return { ok: false, error: t('Auth.Logout.failed') }
 }
 
 /** Read the Retry-After header (seconds). Defaults to 60 if missing/invalid. */
