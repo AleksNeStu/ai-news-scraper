@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import RegisterPage from '@/app/[locale]/(auth)/register/page'
 import { IntlWrapper } from '@/test-utils/intl-helper'
 import type { RegisterState } from '@/lib/auth'
+import type * as NextIntlModule from 'next-intl'
 
 // The register page is a `'use client'` component that drives its UI off
 // the `useActionState` hook. The same caveat as login.test.tsx applies:
@@ -17,7 +18,7 @@ const useActionStateMock = vi.fn()
 // registerAction. 'en' keeps messages/en.json as the catalog inside
 // IntlWrapper so the existing English assertions still hold.
 vi.mock('next-intl', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('next-intl')>()
+  const actual = (await importOriginal()) as typeof NextIntlModule
   return {
     ...actual,
     useLocale: () => 'en',

@@ -1,5 +1,5 @@
 import type messages from './messages/en.json'
-import { routing } from './i18n/routing'
+import type { routing } from './i18n/routing'
 
 /**
  * Module augmentation for next-intl's `AppConfig` (Task #32).

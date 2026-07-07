@@ -4,6 +4,7 @@ import LoginPage from '@/app/[locale]/(auth)/login/page'
 import { IntlWrapper } from '@/test-utils/intl-helper'
 import * as authMod from '@/lib/auth'
 import type { LoginState } from '@/lib/auth'
+import type * as NextIntlModule from 'next-intl'
 
 // The login page is a `'use client'` component that drives its UI off the
 // `useActionState` hook. In jsdom the React 19 server-action plumbing
@@ -21,7 +22,7 @@ const useActionStateMock = vi.fn()
 // `useTranslations` resolves to messages/en.json inside IntlWrapper.
 
 vi.mock('next-intl', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('next-intl')>()
+  const actual = (await importOriginal()) as typeof NextIntlModule
   return {
     ...actual,
     useLocale: () => 'en',
