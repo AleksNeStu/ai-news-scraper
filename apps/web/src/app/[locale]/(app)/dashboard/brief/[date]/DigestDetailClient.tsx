@@ -41,7 +41,7 @@ export default function DigestDetailClient() {
   const { data, loading, error, disabled } = useDigest(date || null)
 
   if (!date) {
-    return <NotFoundState message={t('invalidDate')} />
+    return <NotFoundState message={t('notFound.title')} />
   }
 
   if (loading) {

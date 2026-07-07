@@ -244,9 +244,7 @@ export async function registerAction(
  *     performLogout does not have access to the locale; the action
  *     wrapper here catches that path and re-localizes before returning.
  */
-export async function logoutAction(
-  locale?: string
-): Promise<never | { ok: false; error: string }> {
+export async function logoutAction(locale?: string): Promise<never | { ok: false; error: string }> {
   const t = await tFor(locale)
   const result = await performLogout()
   if (result.kind === 'error') {
@@ -254,13 +252,14 @@ export async function logoutAction(
     // pre-formatted English message (Devil-4 finding). Map the code
     // to a translation key here so the UI reads in the active locale
     // regardless of whether the failure was a 5xx or a network error.
+    //
+    // Today there is one error code (`logout_failed`). When LogoutResult
+    // grows (see `apps/web/src/lib/auth/logout.ts`), the if/else below
+    // becomes a `switch` and the `default` branch carries the
+    // `_exhaustive: never` guard so adding a new variant is a TS error.
     if (result.code === 'logout_failed') {
       return { ok: false, error: t('Auth.Logout.failed') }
     }
-    // Exhaustiveness guard — if a new code is added later, TS will
-    // fail this branch until handled.
-    const _exhaustive: never = result
-    return { ok: false, error: t('Auth.Logout.failed') }
   }
   // Unreachable — ``performLogout`` either returns an error or
   // calls ``redirect('/login')``, both of which are typed

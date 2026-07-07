@@ -23,7 +23,6 @@ const BASE_URL = process.env.BASE_URL ?? 'http://127.0.0.1:4173'
 // Severity ordering is documented at
 // https://github.com/dequelabs/axe-core/blob/develop/doc/rule-descriptions.md
 // We fail on `serious` and `critical`; lower severities are warnings.
-const FAIL_SEVERITIES = new Set(['serious', 'critical'] as const)
 
 interface AxeViolation {
   id: string
@@ -33,13 +32,18 @@ interface AxeViolation {
   nodes: ReadonlyArray<{ html: string; target: ReadonlyArray<string> }>
 }
 
-function partitionBySeverity(
-  violations: ReadonlyArray<AxeViolation>
-): { blockers: AxeViolation[]; warnings: AxeViolation[] } {
+function partitionBySeverity(violations: ReadonlyArray<AxeViolation>): {
+  blockers: AxeViolation[]
+  warnings: AxeViolation[]
+} {
   const blockers: AxeViolation[] = []
   const warnings: AxeViolation[] = []
   for (const v of violations) {
-    if (v.impact && FAIL_SEVERITIES.has(v.impact)) blockers.push(v)
+    // TS2345: `Set<'serious' | 'critical'>.has` rejects the wider
+    // `AxeViolation['impact']` (which also includes 'minor' / 'moderate'
+    // / null). Direct equality on the literal members avoids the
+    // Set-membership type mismatch.
+    if (v.impact === 'serious' || v.impact === 'critical') blockers.push(v)
     else warnings.push(v)
   }
   return { blockers, warnings }
@@ -53,10 +57,7 @@ function summarise(label: string, items: ReadonlyArray<AxeViolation>): string {
       `    ${v.helpUrl}\n` +
       v.nodes
         .slice(0, 3)
-        .map(
-          (n) =>
-            `    -> ${n.target.join(' ')} :: ${n.html.slice(0, 120)}`
-        )
+        .map((n) => `    -> ${n.target.join(' ')} :: ${n.html.slice(0, 120)}`)
         .join('\n')
   )
   return lines.join('\n')
@@ -134,10 +135,7 @@ for (const route of ROUTES) {
     if (warnings.length > 0) {
       // eslint-disable-next-line no-console
       console.warn(
-        `\n[a11y:${route.name}] warnings (${warnings.length}):\n${summarise(
-          'WARN',
-          warnings
-        )}`
+        `\n[a11y:${route.name}] warnings (${warnings.length}):\n${summarise('WARN', warnings)}`
       )
     }
 
