@@ -1,0 +1,125 @@
+name: a11y
+
+# WCAG 2.1 AA + 2.2 AA accessibility gate. Runs axe-core via Playwright
+# against representative templates on every PR. Severity-gated:
+# serious + critical violations fail the build; moderate + minor
+# violations are logged for triage.
+
+on:
+  pull_request:
+    branches: [dev, main]
+    paths:
+      # Only run when web code or the spec changes. Keeps PR-time CI
+      # noise low; nightly schedule below catches everything else.
+      - 'apps/web/**'
+      - 'apps/web/e2e/**'
+      - '.github/workflows/a11y.yml'
+  push:
+    branches: [dev]
+    paths:
+      - 'apps/web/**'
+      - 'apps/web/e2e/**'
+  # Nightly scan against the live staging deploy. Catches CMS-managed
+  # content regressions and operator-side changes that bypass PR review.
+  # Scheduled at 03:00 UTC to minimise overlap with peak usage.
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: a11y-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  a11y-pr:
+    name: axe-core (PR scan)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      # CI builds a static bundle; preview via ``next start`` on a
+      # random port. ``pnpm exec playwright test`` picks the URL up
+      # via ``webServer.url``.
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: '**/pnpm-lock.yaml'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Build + preview
+        run: |
+          pnpm build
+          (PORT=4173 pnpm exec next start -p 4173 &) ; echo $! > .next-server.pid
+          # Poll until the preview server responds.
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:4173/ > /dev/null ; then
+              echo "preview server up after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+      - name: axe-core scan (representative templates)
+        run: pnpm exec playwright test e2e/a11y.spec.ts --reporter=list,github
+        env:
+          BASE_URL: http://127.0.0.1:4173
+      - name: Upload axe report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-report
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 14
+      - name: Cleanup preview server
+        if: always()
+        run: |
+          if [ -f apps/web/.next-server.pid ]; then
+            kill "$(cat apps/web/.next-server.pid)" 2>/dev/null || true
+            rm -f apps/web/.next-server.pid
+          fi
+
+  a11y-staging-nightly:
+    name: axe-core (nightly, staging)
+    runs-on: ubuntu-latest
+    # Only on scheduled runs OR explicit dispatch. PRs use a11y-pr.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: '**/pnpm-lock.yaml'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: axe-core scan (staging)
+        run: pnpm exec playwright test e2e/a11y.spec.ts --reporter=list
+        env:
+          BASE_URL: ${{ vars.STAGING_URL || 'https://staging.ai-news-search.example.com' }}
+      - name: Upload axe report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-nightly-report
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 30
