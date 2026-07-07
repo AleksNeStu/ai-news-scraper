@@ -52,9 +52,7 @@ _settings = get_settings()
 # ---------------------------------------------------------------------------
 
 
-def _set_auth_cookies(
-    response: Response, *, access: str, refresh: str
-) -> None:
+def _set_auth_cookies(response: Response, *, access: str, refresh: str) -> None:
     is_prod = _settings.app_env == "production"
     response.set_cookie(
         AUTH_COOKIE_NAME,
