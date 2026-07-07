@@ -26,7 +26,7 @@
 import { buildLlmsTxt, type LlmsPathResolver } from '@ai-news-scraper/shared'
 import { getPathname } from '@/i18n/navigation'
 import { SITE_URL } from '@/lib/site'
-import { SITE_DESCRIPTION } from '@/lib/structured-data/builders'
+import { SITE_DESCRIPTION, SITE_NAME } from '@/lib/structured-data/builders'
 
 export const revalidate = 3600
 
@@ -35,7 +35,7 @@ export function GET() {
 
   const body = buildLlmsTxt(
     {
-      name: 'ai-news-scraper',
+      name: SITE_NAME,
       summary: SITE_DESCRIPTION,
       // Empty sections — the builder emits the canonical allowlist
       // automatically, expanded per locale.

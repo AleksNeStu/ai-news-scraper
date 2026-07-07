@@ -12,7 +12,11 @@
  *      and we do not block AI ingestion of its content. Spec references
  *      for each bot:
  *        - GPTBot          → OpenAI's crawler (cited by ChatGPT search)
- *        - ClaudeBot       → Anthropic's crawler (cited by Claude)
+ *        - ClaudeBot       → Anthropic's autonomous crawler
+ *        - Claude-User     → Anthropic's user-triggered fetch agent
+ *                            (distinct from ClaudeBot — invoked when a
+ *                            Claude user explicitly asks it to fetch a
+ *                            URL; both ship today, both allowed)
  *        - PerplexityBot   → Perplexity's crawler
  *        - Google-Extended → Google's AI-training opt-in flag
  *        - Applebot-Extended → Apple's AI-training opt-in flag
@@ -34,6 +38,7 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: '*', allow: '/' },
       { userAgent: 'GPTBot', allow: '/' },
       { userAgent: 'ClaudeBot', allow: '/' },
+      { userAgent: 'Claude-User', allow: '/' },
       { userAgent: 'PerplexityBot', allow: '/' },
       { userAgent: 'Google-Extended', allow: '/' },
       { userAgent: 'Applebot-Extended', allow: '/' },

@@ -21,21 +21,34 @@ Files that tell engines *what the site is* and *which pages exist*.
       mirrored against `apps/web/src/app/sitemap.ts`. Internal and
       auth-only routes are deliberately excluded.
 - [x] **`/robots.txt` allows AI user-agents** — `GPTBot`, `ClaudeBot`,
-      `Claude-User`, `PerplexityBot`, `Google-Extended` are each
-      listed explicitly. Bare `User-agent: *` is `Allow: /` so any
-      engine with a token we missed is still permitted.
-- [x] **`/robots.txt` disallows auth-only paths** — `/login`,
-      `/register`, the `(auth)` group, and any session-only
-      dashboard subtree are excluded to avoid advertising them to
-      unauthenticated crawlers.
+      `Claude-User`, `PerplexityBot`, `Google-Extended`,
+      `Applebot-Extended` are each listed explicitly. Bare
+      `User-agent: *` is `Allow: /` so any engine with a token we
+      missed is still permitted.
+- [x] **Auth gating is NOT done in `/robots.txt`** — auth-only paths
+      (`/login`, `/register`, the `(auth)` group, session-only
+      dashboard subtree) are NOT disallowed in robots.txt by design.
+      Crawling them returns a redirect to `/login` at request time
+      (gated by `apps/web/middleware.ts` `PUBLIC_PATHS` /
+      `PUBLIC_PREFIXES`), not a 200. `robots.txt` cannot enforce
+      auth; the file's own header comment (line 7-8 of `robots.ts`)
+      is explicit about this.
 - [x] **`/robots.txt` references the sitemap** — the
       `Sitemap: <siteUrl>/sitemap.xml` line is present.
-- [x] **`/sitemap.xml` lists every public route, per locale** —
-      `apps/web/src/app/sitemap.ts` enumerates the routes from the
-      allowlist with one `<url>` block per locale per route.
-- [x] **`Cache-Control` on `/llms.txt`** — set so engines can cache
-      for an hour at the CDN and a day at the shared cache, with an
-      `ETag` derived from the builder's inputs.
+- [x] **`/sitemap.xml` lists the static public surface, per locale**
+      — `apps/web/src/app/sitemap.ts` enumerates the 11 routes from
+      the allowlist with one `<url>` block per locale (22 entries
+      total). Per-article URLs (`/articles/[id]`) and per-date
+      briefs (`/dashboard/brief/[date]`) are **excluded by design**
+      — they would explode the sitemap and engines discover them
+      via normal crawling plus the canonical / llms.txt references.
+      See `apps/web/src/app/sitemap.ts:9-13` for the rationale
+      comment.
+- [x] **`Cache-Control` on `/llms.txt`** — set to
+      `public, max-age=3600, s-maxage=3600`. ETag is **deferred**
+      (Next.js Route Handler responses don't get one without a
+      manual `NextResponse` header + builder-input hash); not a hard
+      requirement since `Cache-Control` covers freshness.
 - [ ] **`llms-full.txt`** — deferred. Reasoning in ADR-018 §18.6:
       no engine treats it as a hard requirement today, and the
       per-page markdown rendering cost is non-trivial.
@@ -53,8 +66,9 @@ curl -fsS http://localhost:3000/llms.txt | head -40
 # with `- [Title](url): description` links.
 
 # 2. Cache headers on /llms.txt.
-curl -fsSI http://localhost:3000/llms.txt | grep -iE 'cache-control|etag'
-# Expect: Cache-Control header present; ETag present.
+curl -fsSI http://localhost:3000/llms.txt | grep -i 'cache-control'
+# Expect: Cache-Control: public, max-age=3600, s-maxage=3600 (no
+# ETag expected — see Layer 1 bullets above).
 
 # 3. /robots.txt allows the named AI user-agents and points at the sitemap.
 curl -fsS http://localhost:3000/robots.txt | grep -E 'GPTBot|ClaudeBot|PerplexityBot|Google-Extended|Sitemap:'
