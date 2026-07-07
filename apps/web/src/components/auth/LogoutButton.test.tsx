@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { LogoutButton } from '@/components/auth/LogoutButton'
+import { IntlWrapper } from '@/test-utils/intl-helper'
 import * as authMod from '@/lib/auth'
 
 // Stub the server action. In jsdom we don't round-trip the React 19
@@ -17,9 +18,17 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
+function renderLogout() {
+  return render(
+    <IntlWrapper>
+      <LogoutButton />
+    </IntlWrapper>
+  )
+}
+
 describe('LogoutButton — server-confirmed logout (ADR-015 H3)', () => {
   it('renders the logout button as enabled with the default label', () => {
-    render(<LogoutButton />)
+    renderLogout()
     const button = screen.getByRole('button', { name: /logout/i })
     expect(button).toBeInTheDocument()
     expect(button).not.toBeDisabled()
@@ -32,7 +41,7 @@ describe('LogoutButton — server-confirmed logout (ADR-015 H3)', () => {
       () => new Promise(() => {}) // never resolves
     )
 
-    render(<LogoutButton />)
+    renderLogout()
     const button = screen.getByRole('button', { name: /logout/i })
     fireEvent.click(button)
 
@@ -49,7 +58,7 @@ describe('LogoutButton — server-confirmed logout (ADR-015 H3)', () => {
       error: 'Logout failed. Please try again.',
     })
 
-    render(<LogoutButton />)
+    renderLogout()
     fireEvent.click(screen.getByRole('button', { name: /logout/i }))
 
     // Action returned; component should now show the error + re-enabled button.
@@ -64,7 +73,7 @@ describe('LogoutButton — server-confirmed logout (ADR-015 H3)', () => {
   it('handles a thrown server action (transport failure) the same as a server-error result', async () => {
     logoutMock.mockRejectedValue(new Error('network'))
 
-    render(<LogoutButton />)
+    renderLogout()
     fireEvent.click(screen.getByRole('button', { name: /logout/i }))
 
     const alert = await screen.findByRole('alert')
@@ -80,7 +89,7 @@ describe('LogoutButton — server-confirmed logout (ADR-015 H3)', () => {
       new Promise(() => {}) // second click hangs the action
     )
 
-    render(<LogoutButton />)
+    renderLogout()
 
     // First click — error shown.
     fireEvent.click(screen.getByRole('button', { name: /logout/i }))

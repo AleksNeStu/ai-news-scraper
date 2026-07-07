@@ -26,14 +26,22 @@
  * The button is a small client island inside ``AppHeader`` (a server
  * component). It does not own navigation; on success, the server
  * action ``redirect()``s and Next swaps the route.
+ *
+ * i18n (Task #32):
+ *   - Button label + inline error come from `useTranslations('Auth.Logout')`.
+ *     The action's `error` string flows from `logoutAction` via the
+ *     server-side `localizeError` helper, so the inline fallback below
+ *     only fires on browser-side action transport failures (network).
  */
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { LogOut } from 'lucide-react'
 import { logoutAction } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 
 export function LogoutButton() {
+  const t = useTranslations('Auth.Logout')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -54,7 +62,7 @@ export function LogoutButton() {
     } catch {
       // Browser-side action transport failure (network). Mirror
       // the server-error path so the user can retry.
-      setError('Logout failed. Please try again.')
+      setError(t('failed'))
     } finally {
       setPending(false)
     }
@@ -73,7 +81,7 @@ export function LogoutButton() {
         )}
       >
         <LogOut className="h-4 w-4" />
-        {pending ? 'Logging out…' : 'Logout'}
+        {pending ? t('loggingOut') : t('logout')}
       </button>
       {error && (
         <p

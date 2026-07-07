@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { NotificationBell } from '@/components/NotificationBell'
+import { IntlWrapper } from '@/test-utils/intl-helper'
 import * as apiMod from '@/lib/api/notifications'
 import type { Notification } from '@ai-news-scraper/shared'
 
@@ -18,6 +19,14 @@ const makeNotification = (over: Partial<Notification> = {}): Notification => ({
   ...over,
 })
 
+function renderBell() {
+  return render(
+    <IntlWrapper>
+      <NotificationBell />
+    </IntlWrapper>
+  )
+}
+
 describe('NotificationBell', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
@@ -34,7 +43,7 @@ describe('NotificationBell', () => {
       makeNotification({ id: '3', read: true }),
     ])
 
-    render(<NotificationBell />)
+    renderBell()
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Notifications, 2 unread/i })).toBeInTheDocument()
     })
@@ -44,7 +53,7 @@ describe('NotificationBell', () => {
   it('does not show a badge when there are no unread notifications', async () => {
     vi.spyOn(apiMod, 'listNotifications').mockResolvedValue([])
 
-    render(<NotificationBell />)
+    renderBell()
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Notifications, 0 unread/i })).toBeInTheDocument()
     })
@@ -56,7 +65,7 @@ describe('NotificationBell', () => {
       makeNotification({ id: '1', title: 'Brief ready' }),
     ])
 
-    render(<NotificationBell />)
+    renderBell()
     const btn = await screen.findByRole('button', { name: /Notifications/ })
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
 
@@ -75,7 +84,7 @@ describe('NotificationBell', () => {
       makeNotification({ id: 'n2', title: 'Second' }),
     ])
 
-    render(<NotificationBell />)
+    renderBell()
     const bell = await screen.findByRole('button', { name: /Notifications/ })
     fireEvent.click(bell)
 
@@ -93,7 +102,7 @@ describe('NotificationBell', () => {
 
   it('closes the dropdown when Escape is pressed', async () => {
     vi.spyOn(apiMod, 'listNotifications').mockResolvedValue([makeNotification()])
-    render(<NotificationBell />)
+    renderBell()
     const btn = await screen.findByRole('button', { name: /Notifications/ })
     fireEvent.click(btn)
     expect(screen.getByRole('menu')).toBeInTheDocument()
@@ -103,7 +112,7 @@ describe('NotificationBell', () => {
 
   it('shows the empty state when there are no notifications', async () => {
     vi.spyOn(apiMod, 'listNotifications').mockResolvedValue([])
-    render(<NotificationBell />)
+    renderBell()
     const btn = await screen.findByRole('button', { name: /Notifications/ })
     fireEvent.click(btn)
     expect(screen.getByText('No new notifications')).toBeInTheDocument()

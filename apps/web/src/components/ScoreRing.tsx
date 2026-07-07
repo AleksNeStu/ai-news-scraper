@@ -15,8 +15,19 @@
  *   - recommended    → blue-500
  *   - worth_a_look   → slate-400
  *   - low_priority   → slate-300
+ *
+ * i18n (Task #32):
+ *   - `aria-label` is built from `useTranslations('ScoreRing')` so screen
+ *     readers hear the localized "Score 85 percent, tier must_read"
+ *     phrasing. The score percentage and tier name are interpolated via
+ *     the ICU `{pct}` / `{tier}` placeholders declared in en.json /
+ *     ru.json. Tier names are passed through their existing enum string
+ *     — they are technical identifiers, not user-facing copy, so they
+ *     stay untranslated (matches the PRD's "developer-flavored app"
+ *     note).
  */
 
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import type { Tier } from '@ai-news-scraper/shared'
 
@@ -46,6 +57,7 @@ export function ScoreRing({
   tier = null,
   className,
 }: ScoreRingProps) {
+  const t = useTranslations('ScoreRing')
   const px = size === 'md' ? 40 : 24
   const stroke = size === 'md' ? 3 : 2
   const r = (px - stroke) / 2
@@ -60,8 +72,11 @@ export function ScoreRing({
 
   const ariaLabel =
     score == null
-      ? 'Not yet scored'
-      : `Score ${(score * 100).toFixed(0)} percent, tier ${tier ?? 'unknown'}`
+      ? t('notScored')
+      : t('scored', {
+          pct: (score * 100).toFixed(0),
+          tier: tier ?? 'unknown',
+        })
 
   return (
     <svg

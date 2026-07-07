@@ -8,12 +8,19 @@
  *   - `aria-label` updates with the unread count.
  *   - Dropdown items are real `<button>` / `<a>` (keyboard-focusable).
  *   - First item is auto-focused on open for screen-reader handoff.
+ *
+ * i18n (Task #32):
+ *   - Button aria-label, dropdown heading, empty-state copy, and "view all"
+ *     link all come from `useTranslations('Notifications')` — the count
+ *     placeholder is rendered via ICU plural so "1 unread" / "5 unread"
+ *     render grammatically correct in both en and ru.
  */
 
 import Link from 'next/link'
 import type { Route } from 'next'
 import { useEffect, useRef, useState } from 'react'
 import { Bell } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useNotifications } from '@/hooks/useNotifications'
 import type { Notification } from '@ai-news-scraper/shared'
 import { cn } from '@/lib/utils'
@@ -21,6 +28,7 @@ import { cn } from '@/lib/utils'
 const DROPDOWN_LIMIT = 10
 
 export function NotificationBell() {
+  const t = useTranslations('Notifications')
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const firstItemRef = useRef<HTMLAnchorElement | HTMLButtonElement | null>(null)
@@ -59,7 +67,7 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label={`Notifications, ${unread} unread`}
+        aria-label={t('buttonAria', { count: unread })}
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
@@ -81,16 +89,14 @@ export function NotificationBell() {
       {open && (
         <div
           role="menu"
-          aria-label="Notifications"
+          aria-label={t('menuLabel')}
           className="absolute right-0 z-50 mt-2 w-80 origin-top-right rounded-lg border border-border bg-canvas shadow-lg"
         >
           <div className="border-b border-border px-4 py-2 text-xs uppercase tracking-wider text-muted-foreground">
-            Recent notifications
+            {t('heading')}
           </div>
           {data.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-              No new notifications
-            </p>
+            <p className="px-4 py-6 text-center text-sm text-muted-foreground">{t('empty')}</p>
           ) : (
             <ul className="max-h-96 overflow-y-auto">
               {data.slice(0, DROPDOWN_LIMIT).map((n, i) => {
@@ -157,7 +163,7 @@ export function NotificationBell() {
               className="text-xs text-primary hover:underline"
               onClick={() => setOpen(false)}
             >
-              View all briefs →
+              {t('viewAll')}
             </Link>
           </div>
         </div>
