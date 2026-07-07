@@ -10,7 +10,9 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
-    public code?: string
+    public code?: string,
+    /** Response headers (lower-cased). Read `headers.get('retry-after')` etc. */
+    public headers?: Headers
   ) {
     super(message)
     this.name = 'ApiError'
@@ -26,7 +28,7 @@ async function handle<T>(res: Response): Promise<T> {
       detail = body.detail || detail
       code = body.code
     } catch {}
-    throw new ApiError(res.status, detail, code)
+    throw new ApiError(res.status, detail, code, res.headers)
   }
   return res.json() as Promise<T>
 }

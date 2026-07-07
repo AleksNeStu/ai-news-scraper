@@ -1,19 +1,45 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Newspaper } from 'lucide-react'
-import { loginAction } from '@/lib/auth'
+import { loginAction, type LoginState } from '@/lib/auth'
+
+const initialState: LoginState = { ok: false }
 
 export default function LoginPage() {
-  const [state, action, pending] = useActionState(loginAction, { ok: false } as {
-    ok: boolean
-    error?: string
-  })
+  const [state, action, pending] = useActionState(loginAction, initialState)
+  const [cooldown, setCooldown] = useState(0)
+  const errorRef = useRef<HTMLParagraphElement | null>(null)
+
+  // Drive the cooldown countdown. When `state.retryAfter` arrives (a 429
+  // happened), seed the countdown; tick it down once per second until it
+  // hits 0; only then can the user submit again.
+  useEffect(() => {
+    if (state.code === 'rate_limited' && state.retryAfter) {
+      setCooldown(state.retryAfter)
+    }
+  }, [state])
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const id = window.setInterval(() => {
+      setCooldown((c) => Math.max(0, c - 1))
+    }, 1000)
+    return () => window.clearInterval(id)
+  }, [cooldown])
+
+  // Move focus to the first error on render so screen-reader users hit it
+  // immediately (and keyboard users can correct without re-tabbing).
+  useEffect(() => {
+    if (state.error && errorRef.current) errorRef.current.focus()
+  }, [state])
 
   if (state.ok) {
     if (typeof window !== 'undefined') window.location.href = '/'
   }
+
+  const submitDisabled = pending || cooldown > 0
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6">
@@ -30,7 +56,8 @@ export default function LoginPage() {
               type="email"
               required
               autoComplete="email"
-              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              disabled={submitDisabled}
+              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-60"
             />
           </div>
           <div>
@@ -41,16 +68,33 @@ export default function LoginPage() {
               required
               minLength={8}
               autoComplete="current-password"
-              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              disabled={submitDisabled}
+              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-60"
             />
           </div>
-          {state.error && <p className="text-sm text-destructive">{state.error}</p>}
+          {state.error && (
+            <p
+              ref={errorRef}
+              role="alert"
+              aria-live="polite"
+              tabIndex={-1}
+              className="rounded-md border border-destructive/40 bg-surface px-3 py-2 text-sm text-destructive focus:outline-none"
+            >
+              {state.error}
+              {state.code === 'rate_limited' && cooldown > 0 && (
+                <span aria-live="polite" className="ml-1 font-medium tabular-nums">
+                  Retrying in {cooldown}s…
+                </span>
+              )}
+            </p>
+          )}
           <button
             type="submit"
-            disabled={pending}
-            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            disabled={submitDisabled}
+            aria-busy={pending}
+            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {pending ? 'Signing in...' : 'Sign in'}
+            {cooldown > 0 ? `Retry in ${cooldown}s` : pending ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-muted-foreground">
