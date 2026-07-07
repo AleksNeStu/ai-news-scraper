@@ -96,3 +96,27 @@ repos:
         pass_filenames: false
         files: ^apps/api/.*\.py$
         entry: bash -c 'cd apps/api && poetry run ruff check .'
+
+  # ---------- Private-leak check ----------
+  # Two-stage gate that calls the canonical script. The script holds the
+  # only copy of the forbidden-identifier pattern list in the tracked tree;
+  # these hooks never redefine it. Stage (a) scans the staged diff before
+  # the commit lands; stage (b) scans the prepared commit message before
+  # the ref advances. Both stages share the same script entry-point so any
+  # rule change touches only scripts/private-leak-check.sh.
+  - repo: local
+    hooks:
+      - id: leak-check-files
+        name: private-leak-check (staged files)
+        stages: [pre-commit]
+        language: system
+        pass_filenames: false
+        always_run: true
+        entry: bash -c 'git diff --cached | bash scripts/private-leak-check.sh'
+      - id: leak-check-msg
+        name: private-leak-check (commit-msg)
+        stages: [commit-msg]
+        language: system
+        pass_filenames: false
+        always_run: true
+        entry: bash scripts/private-leak-check.sh --message
