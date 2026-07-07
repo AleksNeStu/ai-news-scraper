@@ -1,1 +1,228 @@
-{}
+{
+  "Common": {
+    "appName": "AI News Search",
+    "loading": "Загрузка…",
+    "error": {
+      "placeholder": "—"
+    }
+  },
+  "Header": {
+    "nav": {
+      "scrape": "Собрать",
+      "search": "Поиск",
+      "articles": "Статьи",
+      "brief": "Дайджест",
+      "feeds": "Ленты",
+      "settings": "Настройки"
+    }
+  },
+  "LocaleSwitcher": {
+    "label": "Сменить язык",
+    "en": "English",
+    "ru": "Русский"
+  },
+  "Home": {
+    "welcomeHeading": "С возвращением",
+    "welcomeBody": "Ваша персональная семантическая библиотека новостей.",
+    "stat": {
+      "totalArticles": "Всего статей",
+      "activeFeeds": "Активных лент",
+      "indexedToday": "За сегодня"
+    },
+    "recentArticles": "Свежие статьи",
+    "viewAll": "Все статьи →",
+    "empty": {
+      "title": "Пока нет статей",
+      "body": "Соберите первую страницу или подпишитесь на RSS-ленту, чтобы начать.",
+      "cta": "Собрать URL"
+    }
+  },
+  "Tiers": {
+    "mustRead": "Обязательно к прочтению",
+    "recommended": "Рекомендуем",
+    "worthALook": "Заслуживает внимания",
+    "lowPriority": "Низкий приоритет",
+    "all": "Все"
+  },
+  "Articles": {
+    "pageTitle": "Статьи",
+    "empty": "Пока нет статей.",
+    "filterGroupLabel": "Фильтр по уровню",
+    "groupByTierLabel": "Сгруппировать по уровню",
+    "tierEmpty": "Пока нет статей уровня «{tier}» — загляните позже, мы проиндексируем новые материалы."
+  },
+  "ArticleDetail": {
+    "backToArticles": "Назад к статьям",
+    "indexedAt": "Проиндексировано {relative}",
+    "publishedAt": "Опубликовано {date}",
+    "originalLink": "Оригинал →",
+    "summary": "Краткое содержание",
+    "topics": "Темы",
+    "fullText": "Полный текст"
+  },
+  "Dashboard": {
+    "topPicksHeading": "Главное за сегодня",
+    "topPicksSubheading": "Подобрано ИИ на основе релевантности, новизны и доверия к источнику.",
+    "mustReadEmpty": {
+      "title": "Список «обязательного» пока пуст",
+      "body": "Когда мы проиндексируем новые статьи, лучшие из них появятся здесь."
+    },
+    "mustReadSection": "Обязательно к прочтению",
+    "readCta": "Читать →"
+  },
+  "Brief": {
+    "Inbox": {
+      "title": "Ежедневные дайджесты",
+      "loadingAria": "Загрузка дайджестов",
+      "refreshing": "Обновление…",
+      "disabled": {
+        "title": "Ежедневные дайджесты временно недоступны",
+        "body": "Мы уже работаем над этим — загляните позже."
+      },
+      "empty": {
+        "title": "Дайджестов пока нет",
+        "body": "Первый ежедневный дайджест появится здесь — загляните завтра."
+      },
+      "noArticlesToday": "Сегодня новых статей нет.",
+      "view": "Открыть →",
+      "sectionCount": "{count, plural, one {# раздел} few {# раздела} many {# разделов} other {# разделов}}",
+      "invalidDate": "Неверный формат даты."
+    },
+    "Detail": {
+      "backToBriefs": "Назад к дайджестам",
+      "loadingAria": "Загрузка дайджеста",
+      "disabled": {
+        "title": "Ежедневные дайджесты временно недоступны",
+        "body": "Мы уже работаем над этим — загляните позже."
+      },
+      "notFound": {
+        "title": "Дайджест отсутствует",
+        "titleWithDate": "Нет дайджеста за {date}",
+        "body": "Дайджесты формируются каждое утро в 08:00 по вашему локальному времени."
+      },
+      "sectionCount": "Дайджест · {count, plural, one {# раздел} few {# раздела} many {# разделов} other {# разделов}}",
+      "overallSummary": "Сводка дня",
+      "noArticlesToday": "Сегодня новых статей нет — ваша библиотека молчит.",
+      "sourcesHeading": "Источники",
+      "sourceCount": "{count, plural, one {# источник} few {# источника} many {# источников} other {# источников}}",
+      "articleLinkAria": "Статья {id}"
+    }
+  },
+  "Feeds": {
+    "pageTitle": "RSS-ленты",
+    "feedUrlLabel": "URL ленты",
+    "feedUrlPlaceholder": "https://example.com/feed.xml",
+    "subscribe": "Подписаться",
+    "addFailed": "Не удалось добавить",
+    "unsubscribeConfirm": "Отписаться?",
+    "pollResult": "Проверено — новых записей: {count, plural, one {#} few {#} many {#} other {#}}.",
+    "empty": "Подписок пока нет.",
+    "itemCount": "{count, plural, one {# запись} few {# записи} many {# записей} other {# записей}}",
+    "pollNow": "Проверить сейчас",
+    "unsubscribe": "Отписаться"
+  },
+  "Scrape": {
+    "pageTitle": "Собрать URL",
+    "urlLabel": "URL статьи",
+    "urlPlaceholder": "https://example.com/article",
+    "submit": "Собрать",
+    "failed": "Не удалось собрать страницу",
+    "recentHeading": "Недавние сборы",
+    "empty": "В этой сессии ещё не было сборов."
+  },
+  "Search": {
+    "pageTitle": "Семантический поиск",
+    "queryLabel": "Запрос",
+    "queryPlaceholder": "Регулирование ИИ в ЕС...",
+    "submit": "Искать",
+    "failed": "Поиск не выполнен",
+    "resultsHeading": "Результаты",
+    "resultsMeta": "{count, plural, one {# совпадение} few {# совпадения} many {# совпадений} other {# совпадений}} · {ms} мс",
+    "noMatches": "Совпадений нет.",
+    "score": "скор {n}"
+  },
+  "Settings": {
+    "pageTitle": "Настройки",
+    "account": {
+      "title": "Аккаунт",
+      "body": "Вы вошли. Настройки аккаунта появятся в следующей итерации (P1)."
+    },
+    "openaiKey": {
+      "title": "Ключ OpenAI",
+      "body": "На MVP хранится только на сервере. Свой ключ — в P1."
+    },
+    "summarizer": {
+      "title": "Суммаризатор по умолчанию",
+      "body": "gpt-4o-mini (OpenAI). Переключение на Anthropic — в P1."
+    }
+  },
+  "Auth": {
+    "Login": {
+      "title": "Вход в AI News Search",
+      "emailLabel": "Email",
+      "passwordLabel": "Пароль",
+      "submit": "Войти",
+      "submitting": "Входим...",
+      "retryIn": "Повторить через {n} с",
+      "retryingIn": "Повтор через {n} с…",
+      "noAccount": "Нет аккаунта?",
+      "register": "Регистрация",
+      "error": {
+        "cooldown": "Слишком много попыток. Попробуйте снова через {seconds, plural, one {# секунду} few {# секунды} many {# секунд} other {# секунды}}.",
+        "failed": "Не удалось войти"
+      }
+    },
+    "Register": {
+      "title": "Создайте аккаунт",
+      "emailLabel": "Email",
+      "passwordLabel": "Пароль (минимум 8 символов)",
+      "submit": "Создать аккаунт",
+      "submitting": "Создаём...",
+      "haveAccount": "Уже есть аккаунт?",
+      "signIn": "Войти",
+      "error": {
+        "failed": "Не удалось зарегистрироваться"
+      }
+    },
+    "Logout": {
+      "loggingOut": "Выходим…",
+      "logout": "Выйти",
+      "failed": "Не удалось выйти. Попробуйте ещё раз."
+    }
+  },
+  "Unsubscribe": {
+    "title": "Отписка от ежедневного дайджеста",
+    "working": "Работаем…",
+    "success": {
+      "title": "Вы отписались",
+      "body": "Ежедневные дайджесты больше не будут приходить на почту. Их всё ещё можно читать в дашборде."
+    },
+    "already": {
+      "title": "Вы уже были отписаны",
+      "body": "Никаких действий не нужно — ссылка в письме по-прежнему рабочая, но ваша настройка уже применена."
+    },
+    "confirmedAt": "Подтверждено {time}.",
+    "error": {
+      "title": "Не удалось отписаться",
+      "invalidLink": "В этой ссылке для отписки не хватает данных. Воспользуйтесь ссылкой из письма.",
+      "network": "Не удалось связаться с сервером. Попробуйте из письма."
+    },
+    "backToApp": "Назад в AI News Search →"
+  },
+  "Errors": {
+    "failedToLoad": "Не удалось загрузить",
+    "failedToLoadNotifications": "Не удалось загрузить уведомления",
+    "failedToLoadCount": "Не удалось получить счётчик"
+  },
+  "Notifications": {
+    "buttonAria": "Уведомления, непрочитанных: {count, plural, =0 {нет} one {#} few {#} many {#} other {#}}",
+    "menuLabel": "Уведомления",
+    "heading": "Недавние уведомления",
+    "empty": "Новых уведомлений нет",
+    "viewAll": "Все дайджесты →"
+  },
+  "ScoreRing": {
+    "notScored": "Оценка ещё не выставлена",
+    "scored": "Оценка {pct} процентов, уровень {tier}"
+  }
+}

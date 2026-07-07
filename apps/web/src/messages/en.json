@@ -1,1 +1,228 @@
-{}
+{
+  "Common": {
+    "appName": "AI News Search",
+    "loading": "Loading…",
+    "error": {
+      "placeholder": "—"
+    }
+  },
+  "Header": {
+    "nav": {
+      "scrape": "Scrape",
+      "search": "Search",
+      "articles": "Articles",
+      "brief": "Brief",
+      "feeds": "Feeds",
+      "settings": "Settings"
+    }
+  },
+  "LocaleSwitcher": {
+    "label": "Switch language",
+    "en": "English",
+    "ru": "Russian"
+  },
+  "Home": {
+    "welcomeHeading": "Welcome back",
+    "welcomeBody": "Your personal semantic news library.",
+    "stat": {
+      "totalArticles": "Total articles",
+      "activeFeeds": "Active feeds",
+      "indexedToday": "Indexed today"
+    },
+    "recentArticles": "Recent articles",
+    "viewAll": "View all →",
+    "empty": {
+      "title": "No articles yet",
+      "body": "Scrape your first URL or subscribe to an RSS feed to get started.",
+      "cta": "Scrape a URL"
+    }
+  },
+  "Tiers": {
+    "mustRead": "Must Read",
+    "recommended": "Recommended",
+    "worthALook": "Worth a Look",
+    "lowPriority": "Low Priority",
+    "all": "All"
+  },
+  "Articles": {
+    "pageTitle": "Articles",
+    "empty": "No articles yet.",
+    "filterGroupLabel": "Filter by tier",
+    "groupByTierLabel": "Group by tier",
+    "tierEmpty": "No {tier} articles yet — check back as we score incoming articles."
+  },
+  "ArticleDetail": {
+    "backToArticles": "Back to articles",
+    "indexedAt": "Indexed {relative}",
+    "publishedAt": "Published {date}",
+    "originalLink": "Original →",
+    "summary": "Summary",
+    "topics": "Topics",
+    "fullText": "Full text"
+  },
+  "Dashboard": {
+    "topPicksHeading": "Today's Top Picks",
+    "topPicksSubheading": "Curated by the AI based on relevance, novelty, and source trust.",
+    "mustReadEmpty": {
+      "title": "Your must-read list is empty",
+      "body": "Once we score incoming articles, the top picks will appear here."
+    },
+    "mustReadSection": "Must Read",
+    "readCta": "Read →"
+  },
+  "Brief": {
+    "Inbox": {
+      "title": "Daily Briefs",
+      "loadingAria": "Loading briefs",
+      "refreshing": "Refreshing…",
+      "disabled": {
+        "title": "Daily briefs are temporarily unavailable",
+        "body": "We're working on it — check back soon."
+      },
+      "empty": {
+        "title": "No briefs yet",
+        "body": "Your first daily brief will appear here — check back tomorrow."
+      },
+      "noArticlesToday": "No new articles today.",
+      "view": "View →",
+      "sectionCount": "{count, plural, one {# section} other {# sections}}",
+      "invalidDate": "Invalid date format."
+    },
+    "Detail": {
+      "backToBriefs": "Back to briefs",
+      "loadingAria": "Loading brief",
+      "disabled": {
+        "title": "Daily briefs are temporarily unavailable",
+        "body": "We're working on it — check back soon."
+      },
+      "notFound": {
+        "title": "No brief",
+        "titleWithDate": "No brief for {date}",
+        "body": "Digests are generated each morning at 08:00 (your local time)."
+      },
+      "sectionCount": "Daily brief · {count, plural, one {# section} other {# sections}}",
+      "overallSummary": "Overall summary",
+      "noArticlesToday": "No new articles today — your library is quiet.",
+      "sourcesHeading": "Sources",
+      "sourceCount": "{count, plural, one {# source} other {# sources}}",
+      "articleLinkAria": "Article {id}"
+    }
+  },
+  "Feeds": {
+    "pageTitle": "RSS feeds",
+    "feedUrlLabel": "Feed URL",
+    "feedUrlPlaceholder": "https://example.com/feed.xml",
+    "subscribe": "Subscribe",
+    "addFailed": "Add failed",
+    "unsubscribeConfirm": "Unsubscribe?",
+    "pollResult": "Polled — {count, plural, one {# new item} other {# new items}}.",
+    "empty": "No subscriptions yet.",
+    "itemCount": "{count, plural, one {# item} other {# items}}",
+    "pollNow": "Poll now",
+    "unsubscribe": "Unsubscribe"
+  },
+  "Scrape": {
+    "pageTitle": "Scrape a URL",
+    "urlLabel": "Article URL",
+    "urlPlaceholder": "https://example.com/article",
+    "submit": "Scrape",
+    "failed": "Scrape failed",
+    "recentHeading": "Recent scrapes",
+    "empty": "No scrapes yet in this session."
+  },
+  "Search": {
+    "pageTitle": "Semantic search",
+    "queryLabel": "Query",
+    "queryPlaceholder": "AI regulation in the EU...",
+    "submit": "Search",
+    "failed": "Search failed",
+    "resultsHeading": "Results",
+    "resultsMeta": "{count, plural, one {# hit} other {# hits}} · {ms} ms",
+    "noMatches": "No matches.",
+    "score": "score {n}"
+  },
+  "Settings": {
+    "pageTitle": "Settings",
+    "account": {
+      "title": "Account",
+      "body": "Signed in. Account settings live in a future iteration (P1)."
+    },
+    "openaiKey": {
+      "title": "OpenAI key",
+      "body": "Server-side only for MVP. Bring-your-own-key is P1."
+    },
+    "summarizer": {
+      "title": "Default summarizer",
+      "body": "gpt-4o-mini (OpenAI). Switchable to Anthropic in P1."
+    }
+  },
+  "Auth": {
+    "Login": {
+      "title": "Sign in to AI News Search",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "submit": "Sign in",
+      "submitting": "Signing in...",
+      "retryIn": "Retry in {n}s",
+      "retryingIn": "Retrying in {n}s…",
+      "noAccount": "No account?",
+      "register": "Register",
+      "error": {
+        "cooldown": "Too many attempts. Try again in {seconds, plural, one {# second} other {# seconds}}.",
+        "failed": "Login failed"
+      }
+    },
+    "Register": {
+      "title": "Create your account",
+      "emailLabel": "Email",
+      "passwordLabel": "Password (min 8 chars)",
+      "submit": "Create account",
+      "submitting": "Creating...",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "error": {
+        "failed": "Registration failed"
+      }
+    },
+    "Logout": {
+      "loggingOut": "Logging out…",
+      "logout": "Logout",
+      "failed": "Logout failed. Please try again."
+    }
+  },
+  "Unsubscribe": {
+    "title": "Daily brief unsubscribe",
+    "working": "Working on it…",
+    "success": {
+      "title": "You've been unsubscribed",
+      "body": "No more daily briefs will be emailed to you. You can still view them in the dashboard."
+    },
+    "already": {
+      "title": "You were already unsubscribed",
+      "body": "No further action needed — the link in your email is still valid, but your preference is already set."
+    },
+    "confirmedAt": "Confirmed at {time}.",
+    "error": {
+      "title": "Couldn't unsubscribe",
+      "invalidLink": "This unsubscribe link is missing required fields. Please use the link from your email.",
+      "network": "Couldn't reach the server. Try again from the email."
+    },
+    "backToApp": "Back to AI News Search →"
+  },
+  "Errors": {
+    "failedToLoad": "Failed to load",
+    "failedToLoadNotifications": "Failed to load notifications",
+    "failedToLoadCount": "Failed to load count"
+  },
+  "Notifications": {
+    "buttonAria": "Notifications, {count, plural, =0 {no unread} one {# unread} other {# unread}}",
+    "menuLabel": "Notifications",
+    "heading": "Recent notifications",
+    "empty": "No new notifications",
+    "viewAll": "View all briefs →"
+  },
+  "ScoreRing": {
+    "notScored": "Not yet scored",
+    "scored": "Score {pct} percent, tier {tier}"
+  }
+}
