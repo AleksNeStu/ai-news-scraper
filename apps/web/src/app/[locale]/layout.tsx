@@ -1,7 +1,61 @@
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
+import { getPathname } from '@/i18n/navigation'
 import { routing } from '@/i18n/routing'
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'http://localhost:3000'
+
+/**
+ * Locale-aware `<head>` metadata (Task #32). The App Router's
+ * `generateMetadata` runs once per (locale, route) pair so the
+ * `<html lang>` and `<link rel="alternate" hreflang>` machinery stay
+ * consistent across the static prerender.
+ *
+ * Notes:
+ *   - `alternates.canonical` is the current locale's path (the URL
+ *     the user is looking at). Search engines expect a self-reference,
+ *     not the default-locale variant.
+ *   - `alternates.languages` enumerates both `en` and `ru` per route;
+ *     `x-default` points to the bare / default-locale variant per the
+ *     hreflang spec.
+ *   - Title + description come from a small static dictionary here —
+ *     the rest of the user-visible strings live in the message catalog
+ *     because they're per-component; the page-level title is a SEO
+ *     artifact that doesn't go through the runtime translator.
+ */
+export function generateMetadata({
+  params,
+}: {
+  params: { locale: string }
+}): Metadata {
+  const { locale } = params
+  const path = '/' // root layout — title applies to every page through Next's template
+  const canonical = `${SITE_URL}${getPathname({ locale, href: path })}`
+  const languages = Object.fromEntries(
+    routing.locales.map((alt) => [alt, `${SITE_URL}${getPathname({ locale: alt, href: path })}`])
+  ) as Record<(typeof routing.locales)[number], string> & {
+    'x-default': string
+  }
+  languages['x-default'] = `${SITE_URL}${getPathname({
+    locale: routing.defaultLocale,
+    href: path,
+  })}`
+
+  const isEn = locale === 'en'
+  return {
+    title: isEn ? 'AI News Search' : 'AI News Search',
+    description: isEn
+      ? 'Scrape, summarize, and semantically search your personal news library.'
+      : 'Сбор, реферирование и семантический поиск по вашей персональной библиотеке новостей.',
+    alternates: {
+      canonical,
+      languages,
+    },
+  }
+}
 
 /**
  * `[locale]` segment layout — the actual `<html>` + `<body>` owner (Task #32).
