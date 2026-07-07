@@ -1,4 +1,9 @@
-"""Auth router — register, login, logout, me."""
+"""Auth router — register, login, logout, me.
+
+H2: ``/auth/login`` is now gated by ``rate_limit_ip("login", ...)``
+at 10 hits / 60s / IP per ADR-015 §15.8. ``/auth/register`` keeps
+its existing 5/3600 limit. H1 lives in ``schemas/auth.py``.
+"""
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
@@ -51,7 +56,11 @@ async def register(
     return AuthResponse(user=UserOut.model_validate(user), token=token)
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post(
+    "/login",
+    response_model=AuthResponse,
+    dependencies=[Depends(rate_limit_ip("login", limit=10, window_s=60))],
+)
 async def login(
     payload: UserLogin, response: Response, db: AsyncSession = Depends(get_db)
 ):
