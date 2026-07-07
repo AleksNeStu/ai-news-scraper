@@ -1,5 +1,5 @@
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
-import { setRequestLocale } from 'next-intl/server'
+import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { getPathname } from '@/i18n/navigation'
@@ -26,12 +26,14 @@ const SITE_URL =
  *     because they're per-component; the page-level title is a SEO
  *     artifact that doesn't go through the runtime translator.
  */
-export function generateMetadata({
+export async function generateMetadata({
   params,
 }: {
   params: { locale: string }
-}): Metadata {
+}): Promise<Metadata> {
   const { locale } = params
+  setRequestLocale(locale)
+  const t = await getTranslations('Metadata')
   const path = '/' // root layout — title applies to every page through Next's template
   const canonical = `${SITE_URL}${getPathname({ locale, href: path })}`
   const languages = Object.fromEntries(
@@ -44,12 +46,9 @@ export function generateMetadata({
     href: path,
   })}`
 
-  const isEn = locale === 'en'
   return {
-    title: isEn ? 'AI News Search' : 'AI News Search',
-    description: isEn
-      ? 'Scrape, summarize, and semantically search your personal news library.'
-      : 'Сбор, реферирование и семантический поиск по вашей персональной библиотеке новостей.',
+    title: t('title'),
+    description: t('description'),
     alternates: {
       canonical,
       languages,

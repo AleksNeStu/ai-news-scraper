@@ -6,6 +6,10 @@
       "placeholder": "—"
     }
   },
+  "Metadata": {
+    "title": "AI News Search",
+    "description": "Сбор, реферирование и семантический поиск по вашей персональной библиотеке новостей."
+  },
   "Header": {
     "nav": {
       "scrape": "Собрать",

@@ -6,6 +6,10 @@
       "placeholder": "—"
     }
   },
+  "Metadata": {
+    "title": "AI News Search",
+    "description": "Scrape, summarize, and semantically search your personal news library."
+  },
   "Header": {
     "nav": {
       "scrape": "Scrape",
