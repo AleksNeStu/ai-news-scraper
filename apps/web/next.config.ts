@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next'
 import { withSentryConfig } from '@sentry/nextjs'
+import createNextIntlPlugin from 'next-intl/plugin'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -32,7 +33,9 @@ const nextConfig: NextConfig = {
 // - widenClientFileUpload + hideSourceMaps keep source maps out of
 //   the production bundle but available to Sentry's uploader.
 // - disableLogger silences the SDK's stdout chatter (CI logs only).
-export default withSentryConfig(nextConfig, {
+const withIntl = createNextIntlPlugin('./src/i18n/request.ts')
+
+export default withSentryConfig(withIntl(nextConfig), {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
