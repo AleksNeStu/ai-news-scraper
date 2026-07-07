@@ -41,11 +41,11 @@ export default async function ArticleDetailPage({
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <span>{a.source_domain}</span>
             <span>·</span>
-            <span>{t('indexedAt', { relative: formatRelative(a.indexed_at) })}</span>
+            <span>{t('indexedAt', { relative: formatRelative(a.indexed_at, locale) })}</span>
             {a.publish_date && (
               <>
                 <span>·</span>
-                <span>{t('publishedAt', { date: formatDate(a.publish_date) })}</span>
+                <span>{t('publishedAt', { date: formatDate(a.publish_date, locale) })}</span>
               </>
             )}
             <a

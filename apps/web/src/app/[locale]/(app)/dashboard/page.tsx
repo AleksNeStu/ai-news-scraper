@@ -37,11 +37,7 @@ async function safeFetch(opts: Parameters<typeof listArticles>[0]): Promise<Fetc
   return listArticles(opts).catch(() => ({ items: [], total: 0, page: 1, page_size: 0 }))
 }
 
-export default async function DashboardPage({
-  params,
-}: {
-  params: { locale: string }
-}) {
+export default async function DashboardPage({ params }: { params: { locale: string } }) {
   const { locale } = params
   setRequestLocale(locale)
   const t = await getTranslations('Dashboard')
@@ -92,6 +88,7 @@ export default async function DashboardPage({
           tier="recommended"
           items={recommendedList}
           label={tTiers('recommended')}
+          locale={locale}
         />
       )}
       {worthALookList.length > 0 && (
@@ -99,6 +96,7 @@ export default async function DashboardPage({
           tier="worth_a_look"
           items={worthALookList}
           label={tTiers('worthALook')}
+          locale={locale}
         />
       )}
     </main>
@@ -128,10 +126,12 @@ function TierSection({
   tier,
   items,
   label,
+  locale,
 }: {
   tier: Tier
   items: Article[]
   label: string
+  locale: string
 }) {
   return (
     <section aria-labelledby={`section-${tier}`} className="mb-10">
@@ -157,7 +157,7 @@ function TierSection({
                 <div className="flex items-baseline justify-between gap-3">
                   <h3 className="headline-serif text-base line-clamp-1">{a.headline ?? a.url}</h3>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {formatRelative(a.indexed_at)}
+                    {formatRelative(a.indexed_at, locale)}
                   </span>
                 </div>
                 {a.summary && (

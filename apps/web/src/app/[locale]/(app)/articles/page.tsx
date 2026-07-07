@@ -52,19 +52,19 @@ export default async function ArticlesPage({
       {data.items.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('empty')}</p>
       ) : grouped ? (
-        <GroupedView items={data.items} t={t} tTiers={tTiers} />
+        <GroupedView items={data.items} t={t} tTiers={tTiers} locale={locale} />
       ) : (
-        <FlatList items={data.items} />
+        <FlatList items={data.items} locale={locale} />
       )}
     </main>
   )
 }
 
-function FlatList({ items }: { items: Article[] }) {
+function FlatList({ items, locale }: { items: Article[]; locale: string }) {
   return (
     <ul className="space-y-3">
       {items.map((a) => (
-        <ArticleRow key={a.id} article={a} />
+        <ArticleRow key={a.id} article={a} locale={locale} />
       ))}
     </ul>
   )
@@ -74,10 +74,12 @@ function GroupedView({
   items,
   t,
   tTiers,
+  locale,
 }: {
   items: Article[]
   t: Awaited<ReturnType<typeof getTranslations<'Articles'>>>
   tTiers: Awaited<ReturnType<typeof getTranslations<'Tiers'>>>
+  locale: string
 }) {
   const buckets = bucketByTier(items)
   return (
@@ -98,7 +100,7 @@ function GroupedView({
             ) : (
               <ul className="space-y-3">
                 {list.map((a) => (
-                  <ArticleRow key={a.id} article={a} />
+                  <ArticleRow key={a.id} article={a} locale={locale} />
                 ))}
               </ul>
             )}
@@ -109,7 +111,7 @@ function GroupedView({
   )
 }
 
-function ArticleRow({ article }: { article: Article }) {
+function ArticleRow({ article, locale }: { article: Article; locale: string }) {
   return (
     <li>
       <Link
@@ -125,7 +127,7 @@ function ArticleRow({ article }: { article: Article }) {
               {article.headline ?? article.url}
             </h2>
             <span className="shrink-0 text-xs text-muted-foreground">
-              {formatRelative(article.indexed_at)}
+              {formatRelative(article.indexed_at, locale)}
             </span>
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
