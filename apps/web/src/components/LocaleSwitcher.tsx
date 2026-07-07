@@ -27,6 +27,7 @@
  */
 
 import { useTransition } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Languages } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/navigation'
@@ -36,18 +37,24 @@ export function LocaleSwitcher() {
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
+  const search = useSearchParams()
   const t = useTranslations('LocaleSwitcher')
   const [pending, startTransition] = useTransition()
 
   function onChange(next: string) {
     if (next === locale) return
     startTransition(() => {
-      // ``Pathnames`` generic preserves the locale-aware type so
-      // ``router.replace`` doesn't need an `as Route` cast. The actual
-      // `pathname` here is the locale-stripped canonical form returned
-      // by `usePathname()` from `@/i18n/navigation`, so we forward it
-      // verbatim and let next-intl re-prefix based on `next`.
-      router.replace(pathname as Pathnames, { locale: next })
+      // Preserve the current search params so a user deep in
+      // `/articles?page=2&tier=must_read` lands back on the same
+      // position under the new locale, not the bare list root.
+      // The wrapped `usePathname()` from @/i18n/navigation returns
+      // the locale-stripped canonical form, so we forward it verbatim
+      // and let next-intl re-prefix based on `next`.
+      const query = search ? Object.fromEntries(search.entries()) : {}
+      router.replace(
+        { pathname: pathname as Pathnames, query },
+        { locale: next }
+      )
     })
   }
 
