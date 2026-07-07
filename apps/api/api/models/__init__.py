@@ -5,6 +5,7 @@ from api.models.article import Article
 from api.models.feed import Feed
 from api.models.feed_item import FeedItem
 from api.models.digest import Digest, DigestUnsubscribeLog, Notification
+from api.models.refresh_token import RefreshToken
 
 __all__ = [
     "User",
@@ -14,4 +15,5 @@ __all__ = [
     "Digest",
     "DigestUnsubscribeLog",
     "Notification",
+    "RefreshToken",
 ]

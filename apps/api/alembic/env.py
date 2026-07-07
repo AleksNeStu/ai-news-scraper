@@ -28,6 +28,7 @@ from api.models import (  # noqa: E402,F401
     Feed,
     FeedItem,
     Notification,
+    RefreshToken,
     User,
 )
 
