@@ -1,0 +1,66 @@
+# =====================================================
+# Private-leak-check CI gate.
+#
+# Single job scans both:
+#   1. every tracked file in the repo
+#   2. the body of every commit in the push / pull_request range
+#
+# The canonical pattern list lives in scripts/private-leak-check.sh;
+# this workflow only invokes it. Workflow name and step labels use
+# generic terms to avoid self-triggers.
+# =====================================================
+
+name: private-leak-check
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: leak-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: checkout (full history)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: scan tracked files
+        run: |
+          set -euo pipefail
+          git ls-files -z | xargs -0 cat \
+            | bash scripts/private-leak-check.sh
+
+      - name: scan commit messages (push)
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          # On the first commit of a branch, BEFORE is all zeros; resolve
+          # to the root commit's parent so the range covers every new commit.
+          if [[ "$BEFORE" =~ ^0+$ ]]; then
+            BEFORE=$(git rev-list --max-parents=0 HEAD)
+          fi
+          git log "${BEFORE}..${AFTER}" --format=%B \
+            | bash scripts/private-leak-check.sh --message /dev/stdin
+
+      - name: scan commit messages (pull_request)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          git log "${BASE}..${HEAD}" --format=%B \
+            | bash scripts/private-leak-check.sh --message /dev/stdin
