@@ -91,7 +91,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop the composite index, then drop the table."""
-    op.drop_index(
-        "ix_refresh_tokens_user_id_revoked_at", table_name="refresh_tokens"
-    )
+    op.drop_index("ix_refresh_tokens_user_id_revoked_at", table_name="refresh_tokens")
     op.drop_table("refresh_tokens")

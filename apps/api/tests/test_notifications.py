@@ -108,8 +108,8 @@ async def test_list_notifications_cursor_advances(db_session) -> None:
     rows = await list_notifications(db_session, user.id, cursor=n3.created_at)
     ids = [r.id for r in rows]
     assert n3.id not in ids  # cursor item excluded
-    assert n2.id in ids      # newer-of-the-older items
-    assert n1.id in ids      # older item still qualifies
+    assert n2.id in ids  # newer-of-the-older items
+    assert n1.id in ids  # older item still qualifies
     # Ordering: newest-of-the-older first.
     assert ids == [n2.id, n1.id]
 
@@ -120,8 +120,12 @@ async def test_list_notifications_cursor_respects_limit(db_session) -> None:
     user = await _make_user(db_session, "n-limit@example.com")
     base = datetime(2026, 6, 29, 12, 0, tzinfo=timezone.utc)
     # Three items at 0/10/20 minutes; cursor at the newest.
-    n_middle = _make_notification(db_session, user, created_at=base + timedelta(minutes=10))
-    n_newest = _make_notification(db_session, user, created_at=base + timedelta(minutes=20))
+    n_middle = _make_notification(
+        db_session, user, created_at=base + timedelta(minutes=10)
+    )
+    n_newest = _make_notification(
+        db_session, user, created_at=base + timedelta(minutes=20)
+    )
     await db_session.flush()
     rows = await list_notifications(
         db_session, user.id, cursor=n_newest.created_at, limit=1

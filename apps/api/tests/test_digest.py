@@ -239,9 +239,7 @@ async def test_generate_digest_idempotent_per_user_date(
     _make_article(db_session, user, headline="Y", indexed_at=base)
     await db_session.flush()
 
-    clustering_response = json.dumps(
-        [{"topic": "Topic A", "article_indices": [0, 1]}]
-    )
+    clustering_response = json.dumps([{"topic": "Topic A", "article_indices": [0, 1]}])
     section_response = "Brief prose for the single cluster."
     overall_response = "Overall brief prose."
 
