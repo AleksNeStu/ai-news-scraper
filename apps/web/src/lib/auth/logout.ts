@@ -30,6 +30,7 @@ import { api, ApiError } from '@/lib/api'
 export type LogoutResult = { kind: 'ok' } | { kind: 'error'; message: string }
 
 export const AUTH_COOKIE_NAME = 'auth_token'
+export const AUTH_REFRESH_COOKIE_NAME = 'auth_refresh'
 
 /**
  * Run the server-confirmed logout flow.
@@ -74,7 +75,12 @@ export async function performLogout(): Promise<LogoutResult> {
   }
 
   // 2xx: server revoked the refresh row. Clear the local access-token
-  // cookie and bounce to /login.
-  ;(await cookies()).delete(AUTH_COOKIE_NAME)
+  // cookie AND the refresh cookie (the server's Set-Cookie delete
+  // headers do not reach the browser through this server-action
+  // fetch chain — see ``forwardAuthCookies`` in ``auth.ts`` for the
+  // mirror problem on the login/register side). Bounce to /login.
+  const jar = await cookies()
+  jar.delete(AUTH_COOKIE_NAME)
+  jar.delete(AUTH_REFRESH_COOKIE_NAME)
   redirect('/login')
 }

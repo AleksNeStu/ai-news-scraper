@@ -5,7 +5,85 @@ import { api, ApiError } from './api'
 import { performLogout } from './auth/logout'
 
 const COOKIE_NAME = 'auth_token'
+const REFRESH_COOKIE_NAME = 'auth_refresh'
 const COOKIE_MAX_AGE = 60 * 60 * 24 // 1d mirror of API
+const REFRESH_MAX_AGE = 60 * 60 * 24 * 7 // 7d mirror of API
+
+/**
+ * Forward the API's ``Set-Cookie`` headers to the user's browser so
+ * the refresh cookie (added in ADR-015 §15.9) is actually persisted.
+ *
+ * The ``api`` wrapper returns only the parsed JSON body — Set-Cookie
+ * headers are dropped on the floor if we do not extract them here.
+ * Next server actions run on the server, so the cookies forwarded
+ * via ``cookies().set`` are written to the response that goes back
+ * to the browser. Without this step, H3 is broken on the frontend:
+ * the refresh row is never created client-side, logout can't find
+ * a row to revoke, and ``/auth/refresh`` always returns 401.
+ *
+ * The API controls the source-of-truth cookie attributes (HttpOnly,
+ * env-gated Secure, SameSite=Lax, path="/"). We mirror those flags
+ * verbatim so the browser attributes match — see
+ * ``apps/api/api/routers/auth.py::_set_auth_cookies``.
+ */
+async function forwardAuthCookies(headers: Headers) {
+  const jar = await cookies()
+  const setCookieValues =
+    typeof headers.getSetCookie === 'function'
+      ? headers.getSetCookie()
+      : parseSetCookieHeader(headers.get('set-cookie'))
+  for (const raw of setCookieValues) {
+    const parsed = parseSetCookie(raw)
+    if (!parsed) continue
+    const isProd = process.env.NODE_ENV === 'production'
+    if (parsed.name === COOKIE_NAME) {
+      jar.set(COOKIE_NAME, parsed.value, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: COOKIE_MAX_AGE,
+      })
+    } else if (parsed.name === REFRESH_COOKIE_NAME) {
+      jar.set(REFRESH_COOKIE_NAME, parsed.value, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: REFRESH_MAX_AGE,
+      })
+    }
+  }
+}
+
+/**
+ * Parse a single Set-Cookie header line into ``{name, value}``.
+ * Returns ``null`` if the line is empty / malformed. We only need
+ * the name + value to forward the cookie; attributes (Path, Expires,
+ * Max-Age, HttpOnly, Secure, SameSite) are reapplied on the
+ * forwarding ``cookies().set`` call so they match the API's choice.
+ */
+function parseSetCookie(raw: string): { name: string; value: string } | null {
+  if (!raw) return null
+  const sep = raw.indexOf('=')
+  if (sep <= 0) return null
+  const name = raw.slice(0, sep).trim()
+  // Value ends at the first ``;`` (cookie-attribute separator).
+  const semi = raw.indexOf(';', sep)
+  const value = (semi === -1 ? raw.slice(sep + 1) : raw.slice(sep + 1, semi)).trim()
+  if (!name) return null
+  return { name, value }
+}
+
+/** Join multiple Set-Cookie header values; defensive fallback for runtimes
+ *  that do not implement the structured ``getSetCookie()`` method. */
+function parseSetCookieHeader(header: string | null): string[] {
+  if (!header) return []
+  return header
+    .split(/,(?=[^ ;]+=)/g)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
 
 /**
  * Action state shape for login.
@@ -28,14 +106,18 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   const email = String(formData.get('email') ?? '')
   const password = String(formData.get('password') ?? '')
   try {
-    const res = await api.post<{ user: unknown; token: string }>('/auth/login', { email, password })
-    ;(await cookies()).set(COOKIE_NAME, res.token, {
+    const { data, headers } = await api.postWithHeaders<{ user: unknown; token: string }>(
+      '/auth/login',
+      { email, password }
+    )
+    ;(await cookies()).set(COOKIE_NAME, data.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: COOKIE_MAX_AGE,
     })
+    await forwardAuthCookies(headers)
     return { ok: true }
   } catch (e) {
     if (e instanceof ApiError) {
@@ -81,17 +163,21 @@ export async function registerAction(
   const email = String(formData.get('email') ?? '')
   const password = String(formData.get('password') ?? '')
   try {
-    const res = await api.post<{ user: unknown; token: string }>('/auth/register', {
-      email,
-      password,
-    })
-    ;(await cookies()).set(COOKIE_NAME, res.token, {
+    const { data, headers } = await api.postWithHeaders<{ user: unknown; token: string }>(
+      '/auth/register',
+      {
+        email,
+        password,
+      }
+    )
+    ;(await cookies()).set(COOKIE_NAME, data.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: COOKIE_MAX_AGE,
     })
+    await forwardAuthCookies(headers)
     return { ok: true }
   } catch (e) {
     if (e instanceof ApiError) {

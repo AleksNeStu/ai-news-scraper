@@ -44,6 +44,34 @@ export const api = {
       headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
       body: body ? JSON.stringify(body) : undefined,
     }).then(handle<T>),
+  /**
+   * POST variant that exposes the raw response headers alongside the
+   * parsed body. Needed by the auth flow (ADR-015 §15.9) so the
+   * server action can forward the API's ``Set-Cookie`` headers —
+   * notably the ``auth_refresh`` cookie — to the user's browser.
+   * ``api.post`` returns the body only and would drop those headers.
+   */
+  postWithHeaders: <T>(path: string, body?: unknown, init?: RequestInit) =>
+    fetch(`${API_URL}${path}`, {
+      ...init,
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    }).then(async (res) => {
+      if (!res.ok) {
+        let detail = res.statusText
+        let code: string | undefined
+        try {
+          const body = await res.json()
+          detail = body.detail || detail
+          code = body.code
+        } catch {}
+        throw new ApiError(res.status, detail, code, res.headers)
+      }
+      const data = (await res.json()) as T
+      return { data, headers: res.headers }
+    }),
   delete: <T>(path: string, init?: RequestInit) =>
     fetch(`${API_URL}${path}`, { ...init, method: 'DELETE', credentials: 'include' }).then(
       handle<T>
