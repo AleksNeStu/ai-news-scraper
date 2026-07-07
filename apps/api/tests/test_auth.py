@@ -32,8 +32,11 @@ import pytest_asyncio
 from fastapi import HTTPException, status
 from httpx import ASGITransport, AsyncClient
 
+from api.config import get_settings
 from api.deps import AUTH_COOKIE_NAME
 from api.main import app
+
+_settings = get_settings()
 
 
 # ---------------------------------------------------------------------------
@@ -98,8 +101,9 @@ async def test_register_success_sets_auth_cookie(auth_client: AsyncClient) -> No
     set_cookie = resp.headers.get("set-cookie", "")
     attrs = _cookie_attrs(set_cookie)
     assert attrs.get("name") == AUTH_COOKIE_NAME
-    # Max-Age mirrors jwt_expires_min * 60 (86400 = 24h by default).
-    assert attrs.get("max-age") == "86400"
+    # Max-Age mirrors access_token_expires_min * 60 (15min default after
+    # ADR-015 H3 = 900s; legacy value was 86400 = 24h).
+    assert attrs.get("max-age") == str(_settings.access_token_expires_min * 60)
     # SameSite=Lax — required by the security posture, no SameSite=None.
     assert attrs.get("samesite", "").lower() == "lax"
     # HttpOnly — never absent.
@@ -161,7 +165,7 @@ async def test_login_success_sets_auth_cookie(auth_client: AsyncClient) -> None:
 
     attrs = _cookie_attrs(resp.headers.get("set-cookie", ""))
     assert attrs.get("name") == AUTH_COOKIE_NAME
-    assert attrs.get("max-age") == "86400"
+    assert attrs.get("max-age") == str(_settings.access_token_expires_min * 60)
     assert attrs.get("samesite", "").lower() == "lax"
 
 
