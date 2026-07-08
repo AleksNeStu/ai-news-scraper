@@ -83,6 +83,45 @@ docs/             Project documentation
 
 ## 🔧 Development
 
+### Local dev scripts (cross-platform)
+
+The `scripts/dev/` directory wraps `docker compose` with healthcheck waits
+and clear URLs — the same workflow on Linux, macOS, and Windows.
+
+```bash
+# Linux / macOS
+bash scripts/dev/run.sh           # app stack
+bash scripts/dev/run.sh --monitor # also Uptime Kuma
+bash scripts/dev/run.sh --logs    # then tail logs (Ctrl-C to exit)
+bash scripts/dev/stop.sh          # stop (--volumes to wipe data)
+bash scripts/dev/logs.sh api      # tail one service
+bash scripts/dev/status.sh        # one-shot snapshot
+
+# Windows (PowerShell)
+pwsh scripts/dev/run.ps1
+pwsh scripts/dev/run.ps1 -Monitor
+pwsh scripts/dev/run.ps1 -Logs
+pwsh scripts/dev/stop.ps1
+pwsh scripts/dev/logs.ps1 api
+pwsh scripts/dev/status.ps1
+```
+
+All scripts print `http://localhost:3000` (web) and `http://localhost:8082`
+(api) once the stack is healthy. The default dev login is
+`alex@example.com` / `dev-only-do-not-use-in-prod` (seeded by the
+one-shot `migrate` service).
+
+### Bare docker compose
+
+If you don't want the wrappers:
+
+```bash
+docker compose up -d
+# then wait for healthchecks, open http://localhost:3000
+```
+
+### API only / Web only (no docker)
+
 ```bash
 # API only
 cd apps/api
@@ -93,7 +132,11 @@ poetry run uvicorn api.main:app --reload
 cd apps/web
 pnpm install
 pnpm dev
+```
 
+### Tests & lint
+
+```bash
 # Tests
 cd apps/api && poetry run pytest
 cd apps/web && pnpm test
