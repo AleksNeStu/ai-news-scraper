@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parsePydanticFieldErrors } from '@/lib/auth'
+import { parsePydanticFieldErrors } from '@/lib/auth/parsers'
 
 describe('parsePydanticFieldErrors (ADR-015 H1)', () => {
   it('parses a Pydantic extra_forbidden detail array', () => {

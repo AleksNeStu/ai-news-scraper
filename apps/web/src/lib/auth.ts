@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers'
 import { api, ApiError } from './api'
 import { performLogout } from './auth/logout'
+import { parsePydanticFieldErrors } from './auth/parsers'
 import { createTranslator } from 'next-intl'
 
 const COOKIE_NAME = 'auth_token'
@@ -274,39 +275,4 @@ function parseRetryAfter(headers?: Headers): number {
   if (!raw) return 60
   const seconds = Number.parseInt(raw, 10)
   return Number.isFinite(seconds) && seconds > 0 ? seconds : 60
-}
-
-/**
- * Parse a Pydantic v2 422 body into a `{ field: message }` map.
- *
- * Pydantic v2 returns `detail` as an array of objects:
- *   [{type: "extra_forbidden", loc: ["body", "is_admin"], msg: "Extra inputs are not permitted", input: true}, ...]
- *
- * For forbidden-extras (the H1 case) we strip the `body.` prefix from `loc`
- * so the message reads "is_admin: Extra inputs are not permitted" — useful
- * for users who tampered with the request and hit the schema guard.
- *
- * Returns `null` if the body is not in the Pydantic shape (so the caller can
- * fall back to the raw `e.message`).
- */
-export function parsePydanticFieldErrors(message: string): Record<string, string> | null {
-  try {
-    // ApiError.message is the raw `detail` value (a JSON string of the array,
-    // or a string if the backend returned a flat error). Try parse first.
-    const parsed = JSON.parse(message)
-    if (!Array.isArray(parsed)) return null
-    const out: Record<string, string> = {}
-    for (const item of parsed) {
-      if (!item || typeof item !== 'object') continue
-      const loc = Array.isArray(item.loc) ? item.loc : []
-      // Drop leading "body" / "query" / etc. — the visible field is the tail.
-      const visibleLoc = loc.filter((p: unknown) => p !== 'body' && p !== 'query' && p !== 'path')
-      const field = visibleLoc.join('.') || 'request'
-      const msg = typeof item.msg === 'string' ? item.msg : 'Invalid value'
-      out[field] = msg
-    }
-    return Object.keys(out).length > 0 ? out : null
-  } catch {
-    return null
-  }
 }
