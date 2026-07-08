@@ -1,20 +1,35 @@
-"""Search router — semantic + hybrid search with pagination."""
+"""Search router — semantic + hybrid search with pagination.
+
+Filters (ADR-019 §19.7):
+  - ``source`` is pushed into the Chroma ``where`` clause (scalar
+    equality, native-supported).
+  - ``topics`` and ``date_from``/``date_to`` are applied at the PG
+    hydration step. The Chroma top-K is over-fetched using the formula
+    in §19.2 so post-filter dropout does not empty a page.
+"""
 
 import logging
 import time
+from datetime import timedelta
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from api.db.database import get_db
 from api.deps import get_current_user_id
 from api.models.article import Article
 from api.schemas.article import ArticleOut
-from api.schemas.search import SearchRequest, SearchResponse, SearchResult
+from api.schemas.search import (
+    SearchFilters,
+    SearchRequest,
+    SearchResponse,
+    SearchResult,
+)
 from api.services.embedder import ArticleEmbedder
 from api.services.vector_store import ChromaVectorStore
-from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/search", tags=["search"])
@@ -30,6 +45,38 @@ def _resolve_page_size(payload: SearchRequest) -> int:
     return payload.page_size
 
 
+def _build_hydration_clauses(filters: Optional[SearchFilters], ids: list[str]) -> list:
+    """Extra WHERE clauses for the PG hydration step.
+
+    Implements ADR-019 §19.7:
+      - ``topics``: Postgres array overlap (``&&``) — OR semantics per
+        §19.3. Empty list / None are no-ops.
+      - ``date_from``: inclusive lower bound (``>=``).
+      - ``date_to``: inclusive end-of-day — translated to a strict
+        ``<`` comparison against ``date_to + 1 day`` so a user picking
+        ``date_to=2026-07-08`` still matches articles indexed on that
+        UTC day (§19.4).
+
+    Returns a list of SQLAlchemy expressions; ANDed into the hydration
+    ``select`` in left-to-right order. The ``ids`` parameter is unused
+    in the clause generation (kept for the eventual §19.14 follow-up
+    that may need it for an OR-based fall-back).
+    """
+    if filters is None:
+        return []
+    clauses: list = []
+    if filters.topics:
+        # ``&& ARRAY[:topics]`` — "shares at least one element". Empty
+        # list / None are short-circuited above.
+        clauses.append(Article.topics.op("&&")(filters.topics))
+    if filters.date_from is not None:
+        clauses.append(Article.indexed_at >= filters.date_from)
+    if filters.date_to is not None:
+        # Inclusive end-of-day: compare strictly-less-than the next day.
+        clauses.append(Article.indexed_at < (filters.date_to + timedelta(days=1)))
+    return clauses
+
+
 @router.post("", response_model=SearchResponse)
 async def search(
     payload: SearchRequest,
@@ -42,18 +89,23 @@ async def search(
     qvec = await _embedder.embed(payload.query)
     if qvec is None:
         return SearchResponse(
-            results=[], took_ms=int((time.time() - start) * 1000),
-            page=page, page_size=page_size, total=0,
+            results=[],
+            took_ms=int((time.time() - start) * 1000),
+            page=page,
+            page_size=page_size,
+            total=0,
         )
 
     where: dict = {"user_id": str(user_id)}
     if payload.filters and payload.filters.source:
         where["source_domain"] = payload.filters.source
 
-    # Over-fetch by `page * page_size` so the Chroma ranking is stable
-    # across pages of the same query. We slice the result list to the
-    # current page in memory; `total` reports the full hit count.
-    over_fetch = page * page_size
+    # Over-fetch (ADR-019 §19.2): page*page_size on early pages, with a
+    # 50-item floor and a 2x multiplier on later pages to absorb the
+    # expected PG hydration dropout when topics/date filters are
+    # applied. The 1000 ceiling protects Chroma latency.
+    effective = min(max(page * page_size * 2, page * page_size + 50), 1000)
+    over_fetch = effective
     raw = await _vector_store.query(
         collection="articles",
         query_embedding=qvec,
@@ -61,19 +113,22 @@ async def search(
         where=where,
     )
 
-    # Hydrate Article rows from PG
+    # Hydrate Article rows from PG, then filter by topics / date range.
     ids = [r["id"] for r in raw]
     if not ids:
         return SearchResponse(
-            results=[], took_ms=int((time.time() - start) * 1000),
-            page=page, page_size=page_size, total=0,
+            results=[],
+            took_ms=int((time.time() - start) * 1000),
+            page=page,
+            page_size=page_size,
+            total=0,
         )
 
-    from uuid import UUID as _UUID
-
-    res = await db.execute(
-        select(Article).where(Article.id.in_([_UUID(i) for i in ids]))
-    )
+    extra_clauses = _build_hydration_clauses(payload.filters, ids)
+    stmt = select(Article).where(Article.id.in_([UUID(i) for i in ids]))
+    for clause in extra_clauses:
+        stmt = stmt.where(clause)
+    res = await db.execute(stmt)
     articles_by_id = {str(a.id): a for a in res.scalars().all()}
 
     # Build the full ranked list, then slice the requested page.
