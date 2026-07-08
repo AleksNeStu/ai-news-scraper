@@ -60,7 +60,14 @@ jobs:
       - name: Build + preview
         run: |
           pnpm build
-          (PORT=4173 pnpm exec next start -p 4173 &) ; echo $! > .next-server.pid
+          # `output: 'standalone'` (set in next.config.ts for the
+          # Docker image) makes `next start` a thin wrapper that
+          # warns + sometimes serves the wrong binary. Use the
+          # standalone server.js directly — same runtime the
+          # production Dokploy container runs (apps/web/Dockerfile
+          # CMD). This makes the a11y scan reflect what users
+          # actually see.
+          (HOSTNAME=127.0.0.1 PORT=4173 node .next/standalone/apps/web/server.js &) ; echo $! > .next-server.pid
           # Poll until the preview server responds.
           for i in $(seq 1 30); do
             if curl -sf http://127.0.0.1:4173/ > /dev/null ; then
