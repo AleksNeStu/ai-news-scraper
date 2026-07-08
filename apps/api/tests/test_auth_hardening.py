@@ -29,12 +29,14 @@ import pytest
 import pytest_asyncio
 from fastapi import HTTPException, status
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from api.config import get_settings
+from api.db.database import AsyncSessionLocal
 from api.deps import AUTH_COOKIE_NAME, AUTH_REFRESH_COOKIE_NAME
 from api.main import app
 from api.models.refresh_token import RefreshToken
+from api.models.user import User
 
 _settings = get_settings()
 
@@ -354,6 +356,16 @@ async def registered_user(
     cookie attrs, the parsed auth_refresh cookie attrs, and a
     pre-built ``cookies={AUTH_COOKIE_NAME: ..., AUTH_REFRESH_COOKIE_NAME: ...}``
     kwarg ready to pass to subsequent httpx calls.
+
+    Teardown: delete the user row + refresh-token rows from the
+    production pool before the next test runs. The fixture hits
+    ``/auth/register`` via ``client`` (which uses the api's own
+    ``get_db`` session, NOT the per-test ``db_session`` savepoint)
+    so the underlying transaction COMMITS — leaving the user
+    visible to subsequent tests in the same session and causing
+    409 ``Email already registered`` on the next ``/auth/register``
+    for ``h3user@example.com``. The explicit DELETE here keeps the
+    fixture idempotent across the suite.
     """
     resp = await client.post(
         "/auth/register",
@@ -362,16 +374,29 @@ async def registered_user(
     assert resp.status_code == 201, resp.text
 
     auth_token, auth_refresh = _two_set_cookies(resp)
-    yield {
-        "user": resp.json()["user"],
-        "token": resp.json()["token"],
-        "auth_token_cookie": auth_token,
-        "auth_refresh_cookie": auth_refresh,
-        "cookies": {
-            AUTH_COOKIE_NAME: auth_token.get("value", ""),
-            AUTH_REFRESH_COOKIE_NAME: auth_refresh.get("value", ""),
-        },
-    }
+    user_id = resp.json()["user"]["id"]
+    try:
+        yield {
+            "user": resp.json()["user"],
+            "token": resp.json()["token"],
+            "auth_token_cookie": auth_token,
+            "auth_refresh_cookie": auth_refresh,
+            "cookies": {
+                AUTH_COOKIE_NAME: auth_token.get("value", ""),
+                AUTH_REFRESH_COOKIE_NAME: auth_refresh.get("value", ""),
+            },
+        }
+    finally:
+        async with AsyncSessionLocal() as cleanup_session:
+            try:
+                await cleanup_session.execute(
+                    delete(RefreshToken).where(RefreshToken.user_id == user_id)
+                )
+                await cleanup_session.execute(delete(User).where(User.id == user_id))
+                await cleanup_session.commit()
+            except Exception:
+                await cleanup_session.rollback()
+                raise
 
 
 @pytest.mark.asyncio

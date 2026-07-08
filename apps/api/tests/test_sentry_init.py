@@ -204,12 +204,20 @@ def test_headers_hold_drop_signal_accepts_dict_and_list_of_tuples() -> None:
 
 
 def test_scrub_query_string_preserves_non_sensitive_keys() -> None:
-    """Helper preserves ordering + non-sensitive params exactly."""
+    """Helper preserves ordering + non-sensitive params exactly.
+
+    The redaction sentinel is left as the literal ``[REDACTED]``
+    (NOT percent-encoded) — the Sentry Python SDK stores
+    ``request.query_string`` unencoded, so consumers match on the
+    literal. The full-URL encoding happens in ``_redact_url``,
+    which is a separate code path.
+    """
     qs = "page=1&token=abc&q=hello"
     out = _scrub_query_string(qs)
     assert out is not None
     assert out.startswith("page=1")
     assert "token=[REDACTED]" in out
+    assert "abc" not in out
     assert "q=hello" in out
 
 
@@ -442,6 +450,32 @@ def test_scrub_dict_drops_authorization_in_nested_data() -> None:
     assert out is not None
     assert out["extra"]["headers"]["Authorization"] == "[REDACTED]"
     assert out["extra"]["headers"]["X-Custom"] == "ok"
+
+
+def test_scrub_dict_redacts_compound_sensitive_keys() -> None:
+    """MIN-1 follow-up — compound keys like ``api_key`` / ``refresh_token``
+    / ``private_key`` are also redacted. The scrub walker matches the
+    sensitive token as a SUBSTRING of the key, not just exact equality,
+    so common compound names don't slip through. Bystander keys
+    (``request_id``, ``attempt``) stay untouched because they don't
+    contain any sensitive token.
+    """
+    event: dict[str, Any] = {
+        "extra": {
+            "request_id": "req-1",
+            "api_key": "sk-abc",
+            "refresh_token": "rt-xyz",
+            "private_key": "pk-pem",
+            "attempt": 1,
+        },
+    }
+    out = _scrub_dict(event)
+    assert out is not None
+    assert out["extra"]["request_id"] == "req-1"
+    assert out["extra"]["api_key"] == "[REDACTED]"
+    assert out["extra"]["refresh_token"] == "[REDACTED]"
+    assert out["extra"]["private_key"] == "[REDACTED]"
+    assert out["extra"]["attempt"] == 1
 
 
 # ---------------------------------------------------------------------------

@@ -30,12 +30,19 @@ from __future__ import annotations
 import logging
 import os
 from typing import Any
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
 # Query-param keys whose VALUE is sensitive. Match is case-insensitive
 # (§16.4 footnote); the value is replaced with ``[REDACTED]`` and the
 # key is preserved so the operator still sees the URL was hit.
+#
+# The scrub walker in ``_redact_sensitive_values`` matches BOTH exact
+# keys AND keys that contain any of these as a substring. That covers
+# compound names like ``api_key`` / ``refresh_token`` / ``private_key``
+# without making the test fixtures (which use ``request_id``,
+# ``attempt``, ``endpoint``) false-positive.
 _SENSITIVE_QUERY_KEYS = frozenset(
     {
         "password",
@@ -117,8 +124,10 @@ def _redact_url(url: str) -> str:
     """Redact the query-string portion of a URL, preserving path + scheme.
 
     ``event.request.url`` is a full URL like ``http://api:8082/auth/refresh?token=abc``.
-    The query part is split on ``?``, scrubbed via ``_scrub_query_string``,
-    then rejoined. URL fragments (``#...``) are passed through unchanged.
+    The query part is split on ``?``, scrubbed via ``_scrub_query_string``
+    (which leaves the sentinel as ``[REDACTED]``), then percent-encoded
+    so the URL stays well-formed when downstream parsers re-parse it.
+    URL fragments (``#...``) are passed through unchanged.
     """
     if not url or "?" not in url:
         return url
@@ -126,7 +135,51 @@ def _redact_url(url: str) -> str:
     new_qs = _scrub_query_string(qs)
     if new_qs is None:
         return url
-    return f"{prefix}?{new_qs}"
+    # The redaction sentinel may contain ``[`` / ``]`` characters which
+    # must be percent-encoded inside a URL query value. We re-encode
+    # only the redacted pair (so we don't disturb any percent-encoding
+    # the original URL may have carried on non-sensitive params).
+    encoded = _percent_encode_redacted_pairs(new_qs)
+    return f"{prefix}?{encoded}"
+
+
+def _percent_encode_redacted_pairs(query_string: str) -> str:
+    """Re-encode ``[REDACTED]`` values inside a query string.
+
+    Walk each ``k=v`` pair; if the value is the redaction sentinel,
+    percent-encode the brackets so the result is a valid URL token.
+    Non-redacted pairs are left untouched (preserves any pre-existing
+    percent-encoding on legitimate params).
+    """
+    pairs = query_string.split("&")
+    out: list[str] = []
+    for pair in pairs:
+        if "=" not in pair:
+            out.append(pair)
+            continue
+        key, value = pair.split("=", 1)
+        if value == _REDACTION_SENTINEL:
+            out.append(f"{key}={quote(_REDACTION_SENTINEL, safe='')}")
+        else:
+            out.append(pair)
+    return "&".join(out)
+
+
+def _is_sensitive_key(key: str) -> bool:
+    """True if ``key`` is, or contains, a known sensitive token.
+
+    Matches BOTH the exact key (e.g. ``"token"``) and compound
+    names that include a sensitive substring (e.g. ``"api_key"``,
+    ``"refresh_token"``, ``"private_key"``). Avoids false positives
+    on obviously-bystander fields (``request_id``, ``attempt``,
+    ``endpoint``) because none of those contain a sensitive token.
+    """
+    if not isinstance(key, str):
+        return False
+    kl = key.lower()
+    if kl in _SENSITIVE_QUERY_KEYS or kl in _DROP_HEADER_NAMES:
+        return True
+    return any(token in kl for token in _SENSITIVE_QUERY_KEYS)
 
 
 def _redact_sensitive_values(payload: Any) -> Any:
@@ -145,9 +198,7 @@ def _redact_sensitive_values(payload: Any) -> Any:
     if isinstance(payload, dict):
         out: dict[str, Any] = {}
         for k, v in payload.items():
-            if isinstance(k, str) and (
-                k.lower() in _SENSITIVE_QUERY_KEYS or k.lower() in _DROP_HEADER_NAMES
-            ):
+            if _is_sensitive_key(k):
                 out[k] = _REDACTION_SENTINEL
             else:
                 out[k] = _redact_sensitive_values(v)
@@ -189,9 +240,13 @@ def _redact_user(user: Any) -> Any | None:
 def _scrub_query_string(query_string: str) -> str | None:
     """Redact sensitive values in a URL query string.
 
-    Returns the mutated query string. Returns ``None`` if the input is
-    empty/None. The original key is preserved; only the value is
-    replaced with ``[REDACTED]``.
+    Returns the mutated query string with the redacted value as the
+    literal ``[REDACTED]`` sentinel (NOT percent-encoded). The Sentry
+    Python SDK stores ``request.query_string`` unencoded; encoding
+    here would surprise consumers that match the literal sentinel.
+    The full-URL ``event.request.url`` redaction (handled in
+    ``_redact_url``) percent-encodes the same sentinel after the
+    scrub, so URL parsers downstream stay happy.
     """
     if not query_string:
         return None
@@ -206,7 +261,7 @@ def _scrub_query_string(query_string: str) -> str | None:
             key, _value = pair.split("=", 1)
         else:
             key, _value = pair, ""
-        if key.lower() in _SENSITIVE_QUERY_KEYS:
+        if _is_sensitive_key(key):
             out_pairs.append(f"{key}={_REDACTION_SENTINEL}")
         else:
             out_pairs.append(pair)
