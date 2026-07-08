@@ -140,7 +140,7 @@ correlograms, multi-tenant admin views.
 | E5 | All articles have `topics=[]` | `topics=[]` (not `null`, not omitted). Same shape as the empty-topics case. |
 | E6 | Two articles, same source, same indexed_at second | `sources[0].count == 2`; `date_range.min == max` |
 | E7 | One article, `indexed_at` set, `publish_date=null` | `date_range` is computed from `indexed_at` (the only non-null timestamp). Documented decision: indexed_at, not publish_date. |
-| E8 | User with one article then deletes it, then calls `/search/facets` | Cached response may still include the deleted article for up to 60 s. Documented limitation. Invalidation is the caller's responsibility (or a follow-up ADR; not in scope for #53). |
+| E8 | User with one article then deletes it, then calls `/search/facets` | Cached response may still include the deleted article for up to 60 s. **Accepted trade-off** — bounded staleness within the TTL window; the web client re-queries on user interaction (dropdown open / keystroke / page focus), so staleness is not user-visible. See ADR-020 §Consequences "Bounded staleness" (Task #53 Devil-follow-up, 2026-07-08). |
 
 ## Open questions for the PM
 
