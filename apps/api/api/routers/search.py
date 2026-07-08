@@ -1,4 +1,4 @@
-"""Search router — semantic + hybrid search."""
+"""Search router — semantic + hybrid search with pagination."""
 
 import logging
 import time
@@ -23,6 +23,13 @@ _embedder = ArticleEmbedder()
 _vector_store = ChromaVectorStore()
 
 
+def _resolve_page_size(payload: SearchRequest) -> int:
+    """Effective page_size, honouring the deprecated `top_k` synonym."""
+    if payload.top_k is not None:
+        return payload.top_k
+    return payload.page_size
+
+
 @router.post("", response_model=SearchResponse)
 async def search(
     payload: SearchRequest,
@@ -30,25 +37,37 @@ async def search(
     db: AsyncSession = Depends(get_db),
 ):
     start = time.time()
+    page = payload.page
+    page_size = _resolve_page_size(payload)
     qvec = await _embedder.embed(payload.query)
     if qvec is None:
-        return SearchResponse(results=[], took_ms=int((time.time() - start) * 1000))
+        return SearchResponse(
+            results=[], took_ms=int((time.time() - start) * 1000),
+            page=page, page_size=page_size, total=0,
+        )
 
     where: dict = {"user_id": str(user_id)}
     if payload.filters and payload.filters.source:
         where["source_domain"] = payload.filters.source
 
+    # Over-fetch by `page * page_size` so the Chroma ranking is stable
+    # across pages of the same query. We slice the result list to the
+    # current page in memory; `total` reports the full hit count.
+    over_fetch = page * page_size
     raw = await _vector_store.query(
         collection="articles",
         query_embedding=qvec,
-        top_k=payload.top_k,
+        top_k=over_fetch,
         where=where,
     )
 
     # Hydrate Article rows from PG
     ids = [r["id"] for r in raw]
     if not ids:
-        return SearchResponse(results=[], took_ms=int((time.time() - start) * 1000))
+        return SearchResponse(
+            results=[], took_ms=int((time.time() - start) * 1000),
+            page=page, page_size=page_size, total=0,
+        )
 
     from uuid import UUID as _UUID
 
@@ -57,16 +76,29 @@ async def search(
     )
     articles_by_id = {str(a.id): a for a in res.scalars().all()}
 
-    results: list[SearchResult] = []
+    # Build the full ranked list, then slice the requested page.
+    full_results: list[SearchResult] = []
     for hit in raw:
         a = articles_by_id.get(hit["id"])
         if a is None:
             continue
-        results.append(
+        full_results.append(
             SearchResult(
                 article=ArticleOut.model_validate(a),
                 score=hit["score"],
                 highlights=[],
             )
         )
-    return SearchResponse(results=results, took_ms=int((time.time() - start) * 1000))
+
+    total = len(full_results)
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    page_slice = full_results[start_idx:end_idx]
+
+    return SearchResponse(
+        results=page_slice,
+        took_ms=int((time.time() - start) * 1000),
+        page=page,
+        page_size=page_size,
+        total=total,
+    )

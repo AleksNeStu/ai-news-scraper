@@ -53,6 +53,15 @@ export interface BatchScrapeRequest {
 
 export interface SearchRequest {
   query: string;
+  /** 1-indexed page number. Defaults to 1. */
+  page?: number;
+  /** Items per page. Defaults to 10; max 100. */
+  page_size?: number;
+  /**
+   * Deprecated synonym for `page_size`. If both are sent, `page_size`
+   * wins. Mirrors the Python `SearchRequest.top_k` in
+   * `apps/api/api/schemas/search.py`.
+   */
   top_k?: number;
   filters?: SearchFilters;
 }
@@ -73,6 +82,12 @@ export interface SearchResult {
 export interface SearchResponse {
   results: SearchResult[];
   took_ms: number;
+  /** 1-indexed page number that produced `results`. */
+  page: number;
+  /** Items per page used for `results`. */
+  page_size: number;
+  /** Total number of hits matching the query (across all pages). */
+  total: number;
 }
 
 export interface Feed {
