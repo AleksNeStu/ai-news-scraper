@@ -6,6 +6,7 @@ import { formatRelative } from '@/lib/utils'
 import { ScoreRing } from '@/components/ScoreRing'
 import { StructuredData } from '@/components/StructuredData'
 import { ArticlesToolbar } from '@/app/[locale]/(app)/articles/ArticlesToolbar'
+import { ArticlesPagination } from '@/app/[locale]/(app)/articles/ArticlesPagination'
 import { TIER_ORDER, bucketByTier, isTier } from '@/app/[locale]/(app)/articles/buckets'
 import { SITE_URL } from '@/lib/site'
 import {
@@ -121,7 +122,17 @@ export default async function ArticlesPage({
       ) : grouped ? (
         <GroupedView items={data.items} t={t} tTiers={tTiers} locale={locale} />
       ) : (
-        <FlatList items={data.items} locale={locale} />
+        <>
+          <FlatList items={data.items} locale={locale} />
+          {data.total > data.page_size && (
+            <div className="mt-8">
+              <ArticlesPagination
+                page={data.page}
+                totalPages={Math.max(1, Math.ceil(data.total / data.page_size))}
+              />
+            </div>
+          )}
+        </>
       )}
     </main>
   )
