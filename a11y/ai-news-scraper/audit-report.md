@@ -44,7 +44,7 @@ journey, **MAJOR** = significant barrier, **MINOR** = polish / consistency.
 
 | # | Severity | WCAG | Location | Finding | Source |
 |---|---|---|---|---|---|
-| 1 | **MAJOR** | 1.1.1 Non-text Content | `apps/web/src/app/page.tsx` | `StatCard` icon-only quick-action cards rely on `aria-label`; one card (`Total articles`) wraps a Lucide icon without alt-equivalent text. Manual review required — automated axe will flag the unlabeled `<svg>`. | Source review |
+| 1 | ~~MAJOR~~ | 1.1.1 Non-text Content | `apps/web/src/app/[locale]/page.tsx` | **Closed 2026-07-08** — the current `StatCard` component renders text only (`value` + `label`), no icon. The original finding referenced an earlier iteration that wrapped a Lucide icon; the wrapper was removed when the i18n Task #32 landed. axe-core scan on `/` reports no unlabeled SVGs in the StatCard trio. | Source re-review |
 | 2 | **MINOR** | 1.3.1 Info and Relationships | `apps/web/src/components/layout/AppHeader.tsx:34-50` | `NavLink` components are anchors but the parent `<nav>` does not declare `aria-label="Primary"`. Multiple `<nav>` regions would fail the "bypass blocks" rule when more than one is added. | Source review |
 | 3 | **MINOR** | 1.4.3 Contrast (Minimum) | Tailwind v4 dark theme | Dark theme relies on `text-muted-foreground` over `bg-canvas`. The exact contrast ratio depends on the final token values (configured in `apps/web/src/app/globals.css`). **Automated scanner will report precise violations** — verify after design tokens are finalized. | Pending token audit |
 | 4 | **MINOR** | 1.4.11 Non-text Contrast | UI controls (focus rings, button borders) | Tailwind v4 default focus rings may not meet the 3:1 non-text contrast requirement against dark backgrounds. Apply `outline` / `box-shadow` overrides. | Source review |
@@ -58,7 +58,7 @@ journey, **MAJOR** = significant barrier, **MINOR** = polish / consistency.
 | 7 | **MAJOR** | 2.4.1 Bypass Blocks | `apps/web/src/app/layout.tsx` | No skip-link in the root layout. WCAG 2.4.1 requires a mechanism to bypass repeated navigation. The `<header>` + `<nav>` repeat on every page; a "Skip to main content" link is the canonical fix. | Source review |
 | 8 | **MAJOR** | 2.4.3 Focus Order | `apps/web/src/components/auth/LogoutButton.tsx` | Logout button has a "Logging out…" pending state with `aria-busy`. Focus management during the transition needs a manual pass — if focus stays on a now-disabled button, screen readers may stall. | Manual required |
 | 9 | **MAJOR** | 2.4.7 Focus Visible | Global | `globals.css` does not declare a `:focus-visible` rule. Browsers apply their default (often faint) outline on dark themes; the project's `headline-serif` / design tokens need an explicit override. | Source review |
-| 10 | **MAJOR** | 2.5.3 Label in Name | `apps/web/src/app/(app)/scrape/page.tsx` | Buttons containing only icons (e.g. "Submit URL" via `ArrowRight`) need an accessible name that matches their visible label per WCAG 2.5.3. Voice-control users say "click submit" — the button's accessible name must contain "submit". | Source review |
+| 10 | ~~MAJOR~~ | 2.5.3 Label in Name | `apps/web/src/app/[locale]/(app)/scrape/page.tsx` | **Closed 2026-07-08** — the current `/scrape` submit button has visible text `{t('submit')}` ("Submit" / "Отправить") rendered alongside the `Plus` icon. The same pattern holds for `/search` and `/feeds` submit buttons. WCAG 2.5.3 is satisfied because the accessible name (text content) includes the visible "submit" / "subscribe" string. | Source re-review |
 | 11 | **MINOR** | 2.5.8 Target Size (Minimum) | WCAG 2.2 — 24×24px | Nav links in `AppHeader.tsx` use `px-3 py-1.5` with `text-sm` — the bounding box of each link is roughly 32-40px tall but may be narrower than 24px on mobile wrapping. Automated check via axe 2.5.8 tag. | Pending scan |
 
 ### Understandable
@@ -92,7 +92,7 @@ journey, **MAJOR** = significant barrier, **MINOR** = polish / consistency.
 | Severity | Count |
 |---|---|
 | CRITICAL | 0 |
-| MAJOR | 7 (Phase 1 + Phase 3 combined) |
+| MAJOR | 5 (Phase 1 + Phase 3 combined) — #1, #10 closed 2026-07-08 |
 | MINOR | 7 |
 | Pending manual pass | 6 (Phase 2 + 2.2-specific) |
 | Pass (no action) | 2 (2.5.7, 2.6.1) |
