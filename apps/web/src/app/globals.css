@@ -89,3 +89,17 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
+
+/* Global focus-visible outline (closes a11y audit #9).
+   Cyan ring with offset so it stays visible on dark surfaces.
+   Suppressed on :focus without :focus-visible to keep the
+   mouse-click UX clean while preserving keyboard visibility. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
