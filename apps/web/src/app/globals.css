@@ -27,6 +27,13 @@
   --color-destructive-foreground: hsl(222 47% 6%);
   --color-success: hsl(160 84% 45%); /* emerald */
 
+  /* shadcn-standard aliases (added for the components installed under Task #44
+     so generated primitives map to our semantic tokens without a fork). */
+  --color-input: hsl(222 20% 22%); /* same as --color-border */
+  --color-ring: hsl(187 92% 55%); /* same as --color-primary */
+  --color-popover: hsl(222 40% 9%); /* same as --color-canvas */
+  --color-popover-foreground: hsl(60 20% 92%); /* same as --color-foreground */
+
   --radius: 0.5rem;
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
