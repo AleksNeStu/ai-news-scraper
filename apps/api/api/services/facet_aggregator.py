@@ -7,10 +7,12 @@ Three SQL statements, one per facet dimension:
   1. ``sources``  — ``SELECT source_domain, COUNT(*) FROM articles
                        WHERE user_id = :uid AND source_domain IS NOT NULL
                        GROUP BY source_domain ORDER BY COUNT(*) DESC``
-  2. ``topics``   — ``SELECT topic, COUNT(*) FROM articles
+  2. ``topics``   — ``SELECT topic, COUNT(DISTINCT articles.id) FROM articles
                        CROSS JOIN UNNEST(topics) AS topic
                        WHERE user_id = :uid
-                       GROUP BY topic ORDER BY COUNT(*) DESC``
+                       GROUP BY topic ORDER BY COUNT(DISTINCT articles.id) DESC``
+                       (the ``DISTINCT`` is over the parent row, not
+                       the unnested label)
   3. ``date_range`` — ``SELECT MIN(indexed_at), MAX(indexed_at) FROM articles
                          WHERE user_id = :uid``
 
@@ -37,7 +39,7 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.article import Article
@@ -72,10 +74,14 @@ async def _aggregate_topics(db: AsyncSession, user_id: UUID) -> list[FacetCount]
 
     ``Article.topics`` is a Postgres ``ARRAY(String)``. ``UNNEST`` on
     the column materialises the array elements as rows; the GROUP BY
-    then counts how many articles share each tag. ``COUNT(*)`` here
-    counts the unnested rows (= tag occurrences), not the distinct
-    articles — which is the "how often did the user see this topic in
-    their library" semantics the web UI wants.
+    then collapses them per tag. The count is ``COUNT(DISTINCT
+    articles.id)`` — not ``COUNT(*)`` — so each article contributes
+    at most one per tag, regardless of whether its topics array
+    contains a duplicate element (e.g. ``['ai', 'ai']`` from a
+    buggy extractor or a future LLM run). The contract documented
+    on ``FacetCount`` and on the TS JSDoc is "number of articles
+    in the user's library that share this topic", so a duplicate
+    tag on one article must count as 1, not 2.
 
     We deliberately do not cap the result: the topic taxonomy is
     LLM-generated per article (ADR-013) and naturally bounded to
@@ -87,13 +93,21 @@ async def _aggregate_topics(db: AsyncSession, user_id: UUID) -> list[FacetCount]
     ``.alias("topic")`` is purely cosmetic — Postgres does not require
     a derived-table name for a CROSS JOIN with a function, but the
     named alias makes the rendered SQL self-documenting in logs.
+
+    Casting ``DISTINCT`` over ``Article.id`` (the parent row, not the
+    unnested label) is what makes the dedup work — casting over
+    ``topic_col`` would dedupe identical tag strings across the full
+    result set instead of collapsing same-article duplicates in the
+    source array. The SQLAlchemy 2.x idiom is
+    ``func.count(distinct(Article.id))`` — ``distinct`` is a unary
+    expression wrapper, not a kwarg to ``count``.
     """
     topic_col = func.unnest(Article.topics).alias("topic")
     stmt = (
-        select(topic_col, func.count().label("cnt"))
+        select(topic_col, func.count(distinct(Article.id)).label("cnt"))
         .where(Article.user_id == user_id)
         .group_by(topic_col)
-        .order_by(func.count().desc())
+        .order_by(func.count(distinct(Article.id)).desc())
     )
     res = await db.execute(stmt)
     return [FacetCount(value=str(row[0]), count=row.cnt) for row in res.all()]

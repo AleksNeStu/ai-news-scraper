@@ -74,17 +74,6 @@ def _cache_key(user_id: UUID) -> str:
     return f"{_KEY_PREFIX}:{user_id}"
 
 
-def _is_test_env() -> bool:
-    """True when the app is running under pytest.
-
-    Used by the route to skip Redis lookups in tests that don't
-    monkeypatch the cache — keeps the test-suite hermetic without
-    forcing every test file to know about Redis. Mirrors the bypass
-    used by ``api.middleware.rate_limit``.
-    """
-    return _settings.app_env == "test"
-
-
 async def _try_get_cached(user_id: UUID) -> FacetsResponse | None:
     """Return the cached ``FacetsResponse`` for ``user_id`` or None.
 
@@ -92,8 +81,6 @@ async def _try_get_cached(user_id: UUID) -> FacetsResponse | None:
     through to the aggregator. We deliberately do NOT raise — the
     cache is a performance optimisation, not a correctness primitive.
     """
-    if _is_test_env():
-        return None
     client = _get_redis()
     try:
         raw = await client.get(_cache_key(user_id))
@@ -126,8 +113,6 @@ async def _try_set_cached(user_id: UUID, response: FacetsResponse) -> None:
     ``await`` only ``set`` (the TTL is set atomically via the EX
     kwarg, no follow-up EXPIRE call needed).
     """
-    if _is_test_env():
-        return
     client = _get_redis()
     try:
         await client.set(

@@ -73,6 +73,14 @@ class _FakeRedis:
 
     async def set(self, key: str, value: str, ex: int | None = None):
         self.set_calls += 1
+        # ``ex=0`` in real Redis means "expire immediately" — the
+        # value is set and then deleted before the next ``get`` returns.
+        # T7 uses ``monkeypatch.setattr(facet_cache, "CACHE_TTL_SECONDS",
+        # 0)`` to simulate TTL elapsing between two requests; without
+        # honouring ``ex`` the second request would still HIT.
+        if ex == 0:
+            self.store.pop(key, None)
+            return True
         self.store[key] = value
         return True
 
@@ -242,10 +250,18 @@ def fake_session_factory(articles_pool):
             async def execute(self, stmt):
                 own = self._own_articles()
                 # Topics unnest — detect the ``unnest`` function call.
+                # Counts are DISTINCT-articles (mirrors the production
+                # ``COUNT(DISTINCT articles.id)`` — see Devil review C1):
+                # one article with ``topics=['ai','ai']`` contributes
+                # at most 1 to the ``ai`` bucket, not 2.
                 if _walk_for_func(stmt, "unnest"):
                     counts: dict[str, int] = {}
                     for a in own:
+                        seen_for_this_article: set[str] = set()
                         for t in a.topics or []:
+                            if t in seen_for_this_article:
+                                continue
+                            seen_for_this_article.add(t)
                             counts[t] = counts.get(t, 0) + 1
                     raw_rows = sorted(
                         counts.items(),
@@ -608,3 +624,169 @@ async def test_T6_cache_keys_are_user_scoped(
     # Distinct UUIDs in the suffix.
     suffixes = {k.split(":", 1)[1] for k in keys}
     assert len(suffixes) == 3
+
+
+# ---------------------------------------------------------------------------
+# T1b — Devil C1: duplicate topic inside a single article counts once
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_T1b_duplicate_topic_in_single_article_counts_as_one(
+    client_for_user, articles_pool
+):
+    """One article with ``topics=['ai', 'ai']`` — contract says 1, not 2.
+
+    Devil review (FIX-C1): ``COUNT(*)`` over unnested rows returns 2,
+    which contradicts the ``FacetCount`` JSDoc contract ("count =
+    number of articles in the user's library that share this topic").
+    A buggy extractor or a future LLM run can produce duplicate tags
+    inside one article's array; the aggregator must collapse them
+    via ``COUNT(DISTINCT articles.id)``.
+    """
+    aid = uuid4()
+    user = uuid4()
+    a = _make_article(
+        aid,
+        source_domain="reuters.com",
+        topics=["ai", "ai"],  # duplicate on purpose
+        indexed_at=datetime(2026, 7, 5, 8, 30, 0, tzinfo=timezone.utc),
+        user_id=user,
+    )
+    articles_pool[str(aid)] = a
+
+    async with client_for_user(user) as c:
+        r = await c.get("/search/facets")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    # One bucket, count=1 — the duplicate tag is collapsed.
+    assert body["topics"] == [{"value": "ai", "count": 1}]
+    # Sources / date_range untouched.
+    assert body["sources"] == [{"value": "reuters.com", "count": 1}]
+    assert body["date_range"]["min"] == "2026-07-05T08:30:00Z"
+    assert body["date_range"]["max"] == "2026-07-05T08:30:00Z"
+
+
+# ---------------------------------------------------------------------------
+# T7 — Devil H3: cache MISS after TTL expiry recomputes
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_T7_cache_miss_after_ttl_recomputes(
+    client_for_user, articles_pool, fake_redis, monkeypatch
+):
+    """Two calls: first MISS writes with TTL=0 → entry is gone → second MISS.
+
+    Devil review (FIX-H3): AC #7 requires a regression guard for TTL
+    expiry. We force expiry by collapsing the TTL to 0 between calls
+    via ``monkeypatch.setattr(facet_cache, "CACHE_TTL_SECONDS", 0)``;
+    the FakeRedis honours ``ex=0`` by NOT persisting the entry, which
+    is the contract Redis itself implements for ``SET key val EX 0``
+    (immediate expiry). A regression that breaks TTL handling — e.g.
+    dropping the ``ex=`` kwarg in ``_try_set_cached`` — would surface
+    here as a HIT on the second call.
+    """
+    aid = uuid4()
+    user = uuid4()
+    articles_pool[str(aid)] = _make_article(
+        aid, source_domain="bbc.com", topics=["climate"], user_id=user
+    )
+
+    async with client_for_user(user) as c:
+        # Force TTL=0 for both calls — first call still MISSes (cache
+        # empty), writes an ex=0 entry that the FakeRedis immediately
+        # drops; second call MISSes again because the cache stayed
+        # empty.
+        monkeypatch.setattr(facet_cache, "CACHE_TTL_SECONDS", 0)
+        r1 = await c.get("/search/facets")
+        assert r1.status_code == 200
+        assert r1.headers["x-cache"] == "MISS"
+        # The FakeRedis.set was called once but the entry was dropped
+        # because ex=0; the store stays empty.
+        assert fake_redis.set_calls == 1
+        assert fake_redis.store == {}
+
+        r2 = await c.get("/search/facets")
+        assert r2.status_code == 200
+        # Crucial assertion: the second call is ALSO MISS, because the
+        # previous entry was expired on write. set_calls incremented
+        # again, proving the recompute path ran.
+        assert r2.headers["x-cache"] == "MISS"
+        assert fake_redis.set_calls == 2
+
+
+# ---------------------------------------------------------------------------
+# T8 — Devil H4: unauthenticated request returns 401
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_T8_unauthenticated_returns_401():
+    """No auth override → ``get_current_user_id`` raises → 401.
+
+    Devil review (FIX-H4): the route declares
+    ``Depends(get_current_user_id)``, so a missing override is the
+    single regression vector that turns the facets endpoint into a
+    cross-user data leak. This test pins the dependency in place by
+    hitting the app WITHOUT the user-id override and asserting 401.
+
+    We deliberately do NOT parameterise this test on
+    ``client_for_user`` because that fixture installs the auth
+    override at the moment of fixture instantiation — i.e. it
+    pollutes ``app.dependency_overrides`` globally for the test
+    even before our body runs. Rolling our own async context manager
+    here lets us install a DB override (so the request reaches the
+    route handler) while leaving ``get_current_user_id`` at the
+    production wiring that 401s when no token is present.
+    """
+    from contextlib import asynccontextmanager
+
+    from httpx import ASGITransport, AsyncClient
+
+    @asynccontextmanager
+    async def _raw_client():
+        async def _override_db():
+            # Never reached — 401 fires before any query runs. Yielding
+            # a None session keeps the dep well-formed so FastAPI's
+            # dependency-injection machinery does not raise a different
+            # error first.
+            yield None
+
+        prev_user = app.dependency_overrides.get(get_current_user_id)
+        prev_db = app.dependency_overrides.get(get_db)
+        # Explicitly DO NOT install a get_current_user_id override —
+        # the production wiring raises HTTPException(401) when neither
+        # an Authorization header nor the auth cookie is present.
+        app.dependency_overrides.pop(get_current_user_id, None)
+        app.dependency_overrides[get_db] = _override_db
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        try:
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                yield ac
+        finally:
+            if prev_user is None:
+                app.dependency_overrides.pop(get_current_user_id, None)
+            else:
+                app.dependency_overrides[get_current_user_id] = prev_user
+            if prev_db is None:
+                app.dependency_overrides.pop(get_db, None)
+            else:
+                app.dependency_overrides[get_db] = prev_db
+
+    async with _raw_client() as c:
+        r = await c.get("/search/facets")
+    # The auth dep (``api.deps.get_current_user_id`` →
+    # ``_extract_token``) raises HTTPException(401) when neither an
+    # Authorization header nor the auth cookie is present. Pin the
+    # code so a regression that drops the dep would show up here
+    # (the route would then return 200 and the body would contain
+    # the facets payload — fail loud, fail fast).
+    assert r.status_code == 401, r.text
+    body = r.json()
+    # The auth dep's body shape is ``detail-only``; we pin that the
+    # facets-specific keys are NOT in the response — i.e. the route
+    # handler never ran.
+    assert "sources" not in body
+    assert "topics" not in body
+    assert "date_range" not in body
