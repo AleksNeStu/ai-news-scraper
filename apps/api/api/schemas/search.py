@@ -14,6 +14,19 @@ class SearchFilters(BaseModel):
     date_from: Optional[datetime] = None
     date_to: Optional[datetime] = None
 
+    @model_validator(mode="after")
+    def _date_to_not_before_date_from(self) -> "SearchFilters":
+        # ADR-019 §19.5. Fires only when BOTH bounds are set AND
+        # date_to < date_from. Single-bound and empty-filter payloads
+        # pass through untouched. Pydantic translates the ValueError
+        # into a 422 response with a structured error body.
+        if self.date_from is not None and self.date_to is not None:
+            if self.date_to < self.date_from:
+                raise ValueError(
+                    "date_to must be greater than or equal to date_from"
+                )
+        return self
+
 
 class SearchRequest(BaseModel):
     """Search payload.
