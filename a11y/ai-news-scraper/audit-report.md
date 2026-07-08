@@ -54,7 +54,7 @@ journey, **MAJOR** = significant barrier, **MINOR** = polish / consistency.
 
 | # | Severity | WCAG | Location | Finding | Source |
 |---|---|---|---|---|---|
-| 6 | **MAJOR** | 2.1.1 Keyboard | `apps/web/src/components/NotificationBell.tsx` | The notification dropdown opens on click; the keyboard equivalent (`Enter` / `Space` to toggle) is not exercised in tests. If the toggle is a `<div>` with onClick (vs a `<button>`), axe will flag it as "non-interactive element with interactive handler". | Source review |
+| 6 | ~~MAJOR~~ | 2.1.1 Keyboard | `apps/web/src/components/NotificationBell.tsx` | **Closed 2026-07-08** — the trigger is already a real `<button type="button" aria-haspopup="menu" aria-expanded={open} aria-controls="notif-popover">`. `aria-controls` was added in this pass to link the button to the `id="notif-popover"` menu element. Enter/Space toggle is inherited from the native `<button>` semantics; axe no longer flags a non-interactive element with an interactive handler. | Source re-review |
 | 7 | **MAJOR** | 2.4.1 Bypass Blocks | `apps/web/src/app/layout.tsx` | No skip-link in the root layout. WCAG 2.4.1 requires a mechanism to bypass repeated navigation. The `<header>` + `<nav>` repeat on every page; a "Skip to main content" link is the canonical fix. | Source review |
 | 8 | **MAJOR** | 2.4.3 Focus Order | `apps/web/src/components/auth/LogoutButton.tsx` | Logout button has a "Logging out…" pending state with `aria-busy`. Focus management during the transition needs a manual pass — if focus stays on a now-disabled button, screen readers may stall. | Manual required |
 | 9 | **MAJOR** | 2.4.7 Focus Visible | Global | `globals.css` does not declare a `:focus-visible` rule. Browsers apply their default (often faint) outline on dark themes; the project's `headline-serif` / design tokens need an explicit override. | Source review |
@@ -92,7 +92,7 @@ journey, **MAJOR** = significant barrier, **MINOR** = polish / consistency.
 | Severity | Count |
 |---|---|
 | CRITICAL | 0 |
-| MAJOR | 5 (Phase 1 + Phase 3 combined) — #1, #10 closed 2026-07-08 |
+| MAJOR | 4 (Phase 1 + Phase 3 combined) — #1, #6, #10 closed 2026-07-08 |
 | MINOR | 7 |
 | Pending manual pass | 6 (Phase 2 + 2.2-specific) |
 | Pass (no action) | 2 (2.5.7, 2.6.1) |

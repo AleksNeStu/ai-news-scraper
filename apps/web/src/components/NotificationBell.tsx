@@ -70,6 +70,7 @@ export function NotificationBell() {
         aria-label={t('buttonAria', { count: unread })}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls="notif-popover"
         className={cn(
           'relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-primary/40',
           open && 'border-primary/40 text-foreground'
@@ -88,6 +89,7 @@ export function NotificationBell() {
 
       {open && (
         <div
+          id="notif-popover"
           role="menu"
           aria-label={t('menuLabel')}
           className="absolute right-0 z-50 mt-2 w-80 origin-top-right rounded-lg border border-border bg-canvas shadow-lg"
