@@ -90,6 +90,43 @@ export interface SearchResponse {
   total: number;
 }
 
+/** A single (value, count) pair returned by `GET /search/facets` for one
+ * bucket of a dimension (e.g. one source domain, one topic). Mirrors the
+ * Pydantic `FacetCount` in `apps/api/api/schemas/search.py` (Task #53,
+ * ADR-020). */
+export interface FacetCount {
+  /** Bucket value as a string (source domain, topic slug, etc.). */
+  value: string;
+  /** Number of articles in the user's library that fall in this bucket. */
+  count: number;
+}
+
+/** Min / max `indexed_at` across the user's library, returned by
+ * `GET /search/facets` so the web `DateRangeFilter` can clamp its
+ * inputs to the populated range. `null` on either bound means the
+ * library is empty (the router returns `{min: null, max: null}` in
+ * that case — see ADR-020 §20.4). ISO 8601 UTC strings when set. */
+export interface FacetDateRange {
+  min: string | null;
+  max: string | null;
+}
+
+/** Response body for `GET /search/facets`. One list per discrete
+ * dimension (sources, topics) plus a single date range covering the
+ * whole library. Mirrors the Pydantic `FacetsResponse` in
+ * `apps/api/api/schemas/search.py` (Task #53, ADR-020). */
+export interface FacetsResponse {
+  /** Counts of articles per `source_domain`. */
+  sources: FacetCount[];
+  /** Counts of articles per topic. Each `Article.topics` element
+   * contributes to exactly one bucket (the `value` is the topic
+   * string, not the article id), so an article tagged
+   * `['ai','ml']` is counted once under `ai` and once under `ml`. */
+  topics: FacetCount[];
+  /** Min / max `indexed_at` across the user's library. */
+  date_range: FacetDateRange;
+}
+
 export interface Feed {
   id: ID;
   user_id: ID;
