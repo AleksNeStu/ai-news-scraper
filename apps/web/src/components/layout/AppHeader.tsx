@@ -33,7 +33,7 @@ export async function AppHeader() {
           <Newspaper className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-semibold tracking-tight">{common('appName')}</h1>
         </div>
-        <nav className="flex items-center gap-1">
+        <nav aria-label={t('navLabel')} className="flex items-center gap-1">
           <NavLink href="/scrape" icon={<Newspaper className="h-4 w-4" />}>
             {t('nav.scrape')}
           </NavLink>

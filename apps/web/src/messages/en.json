@@ -11,6 +11,7 @@
     "description": "Scrape, summarize, and semantically search your personal news library."
   },
   "Header": {
+    "navLabel": "Primary navigation",
     "nav": {
       "scrape": "Scrape",
       "search": "Search",
