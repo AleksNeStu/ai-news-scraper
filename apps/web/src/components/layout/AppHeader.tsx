@@ -1,5 +1,6 @@
 import type { Route } from 'next'
-import { Newspaper, Search, Rss, Settings } from 'lucide-react'
+import { Suspense } from 'react'
+import { Languages, Newspaper, Search, Rss, Settings } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { NotificationBell } from '@/components/NotificationBell'
@@ -51,7 +52,15 @@ export async function AppHeader() {
           <NavLink href="/settings" icon={<Settings className="h-4 w-4" />}>
             {t('nav.settings')}
           </NavLink>
-          <LocaleSwitcher />
+          {/* LocaleSwitcher uses useSearchParams() — Next.js 15's
+              static-prerender rule requires a Suspense boundary around
+              any client component that calls the hook. Same pattern
+              used in app/[locale]/unsubscribe/page.tsx for
+              UnsubscribeForm. The fallback is a non-interactive
+              placeholder so the prerender doesn't fail. */}
+          <Suspense fallback={<LocaleSwitcherFallback />}>
+            <LocaleSwitcher />
+          </Suspense>
           <NotificationBell />
           <LogoutButton />
         </nav>
@@ -76,5 +85,23 @@ function NavLink({
     >
       {icon} {children}
     </Link>
+  )
+}
+
+/** Non-interactive placeholder shown during Suspense fallback for the
+ * LocaleSwitcher — keeps the header layout stable while Next streams
+ * the locale-aware client island. The aria-label and Languages icon
+ * are preserved so screen readers announce the same control name. */
+function LocaleSwitcherFallback() {
+  return (
+    <span
+      aria-label="Language switcher"
+      className="inline-flex items-center gap-1 text-sm text-muted-foreground"
+    >
+      <Languages className="h-4 w-4" aria-hidden="true" />
+      <span className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground/50">
+        …
+      </span>
+    </span>
   )
 }
