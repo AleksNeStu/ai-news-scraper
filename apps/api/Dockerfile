@@ -31,6 +31,13 @@ WORKDIR /app
 
 # Copy workspace-level files first for better layer caching
 COPY pyproject.toml poetry.lock* /app/
+# Poetry 2.x validates ``readme = "../../README.md"`` from
+# apps/api/pyproject.toml during ``poetry install``; the file must
+# exist at the path it resolves to (``/app/README.md``). The legacy
+# repo-root ``pyproject.toml`` was the original reason the Dockerfile
+# only copied the root-level files; once ``apps/api`` started
+# referencing a repo-root readme, the COPY below became required.
+COPY README.md /app/README.md
 COPY apps/api /app/apps/api
 
 WORKDIR /app/apps/api
@@ -54,10 +61,17 @@ RUN groupadd -r appuser \
 # ---- Healthcheck ----------------------------------------------------------
 # In-container probe mirroring the docker-compose probe. Stdlib only.
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=30s \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8082/health', timeout=2).read()"
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2).read()"
 
 USER appuser
 
-EXPOSE 8082
+# Container port = 8000 (uvicorn / FastAPI default). Host port is
+# allocated by nest-solo's PORT_REGISTRY.json — for ai-news-scraper
+# that is 8007; compose maps ``8007:8000``. Do not change the
+# container port without also updating ``apps/api/api/config.py``
+# (``api_port``), ``docker-compose.yml`` (env, healthcheck, port
+# mapping), and the build-time ``API_INTERNAL_URL`` arg consumed
+# by ``apps/web/Dockerfile`` / ``docker-compose.yml``.
+EXPOSE 8000
 
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8082"]
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

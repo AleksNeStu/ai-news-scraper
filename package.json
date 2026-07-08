@@ -1,0 +1,10 @@
+{
+  "name": "ai-news-scraper-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI News Scraper — pnpm workspace root (apps/* + packages/*). No runtime code; exists so the web Dockerfile COPY of package.json resolves and pnpm has a workspace root to attach scripts/metadata to.",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9.12.3"
+  }
+}

@@ -1,0 +1,64 @@
+# Docker build-context exclusions — applied at ``docker build`` time.
+# Without this, ``COPY . .`` in the API + web Dockerfiles pulls in the
+# repo's local ``node_modules`` (706MB+ from earlier pnpm runs) and
+# ``.next`` build artifacts (580MB+), bloating the build context and
+# overwriting freshly-installed dependencies inside the image. The
+# latter caused ``next/dist/bin/next`` to vanish after install: the
+# host's stale symlinked node_modules shadowed the freshly-installed
+# hoisted one. See PR/issue notes for the symptom chain.
+
+# Workspace-wide
+**/node_modules
+**/node_modules/**
+.pnpm-store/
+**/.pnpm-store
+
+# Next.js build output
+**/.next
+**/.next/**
+out/
+**/out
+**/out/**
+
+# Python caches / build artifacts
+__pycache__/
+*.pyc
+*.pyo
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.egg-info/
+
+# Local env / secrets — must NEVER reach a public image
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+
+# Repo metadata that should never be in an image
+.git/
+.gitignore
+.github/
+.agent/
+.taskmaster/
+.claude/
+.cursor/
+.windsurfrules
+.roomodes
+.mcp.json
+.vscode/
+
+# OS / IDE noise
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Local scripts that may pollute /app
+docs/
+scripts/dev/run.log

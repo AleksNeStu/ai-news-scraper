@@ -18,7 +18,11 @@ const nextConfig: NextConfig = {
   // experimental: { typedRoutes: true },
   transpilePackages: ['@ai-news-scraper/shared'],
   async rewrites() {
-    const apiUrl = process.env.API_INTERNAL_URL || 'http://localhost:8082'
+    // ``API_INTERNAL_URL`` is passed at build time as a Docker ``ARG``
+    // (see ``apps/web/Dockerfile`` + ``docker-compose.yml`` build args).
+    // Default to ``http://localhost:8007`` (browser host port) to match
+    // the new port matrix per nest-solo's PORT_REGISTRY.json.
+    const apiUrl = process.env.API_INTERNAL_URL || 'http://localhost:8007'
     return [{ source: '/api/backend/:path*', destination: `${apiUrl}/:path*` }]
   },
 }

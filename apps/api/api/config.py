@@ -21,8 +21,18 @@ class Settings(BaseSettings):
 
     # API
     api_host: str = "0.0.0.0"
-    api_port: int = 8082
-    api_internal_url: str = "http://localhost:8082"
+    # Container port follows the FastAPI / uvicorn default (8000). The
+    # host port is allocated by nest-solo's PORT_REGISTRY.json (range
+    # 8000-8099, +1 per project). For ai-news-scraper the host port is
+    # 8007 — see ``E:\nestlab-repo\nest-solo\docs\architecture\PORT_REGISTRY.json``
+    # under ``projects.ai-news-scraper.backend.hostPort``. Compose maps
+    # ``8007:8000`` (host:container); do not change the container port
+    # without also updating ``apps/api/Dockerfile`` (HEALTHCHECK, EXPOSE,
+    # CMD uvicorn --port), ``docker-compose.yml`` (env API_PORT,
+    # healthcheck probe, port mapping), and the build-time
+    # ``API_INTERNAL_URL`` arg in ``apps/web/Dockerfile`` / compose.
+    api_port: int = 8000
+    api_internal_url: str = "http://localhost:8000"
 
     # Postgres
     database_url: str = Field(
@@ -75,8 +85,15 @@ class Settings(BaseSettings):
     rss_user_agent: str = "ai-news-scraper/0.1"
 
     # CORS
+    # Default allow-list for browser dev. Override per environment via the
+    # ``CORS_ALLOW_ORIGINS`` env var (comma-separated). The default
+    # includes both ``http://localhost:3807`` (new web host port per
+    # nest-solo PORT_REGISTRY.json) and ``http://localhost:3000`` so
+    # a stray ``pnpm dev`` run against the old default still works
+    # without having to override the env var. Clean up the legacy
+    # entry once dev workflows only use 3807.
     cors_allow_origins: list[str] = Field(
-        default_factory=lambda: ["http://localhost:3000"]
+        default_factory=lambda: ["http://localhost:3807", "http://localhost:3000"]
     )
 
     # Trusted proxy CIDRs for ``X-Forwarded-For`` resolution.

@@ -35,7 +35,7 @@ Result:      PASS / FAIL (failures documented inline)
 
 - [ ] Confirm the latest `dev` build is deployed to staging
       (`https://staging.<domain>`) OR `pnpm dev` is running locally
-      on `localhost:3000`.
+      on `localhost:3807`.
 - [ ] Clear cookies; visit `/` to land as a logged-out user. Note:
       the dashboard redirects to `/login` if auth is required —
       test both states.

@@ -31,23 +31,25 @@ cp .env.example .env
 # edit .env — set OPENAI_API_KEY (required) + JWT_SECRET (any long random string)
 
 docker compose up -d
-open http://localhost:3000
+open http://localhost:3807
 ```
 
 That's it — Postgres + Redis + ChromaDB + API + Web come up together. Register an account, scrape a URL, search.
+
+> **Port matrix:** web=`3807`, api=`8007`, db=`5440`, redis=`6380`, chromadb=`8500` — see [`docs/ports.md`](./docs/ports.md) for the full table and the canonical source (nest-solo's `PORT_REGISTRY.json` `externalLocal.ai-news-scraper`).
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Next.js 15 (App Router)         localhost:3000 │
+│  Next.js 15 (App Router)         localhost:3807 │
 │  • /scrape   • /search   • /articles            │
 │  • /feeds    • /settings • /login  • /register │
 └────────────────┬────────────────────────────────┘
                  │  HTTP (JWT cookie)
                  ▼
 ┌─────────────────────────────────────────────────┐
-│  FastAPI (Python 3.12+)         localhost:8082 │
+│  FastAPI (Python 3.12+)         localhost:8007 │
 │  /scrape  /articles  /search  /feeds  /auth    │
 │  → ChromaVectorStore  → Postgres (async)       │
 │  → OpenAI gpt-4o-mini + text-embedding-3-small  │
@@ -106,7 +108,7 @@ pwsh scripts/dev/logs.ps1 api
 pwsh scripts/dev/status.ps1
 ```
 
-All scripts print `http://localhost:3000` (web) and `http://localhost:8082`
+All scripts print `http://localhost:3807` (web) and `http://localhost:8007`
 (api) once the stack is healthy. The default dev login is
 `alex@example.com` / `dev-only-do-not-use-in-prod` (seeded by the
 one-shot `migrate` service).
@@ -117,7 +119,7 @@ If you don't want the wrappers:
 
 ```bash
 docker compose up -d
-# then wait for healthchecks, open http://localhost:3000
+# then wait for healthchecks, open http://localhost:3807
 ```
 
 ### API only / Web only (no docker)
@@ -190,7 +192,7 @@ Render auto-provisions TLS on `*.onrender.com` and reads `JWT_SECRET` / `UNSUBSC
 
 ## 📸 Demo (legacy Streamlit UI)
 
-The screenshots below are from the previous Streamlit UI (now removed). The new Next.js UI is at `localhost:3000` after `docker compose up`.
+The screenshots below are from the previous Streamlit UI (now removed). The new Next.js UI is at `localhost:3807` after `docker compose up`.
 
 <div align="center">
   <img src="demo/1.png" alt="Application Home Screen" width="80%" />

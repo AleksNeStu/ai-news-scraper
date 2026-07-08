@@ -33,7 +33,7 @@ if ($Help) {
 }
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ProjectRoot = Split-Path -Parent $ScriptDir
+$ProjectRoot = Split-Path -Parent (Split-Path -Parent $ScriptDir)
 Set-Location $ProjectRoot
 
 # ---- preflight ----
@@ -84,11 +84,20 @@ foreach ($svc in $services) {
 }
 
 # ---- show URLs ----
+# Port matrix follows nest-solo's PORT_REGISTRY.json
+# (E:\nestlab-repo\nest-solo\docs\architecture\PORT_REGISTRY.json,
+# ``externalLocal.ai-news-scraper``). Container ports follow framework
+# defaults (Next.js=3000, FastAPI=8000); host ports are the +1
+# increments from the 3800-3899 / 8000-8099 / 5433-5499 ranges
+# documented in ``port-management.md``. Do not change these without
+# also updating the registry, ``docker-compose.yml``, and the
+# ``API_INTERNAL_URL`` / ``NEXT_PUBLIC_API_URL`` env vars.
 Write-Host "[3/3] ready" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Web UI:  http://localhost:3000"
-Write-Host "  API:     http://localhost:8082"
-Write-Host "  API doc: http://localhost:8082/docs"
+Write-Host "  Web UI:  http://localhost:3807"
+Write-Host "  API:     http://localhost:8007"
+Write-Host "  API doc: http://localhost:8007/docs"
+Write-Host "  Side-ports (dev tools): postgres=5440  redis=6380  chromadb=8500"
 if ($Monitor) {
     Write-Host "  Kuma:    http://127.0.0.1:3001 (deploy-host only)"
 }

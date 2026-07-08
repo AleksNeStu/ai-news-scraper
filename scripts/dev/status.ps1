@@ -5,7 +5,7 @@
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location (Split-Path -Parent $ScriptDir)
+Set-Location (Split-Path -Parent (Split-Path -Parent $ScriptDir))
 
 $composeArgs = @("-f", "docker-compose.yml")
 if (Test-Path "docker-compose.monitoring.yml") {
@@ -19,6 +19,7 @@ Write-Host "=== health states ===" -ForegroundColor Cyan
 docker ps --filter "name=ai-news-" --format "{{.Names}}	{{.Status}}"
 Write-Host ""
 Write-Host "=== urls (when healthy) ===" -ForegroundColor Cyan
-Write-Host "  Web UI:  http://localhost:3000"
-Write-Host "  API:     http://localhost:8082"
-Write-Host "  API doc: http://localhost:8082/docs"
+# Per nest-solo PORT_REGISTRY.json externalLocal.ai-news-scraper.
+Write-Host "  Web UI:  http://localhost:3807"
+Write-Host "  API:     http://localhost:8007"
+Write-Host "  API doc: http://localhost:8007/docs"

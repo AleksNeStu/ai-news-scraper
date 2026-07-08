@@ -9,7 +9,7 @@ git clone https://github.com/AleksNeStu/ai-news-scraper.git
 cd ai-news-scraper
 cp .env.example .env  # then edit with your OpenAI key + secrets
 docker compose up -d  # postgres + redis + chromadb + api + web
-open http://localhost:3000
+open http://localhost:3807
 ```
 
 For app-only dev: see the **Run / test / lint** section in [`README.md`](README.md).

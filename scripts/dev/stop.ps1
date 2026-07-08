@@ -18,7 +18,7 @@ if ($Help) {
 }
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location (Split-Path -Parent $ScriptDir)
+Set-Location (Split-Path -Parent (Split-Path -Parent $ScriptDir))
 
 $composeArgs = @("-f", "docker-compose.yml")
 if ($Monitor) { $composeArgs += @("-f", "docker-compose.monitoring.yml") }

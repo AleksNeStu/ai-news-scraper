@@ -26,7 +26,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ai_news
     ports:
-      - "5432:5432"
+      - "5440:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -40,7 +40,7 @@ services:
     container_name: ai-news-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redisdata:/data
     healthcheck:
@@ -61,7 +61,7 @@ services:
     container_name: ai-news-chroma
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8500:8000"
     volumes:
       - chromadata:/chroma/chroma
     healthcheck:
@@ -116,8 +116,14 @@ services:
       APP_ENV: development
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       API_HOST: 0.0.0.0
-      API_PORT: "8082"
-      API_INTERNAL_URL: http://api:8082
+      # Container port is 8000 (uvicorn / FastAPI default). Host port
+      # is 8007 — allocated by nest-solo's PORT_REGISTRY.json (range
+      # 8000-8099, +1 per project). See ``apps/api/Dockerfile`` and
+      # ``apps/api/api/config.py`` for the same comment. The web
+      # container reaches the api via the compose-network DNS name
+      # ``api:8000`` (container port), not the host port 8007.
+      API_PORT: "8000"
+      API_INTERNAL_URL: http://api:8000
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/ai_news
       DATABASE_URL_SYNC: postgresql://postgres:postgres@db:5432/ai_news
       REDIS_URL: redis://redis:6379/0
@@ -130,7 +136,7 @@ services:
       UNSUBSCRIBE_JWT_SECRET: ${UNSUBSCRIBE_JWT_SECRET:-dev-unsubscribe-secret-change-me}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
-      - "8082:8082"
+      - "8007:8000"
     volumes:
       # Dev-only bind mounts — live-edit source without rebuilding.
       - ./apps/api:/app/apps/api
@@ -140,7 +146,7 @@ services:
         - "CMD"
         - "python"
         - "-c"
-        - "import urllib.request as u; u.urlopen('http://localhost:8082/health', timeout=2).read()"
+        - "import urllib.request as u; u.urlopen('http://localhost:8000/health', timeout=2).read()"
       interval: 10s
       timeout: 5s
       retries: 5
@@ -150,23 +156,44 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      # ``next.config.ts`` reads ``API_INTERNAL_URL`` at build time, so
+      # the value must be passed as a build arg. Uses the container
+      # port (8000), not the host port (8007) — the rewrite is served
+      # by the api container over the compose network. See
+      # ``apps/web/Dockerfile`` for the full chain.
+      args:
+        API_INTERNAL_URL: http://api:8000
     container_name: ai-news-web
     restart: unless-stopped
     depends_on:
       - api
     environment:
-      API_INTERNAL_URL: http://api:8082
-      NEXT_PUBLIC_API_URL: http://localhost:8082
+      # Backend host port = 8007 (per nest-solo PORT_REGISTRY.json);
+      # this is what the browser uses to reach the api.
+      API_INTERNAL_URL: http://api:8000
+      NEXT_PUBLIC_API_URL: http://localhost:8007
     ports:
-      - "3000:3000"
+      - "3807:3000"
     volumes:
-      # Dev-only bind mount — see api note.
-      - ./apps/web:/app/apps/web
+      # Dev-only bind mounts — see api note. We mount only ``src`` and
+      # ``public`` subdirectories instead of the whole ``apps/web`` because
+      # the web image copies the Next.js standalone output into
+      # ``/app/apps/web`` (notably ``server.js`` and ``.next/``). A blanket
+      # ``./apps/web:/app/apps/web`` mount overwrites those built artifacts
+      # with the host's source-only tree, and ``node apps/web/server.js``
+      # fails with ``Cannot find module .../server.js``. Sub-path mounts
+      # keep the standalone server intact while still allowing source
+      # hot-reload via Next's filesystem watcher.
+      - ./apps/web/src:/app/apps/web/src:ro
+      - ./apps/web/public:/app/apps/web/public:ro
       - ./packages:/app/packages
     healthcheck:
-      # node:22-alpine ships busybox `wget`. /api/backend/health rewrite
-      # is on the server side; the index route is enough for liveness.
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/ || exit 1"]
+      # node:22-alpine ships busybox ``wget``. The app uses ``[locale]``
+      # routing (Next.js i18n) so the literal ``/`` route resolves to
+      # ``not-found.tsx`` and returns 404 — which fails ``wget --spider``.
+      # Probe ``/en`` (default locale prefix, renders the locale home)
+      # which returns 200 once the server is up.
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:3000/en || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

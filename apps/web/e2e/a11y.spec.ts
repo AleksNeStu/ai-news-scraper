@@ -7,8 +7,8 @@
  * violations are logged via `console.warn` for triage.
  *
  * Run locally:
- *   pnpm dev    # in one shell — preview at http://localhost:3000
- *   BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/a11y.spec.ts
+ *   pnpm dev    # in one shell — preview at http://localhost:3807
+ *   BASE_URL=http://localhost:3807 pnpm exec playwright test e2e/a11y.spec.ts
  *
  * Per the a11y-audit skill, automation catches ~30-40% of WCAG criteria
  * by issue volume. The other 60-70% (focus order, screen-reader

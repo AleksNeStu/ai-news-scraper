@@ -1,5 +1,10 @@
 # GEO 5-Layer Audit — ai-news-scraper
 
+> **Port note (2026-07-08):** every ``localhost:3807`` URL in this document
+> now means ``localhost:3807`` per nest-solo's PORT_REGISTRY.json
+> ``externalLocal.ai-news-scraper``. The substitution is applied below;
+> update new entries with the new port.
+
 This checklist documents what shipped for Task #28 (GEO readiness)
 and what is deferred. Each item is a checkbox a future operator can
 run through; every shipped item has a verification command. Deferred
@@ -60,26 +65,26 @@ Verification:
 
 ```bash
 # 1. /llms.txt returns the 4-rule format.
-curl -fsS http://localhost:3000/llms.txt | head -40
+curl -fsS http://localhost:3807/llms.txt | head -40
 # Expect: "# <name>", blank line, "> <summary>", blank line,
 # then `## <heading> (en)` / `## <heading> (ru)` blocks, each
 # with `- [Title](url): description` links.
 
 # 2. Cache headers on /llms.txt.
-curl -fsSI http://localhost:3000/llms.txt | grep -i 'cache-control'
+curl -fsSI http://localhost:3807/llms.txt | grep -i 'cache-control'
 # Expect: Cache-Control: public, max-age=3600, s-maxage=3600 (no
 # ETag expected — see Layer 1 bullets above).
 
 # 3. /robots.txt allows the named AI user-agents and points at the sitemap.
-curl -fsS http://localhost:3000/robots.txt | grep -E 'GPTBot|ClaudeBot|PerplexityBot|Google-Extended|Sitemap:'
+curl -fsS http://localhost:3807/robots.txt | grep -E 'GPTBot|ClaudeBot|PerplexityBot|Google-Extended|Sitemap:'
 
 # 4. /sitemap.xml lists every public route per locale.
-curl -fsS http://localhost:3000/sitemap.xml | grep -c '<loc>'
+curl -fsS http://localhost:3807/sitemap.xml | grep -c '<loc>'
 # Expect: >= N×L (N public routes, L locales). Default = 11 routes × 2 locales = 22.
 
 # 5. Allowlist parity check (local).
-diff <(curl -fsS http://localhost:3000/sitemap.xml | grep -oE '/[a-z]?[a-z/-]*' | sort -u) \
-     <(curl -fsS http://localhost:3000/llms.txt | grep -oE 'https?://[^)]+' \
+diff <(curl -fsS http://localhost:3807/sitemap.xml | grep -oE '/[a-z]?[a-z/-]*' | sort -u) \
+     <(curl -fsS http://localhost:3807/llms.txt | grep -oE 'https?://[^)]+' \
        | sed -E 's|^https?://[^/]+||' | sort -u)
 # Expect: empty diff (or differences only in items that are legitimately in
 # the sitemap but not llms.txt, e.g. the API endpoint family).
@@ -133,7 +138,7 @@ Verification:
 # 1. JSON-LD blocks on each route.
 for url in "/" "/dashboard" "/articles" "/articles/1" "/dashboard/brief/2026-07-08"; do
   echo "=== $url ==="
-  curl -fsS "http://localhost:3000${url}" | grep -oE '"@type":"[^"]+"' | sort -u
+  curl -fsS "http://localhost:3807${url}" | grep -oE '"@type":"[^"]+"' | sort -u
 done
 # Expect:
 #   /                    -> Organization, WebSite
@@ -145,7 +150,7 @@ done
 # 2. inLanguage matches [locale] on every payload that carries the field.
 for url in "/articles/1" "/ru/articles/1"; do
   echo "=== $url ==="
-  curl -fsS "http://localhost:3000${url}" \
+  curl -fsS "http://localhost:3807${url}" \
     | grep -oE '"inLanguage":"[^"]+"' | sort -u
 done
 # Expect: locale-segmented values match the path segment.
@@ -190,7 +195,7 @@ Verification:
 # 1. canonical + og:* + twitter:* on every public route.
 for url in "/" "/dashboard" "/articles" "/articles/1"; do
   echo "=== $url ==="
-  curl -fsS "http://localhost:3000${url}" \
+  curl -fsS "http://localhost:3807${url}" \
     | grep -oE '<(link|meta) [^>]*(canonical|og:|twitter:)[^>]*>' \
     | head -20
 done
@@ -199,8 +204,8 @@ done
 # og:locale, and a twitter:card, twitter:title, twitter:description.
 
 # 2. Canonical matches the in-locale URL (no cross-locale leakage).
-curl -fsS http://localhost:3000/articles/1 | grep -oE 'rel="canonical"[^>]*'
-curl -fsS http://localhost:3000/ru/articles/1 | grep -oE 'rel="canonical"[^>]*'
+curl -fsS http://localhost:3807/articles/1 | grep -oE 'rel="canonical"[^>]*'
+curl -fsS http://localhost:3807/ru/articles/1 | grep -oE 'rel="canonical"[^>]*'
 # Expect: canonical hrefs that include the matching locale segment
 # (or omit the segment for the default locale under
 # localePrefix: 'as-needed').
@@ -235,7 +240,7 @@ Verification:
 
 ```bash
 # 1. Inspect the Organization JSON-LD's sameAs array.
-curl -fsS http://localhost:3000/ \
+curl -fsS http://localhost:3807/ \
   | grep -oE '"sameAs":\[[^]]+\]'
 # Expect: a non-empty array of absolute profile URLs (canonical
 # GitHub / X / etc.). Subject to the private-leak gate.
@@ -349,5 +354,5 @@ operator can pick them up without re-investigating.
    routine GEO PR. Add a follow-up ADR instead, then expand the
    checklist when the follow-up ships.
 4. The verification commands are runnable against
-   `http://localhost:3000` (after `pnpm dev`) or against a deployed
+   `http://localhost:3807` (after `pnpm dev`) or against a deployed
    URL by substituting the origin.

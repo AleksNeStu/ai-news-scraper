@@ -12,7 +12,7 @@ import { defineConfig, devices } from '@playwright/test'
  * this config. Locally you can either:
  *
  *   $ pnpm dev           # in one shell
- *   $ BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/a11y.spec.ts
+ *   $ BASE_URL=http://localhost:3807 pnpm exec playwright test e2e/a11y.spec.ts
  */
 export default defineConfig({
   testDir: './e2e',

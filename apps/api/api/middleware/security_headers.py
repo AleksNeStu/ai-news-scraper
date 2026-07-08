@@ -6,7 +6,7 @@ the API gets a baseline of browser-facing security headers:
 
 * ``Strict-Transport-Security`` — only in production; tells browsers to
   refuse plain-HTTP for one year, including subdomains. Skipped in
-  dev/staging so local ``http://localhost:8082`` keeps working without
+  dev/staging so local ``http://localhost:8007`` keeps working without
   the dev browser complaining.
 * ``X-Content-Type-Options: nosniff`` — disables MIME sniffing; blocks a
   class of XSS where a text file is interpreted as a script.
