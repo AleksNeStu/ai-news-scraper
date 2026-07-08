@@ -146,6 +146,15 @@
     "noMatches": "No matches.",
     "score": "score {n}"
   },
+  "Filters": {
+    "clearSource": "Clear source filter",
+    "clearDate": "Clear date range",
+    "searchSources": "Search sources…",
+    "noSources": "No sources.",
+    "anyDate": "Any date",
+    "from": "From",
+    "to": "To"
+  },
   "Settings": {
     "pageTitle": "Settings",
     "account": {

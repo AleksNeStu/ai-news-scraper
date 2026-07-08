@@ -146,6 +146,15 @@
     "noMatches": "Совпадений нет.",
     "score": "скор {n}"
   },
+  "Filters": {
+    "clearSource": "Очистить фильтр источника",
+    "clearDate": "Очистить диапазон дат",
+    "searchSources": "Поиск источников…",
+    "noSources": "Источников нет.",
+    "anyDate": "Любая дата",
+    "from": "С",
+    "to": "По"
+  },
   "Settings": {
     "pageTitle": "Настройки",
     "account": {
