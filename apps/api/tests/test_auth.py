@@ -26,6 +26,7 @@ bypasses enforcement when ``app_env == "test"``).
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from typing import Any
 
 import pytest
 import pytest_asyncio
@@ -65,6 +66,29 @@ def _cookie_attrs(set_cookie: str) -> dict[str, str]:
     return attrs
 
 
+def _find_cookie(resp: Any, cookie_name: str) -> dict[str, str]:
+    """Pick the named cookie out of a response that may carry multiple
+    Set-Cookie headers.
+
+    After H3 (refresh-token cookie alongside auth_token), a single
+    ``response.headers.get('set-cookie')`` returns only the FIRST
+    header — and httpx/ASGI does NOT guarantee auth_token precedes
+    auth_refresh. This helper walks every Set-Cookie entry (httpx
+    joins duplicates with ``, `` per RFC 7230) and returns the
+    attrs for ``cookie_name``. Returns ``{}`` if the cookie is
+    absent so callers can assert presence with a single equality.
+    """
+    set_cookie = resp.headers.get("set-cookie", "")
+    if not set_cookie:
+        return {}
+    chunks = [c for c in set_cookie.split(", ") if c.strip()]
+    for chunk in chunks:
+        attrs = _cookie_attrs(chunk)
+        if attrs.get("name") == cookie_name:
+            return attrs
+    return {}
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -98,8 +122,10 @@ async def test_register_success_sets_auth_cookie(auth_client: AsyncClient) -> No
     assert body["user"]["email"] == "reg1@example.com"
     assert body["token"]  # non-empty JWT
 
-    set_cookie = resp.headers.get("set-cookie", "")
-    attrs = _cookie_attrs(set_cookie)
+    # H3 ships both auth_token AND auth_refresh cookies; pick the
+    # access-token one by name so the max-age assertion matches the
+    # 15-minute default regardless of header order.
+    attrs = _find_cookie(resp, AUTH_COOKIE_NAME)
     assert attrs.get("name") == AUTH_COOKIE_NAME
     # Max-Age mirrors access_token_expires_min * 60 (15min default after
     # ADR-015 H3 = 900s; legacy value was 86400 = 24h).
@@ -163,7 +189,9 @@ async def test_login_success_sets_auth_cookie(auth_client: AsyncClient) -> None:
     assert body["user"]["email"] == "login1@example.com"
     assert body["token"]
 
-    attrs = _cookie_attrs(resp.headers.get("set-cookie", ""))
+    # H3 ships both auth_token AND auth_refresh cookies; pick the
+    # access-token one by name (see _find_cookie docstring).
+    attrs = _find_cookie(resp, AUTH_COOKIE_NAME)
     assert attrs.get("name") == AUTH_COOKIE_NAME
     assert attrs.get("max-age") == str(_settings.access_token_expires_min * 60)
     assert attrs.get("samesite", "").lower() == "lax"
