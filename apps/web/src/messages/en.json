@@ -141,9 +141,13 @@
     "queryPlaceholder": "AI regulation in the EU...",
     "submit": "Search",
     "failed": "Search failed",
+    "retry": "Try again",
     "resultsHeading": "Results",
     "resultsMeta": "{count, plural, one {# hit} other {# hits}} · {ms} ms",
     "noMatches": "No matches.",
+    "noMatchesHeading": "No articles match your query",
+    "noMatchesBody": "Try a broader query, or browse the full library.",
+    "browseArticles": "Browse all articles",
     "score": "score {n}"
   },
   "Filters": {

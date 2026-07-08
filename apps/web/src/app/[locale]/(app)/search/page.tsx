@@ -1,107 +1,66 @@
-'use client'
+import { Suspense } from 'react'
+import { setRequestLocale } from 'next-intl/server'
 
-import { useState } from 'react'
-import { Search as SearchIcon, Loader2 } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { api, ApiError } from '@/lib/api'
-import type { SearchResponse } from '@ai-news-scraper/shared'
+import { SearchClient } from '@/app/[locale]/(app)/search/SearchClient'
 
 /**
- * /search page (Task #32). Client component. Strings come from
- * `useTranslations('Search')`. The score line uses an ICU placeholder
- * for the formatted number so Russian text reads "скор 0,876" with the
- * locale-specific decimal separator.
+ * /search page (Task #32 + Task #49).
+ *
+ * Server Component shell that:
+ *   1. Validates the active locale (already done by [locale]/layout.tsx,
+ *      but we still call setRequestLocale to be safe under static export).
+ *   2. Reads the current searchParams (q, page, source, topic[], from, to).
+ *   3. Hands the parsed values to <SearchClient> wrapped in a
+ *      <Suspense> boundary (Next 15.5 prerender rule: any client
+ *      component that calls useSearchParams() needs one).
+ *
+ * All actual search logic (debounce, fetch, states) lives in
+ * SearchClient.tsx. This file is just the SSR shell.
  */
-export default function SearchPage() {
-  const t = useTranslations('Search')
-  const [q, setQ] = useState('')
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [response, setResponse] = useState<SearchResponse | null>(null)
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!q.trim()) return
-    setPending(true)
-    setError(null)
-    try {
-      const r = await api.post<SearchResponse>('/search', { query: q, top_k: 10 })
-      setResponse(r)
-    } catch (e) {
-      if (e instanceof ApiError) setError(e.message)
-      else setError(t('failed'))
-    } finally {
-      setPending(false)
-    }
-  }
+export const dynamic = 'force-dynamic'
+
+interface SearchPageProps {
+  params: Promise<{ locale: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
+function firstString(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) return value[0] ?? null
+  return value ?? null
+}
+
+function toNumber(value: string | null, fallback: number): number {
+  if (value == null) return fallback
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+export default async function SearchPage({ params, searchParams }: SearchPageProps) {
+  const { locale: rawLocale } = await params
+  const locale = rawLocale as 'en' | 'ru'
+  setRequestLocale(locale)
+
+  const sp = await searchParams
+  const initialQuery = firstString(sp.q) ?? ''
+  const initialPage = toNumber(firstString(sp.page), 1)
+  const initialPageSize = toNumber(firstString(sp.page_size), 10)
+  const initialSource = firstString(sp.source)
+  const initialTopics = Array.isArray(sp.topic) ? sp.topic : sp.topic ? [sp.topic] : []
+  const initialFrom = firstString(sp.from)
+  const initialTo = firstString(sp.to)
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
-      <div className="mb-6 flex items-center gap-2">
-        <SearchIcon className="h-5 w-5 text-primary" />
-        <h1 className="text-2xl font-semibold headline-serif">{t('pageTitle')}</h1>
-      </div>
-
-      <form onSubmit={onSubmit} className="rounded-lg border border-border bg-canvas p-6">
-        <label className="mb-2 block text-sm text-muted-foreground">{t('queryLabel')}</label>
-        <div className="flex gap-2">
-          <input
-            type="search"
-            required
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={t('queryPlaceholder')}
-            className="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={pending}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
-            {pending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <SearchIcon className="h-4 w-4" />
-            )}
-            {t('submit')}
-          </button>
-        </div>
-        {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-      </form>
-
-      {response && (
-        <section className="mt-8">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">{t('resultsHeading')}</h2>
-            <span className="text-xs text-muted-foreground">
-              {t('resultsMeta', { count: response.results.length, ms: response.took_ms })}
-            </span>
-          </div>
-          {response.results.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t('noMatches')}</p>
-          ) : (
-            <ul className="space-y-3">
-              {response.results.map((r) => (
-                <li key={r.article.id} className="rounded-lg border border-border bg-canvas p-4">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <h3 className="headline-serif text-base">
-                      {r.article.headline ?? r.article.url}
-                    </h3>
-                    <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-xs tabular-nums text-primary">
-                      {t('score', { n: r.score.toFixed(3) })}
-                    </span>
-                  </div>
-                  {r.article.summary && (
-                    <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
-                      {r.article.summary}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
-    </main>
+    <Suspense>
+      <SearchClient
+        initialQuery={initialQuery}
+        initialPage={initialPage}
+        initialPageSize={initialPageSize}
+        initialSource={initialSource}
+        initialTopics={initialTopics}
+        initialFrom={initialFrom}
+        initialTo={initialTo}
+      />
+    </Suspense>
   )
 }

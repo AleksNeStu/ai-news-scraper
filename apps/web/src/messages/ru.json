@@ -144,7 +144,11 @@
     "resultsHeading": "Результаты",
     "resultsMeta": "{count, plural, one {# совпадение} few {# совпадения} many {# совпадений} other {# совпадений}} · {ms} мс",
     "noMatches": "Совпадений нет.",
-    "score": "скор {n}"
+    "score": "скор {n}",
+    "retry": "Повторить",
+    "noMatchesHeading": "По вашему запросу ничего не найдено",
+    "noMatchesBody": "Попробуйте более общий запрос или откройте всю библиотеку.",
+    "browseArticles": "Все статьи"
   },
   "Filters": {
     "clearSource": "Очистить фильтр источника",
