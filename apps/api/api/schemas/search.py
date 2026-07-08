@@ -83,3 +83,61 @@ class SearchResponse(BaseModel):
     page: int
     page_size: int
     total: int
+
+
+# ---------------------------------------------------------------------------
+# Facets — Task #53 / ADR-020
+#
+# ``GET /search/facets`` returns the option lists for the filter UI
+# (source / topic pickers, date-range slider). The shape is intentionally
+# a flat 3-tuple so the front-end can render each dimension independently
+# without first drilling into a wrapper object.
+#
+# Aggregation is per-dimension (Task #53 hard requirement) so a slow
+# ``topics`` query (PG ``unnest`` + GROUP BY on an ARRAY column) cannot
+# block the cheap ``count by source_domain`` from returning.
+# ---------------------------------------------------------------------------
+
+
+class FacetCount(BaseModel):
+    """One bucket in a facet dimension.
+
+    ``value`` is the raw bucket label (e.g. ``"nytimes.com"`` for sources,
+    ``"ai"`` for topics). ``count`` is the number of articles owned by
+    the current user that fall into that bucket. Sorted in descending
+    order of count by the aggregator so the web UI can render the most
+    common values at the top of the picker without re-sorting.
+    """
+
+    value: str
+    count: int
+
+
+class FacetDateRange(BaseModel):
+    """Inclusive min / max of the current user's ``indexed_at`` distribution.
+
+    Both fields are nullable: an empty library (no articles yet) returns
+    ``{min: null, max: null}`` instead of a 500. The web UI shows an
+    "empty library" placeholder when both bounds are null.
+    """
+
+    min: Optional[datetime] = None
+    max: Optional[datetime] = None
+
+
+class FacetsResponse(BaseModel):
+    """Aggregated facet dimensions for the current user's library.
+
+    Returned shape (Task #53):
+
+    * ``sources`` — distinct ``source_domain`` values with article counts,
+      sorted DESC by count.
+    * ``topics`` — distinct elements of ``articles.topics`` unnested,
+      with article counts, sorted DESC by count.
+    * ``date_range`` — ``{min, max}`` over ``indexed_at`` for the current
+      user. Both null on an empty library.
+    """
+
+    sources: list[FacetCount]
+    topics: list[FacetCount]
+    date_range: FacetDateRange

@@ -1,4 +1,4 @@
-"""Search router — semantic + hybrid search with pagination.
+"""Search router — semantic + hybrid search with pagination + facets.
 
 Filters (ADR-019 §19.7):
   - ``source`` is pushed into the Chroma ``where`` clause (scalar
@@ -6,6 +6,11 @@ Filters (ADR-019 §19.7):
   - ``topics`` and ``date_from``/``date_to`` are applied at the PG
     hydration step. The Chroma top-K is over-fetched using the formula
     in §19.2 so post-filter dropout does not empty a page.
+
+Facets (ADR-020 / Task #53):
+  - ``GET /search/facets`` returns per-dimension aggregations over the
+    current user's library (sources, topics, date_range) used to
+    populate the filter UI option lists. Redis-cached, 60s TTL.
 """
 
 import logging
@@ -14,7 +19,7 @@ from datetime import timedelta
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -23,12 +28,15 @@ from api.deps import get_current_user_id
 from api.models.article import Article
 from api.schemas.article import ArticleOut
 from api.schemas.search import (
+    FacetsResponse,
     SearchFilters,
     SearchRequest,
     SearchResponse,
     SearchResult,
 )
+from api.services import facet_cache
 from api.services.embedder import ArticleEmbedder
+from api.services.facet_aggregator import aggregate_facets
 from api.services.vector_store import ChromaVectorStore
 
 logger = logging.getLogger(__name__)
@@ -155,3 +163,47 @@ async def search(
         page_size=page_size,
         total=total,
     )
+
+
+@router.get("/facets", response_model=FacetsResponse)
+async def facets(
+    response: Response,
+    user_id: UUID = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Aggregate the current user's library along the three filter axes.
+
+    Task #53 / ADR-020. Three per-dimension SQL queries are issued
+    (sources / topics / date_range) and the union is wrapped in a
+    60-second Redis cache keyed on ``facets:{user_id}``. The
+    ``Cache-Control: private, max-age=60`` header lets the browser
+    dedupe repeat requests inside the TTL window without violating
+    the multi-tenant contract (the response is user-scoped, hence
+    ``private`` not ``public``).
+
+    Empty library returns all-zero counts with ``date_range.min =
+    date_range.max = null`` so the front-end can render an "empty
+    library" placeholder without special-casing 200-OK-with-empty-
+    body versus 200-OK-with-data. The aggregator explicitly swallows
+    per-dimension exceptions and degrades the affected dimension to
+    an empty list rather than 500-ing the whole endpoint — see
+    ``api.services.facet_aggregator.aggregate_facets`` docstring.
+    """
+
+    async def _compute() -> FacetsResponse:
+        return await aggregate_facets(db, user_id)
+
+    facets_resp, cache_hit = await facet_cache.get_or_compute(user_id, _compute)
+
+    # Cache-Control headers — `private` (never proxy/CDN-share per-user
+    # facets), `max-age=60` matches the Redis TTL so browser-side and
+    # server-side caches share the same freshness window.
+    response.headers["Cache-Control"] = (
+        f"private, max-age={facet_cache.CACHE_TTL_SECONDS}"
+    )
+    # Ops-only — `Vary` is not strictly needed (no Accept-Encoding based
+    # negotiation here) but we mark the hit/miss so on-call can grep the
+    # log; this header is NOT a contract.
+    response.headers["X-Cache"] = "HIT" if cache_hit else "MISS"
+
+    return facets_resp
