@@ -184,18 +184,36 @@ def article_pool(monkeypatch):
         return []
 
     def _eval_extra_filters(stmt, candidate: Article) -> bool:
-        """Apply every non-id predicate in the WHERE tree in Python."""
+        """Apply every non-id predicate in the WHERE tree in Python.
+
+        The walker matches predicates by ``left.key`` (column identity)
+        rather than by rendered-SQL substring, except for the topics
+        ``&&`` operator which uses a custom ``custom_op`` whose operator
+        function identity doesn't reveal the symbol — for that one we
+        additionally require ``&&`` in the rendered SQL so a typo
+        (e.g. swapping ``&&`` for ``@>`` in a refactor) is caught
+        instead of silently falling through the "keep everything"
+        branch.
+        """
         for c in _clauses_of(stmt):
             if _is_id_clause(c):
                 continue
             right = c.right
             sql_text = str(c)
-            # Topics: ``Article.topics.op('&&')(filters.topics)`` —
-            # the rendered SQL is ``articles.topics && :topics_N``. We
-            # match on the rendered SQL because the operator object is a
-            # ``custom_op`` whose class name is the same regardless of
-            # the underlying operator symbol.
-            if "topics" in sql_text and "&&" in sql_text:
+            left_key = getattr(getattr(c, "left", None), "key", None)
+            # Topics: must be on the ``topics`` column AND use ``&&``
+            # overlap (not ``@>`` containment — see ADR-019 section 19.3
+            # for the OR-vs-AND semantics decision). Catching a
+            # refactor that swaps the operator is part of the test
+            # contract per Devil MAJOR-1 / MINOR-1 post-hoc review.
+            if left_key == "topics":
+                if "&&" not in sql_text:
+                    # Wrong operator (or no operator) on the topics
+                    # column — fail loud rather than silently keeping
+                    # the row, which would mask the regression.
+                    raise AssertionError(
+                        f"Expected '&&' in topics clause, got: {sql_text!r}"
+                    )
                 wanted = right.value if hasattr(right, "value") else list(right)
                 if not any(t in candidate.topics for t in wanted):
                     return False
@@ -204,7 +222,6 @@ def article_pool(monkeypatch):
             # ``Article.indexed_at < bound`` — match on left.key plus
             # the operator function name.
             op_name = c.operator.__name__ if hasattr(c, "operator") else ""
-            left_key = getattr(getattr(c, "left", None), "key", None)
             if left_key == "indexed_at" and op_name == "ge":
                 bound = right.value if hasattr(right, "value") else right
                 if not (candidate.indexed_at >= bound):
@@ -643,16 +660,13 @@ async def test_over_fetch_uses_floor_on_first_page(
 async def test_T14_inverted_dates_raise_422(client_with_overrides):
     """T14: ``SearchFilters(date_to < date_from)`` — FastAPI rejects with 422.
 
-    Asserts the status code only. The response body would surface a
-    Pydantic ``RequestValidationError`` whose ``ctx`` carries the
-    original ``ValueError`` object — which is not JSON-serializable in
-    Pydantic 2.12.5 + Starlette's exception path. The validator itself
-    fires correctly (the route never runs, the 422 is raised before the
-    Chroma query). Body-shape verification is filed as a follow-up
-    under the existing exception-handler hardening backlog
-    (``fastapi-starlette-exception-handler-quirk.md``); the T14
-    acceptance gate is "validator rejects with 422 before reaching the
-    handler", which is verified by the status code alone.
+    Acceptance criterion #7 from ``docs/acceptance/task-52-search-filters.md``:
+    the 422 body must surface the filter location (``loc == ["body",
+    "filters"]``) and a ``value_error`` type code. Combined with the
+    cross-field validator on ``SearchFilters`` (ADR-019 section 19.5),
+    this verifies that the cross-field check fired - a refactor that
+    accidentally disables the model-validator would no longer match the
+    ``loc == ["body", "filters"]`` contract and would fail this test.
     """
     r = await client_with_overrides.post(
         "/search",
@@ -665,6 +679,25 @@ async def test_T14_inverted_dates_raise_422(client_with_overrides):
         },
     )
     assert r.status_code == 422
+    body = r.json()
+    # The project's exception handler at ``api.main`` wraps the
+    # Pydantic errors list in a problem+json envelope under
+    # ``context.errors`` (not the FastAPI-default ``detail``). Walk
+    # that envelope to find the structured error per AC #7.
+    errs = body.get("context", {}).get("errors") or body.get("detail")
+    assert errs, body
+    # Find the error whose ``loc`` points at the filters payload.
+    err = next((e for e in errs if e.get("loc", [None])[-1] == "filters"), None)
+    assert err is not None, body
+    # ``loc`` is ``["body", "filters"]`` for a top-level validator on
+    # the SearchFilters model.
+    assert err["loc"] == ["body", "filters"], err
+    # Pydantic renders ``PydanticCustomError("value_error", ...)`` as
+    # ``type == "value_error"`` (the second positional argument
+    # becomes the message and the first becomes the type code).
+    assert err["type"] == "value_error", err
+    # Message contains the rule the cross-field validator enforces.
+    assert "date_to" in err["msg"], err
 
 
 @pytest.mark.asyncio
@@ -792,3 +825,82 @@ async def test_T17_topics_filter_with_dropout_fills_page_2(
     expected_nlp = {str(n) for n in nlp_ids}
     all_returned = page1_ids | page2_ids | page3_ids
     assert all_returned.isdisjoint(expected_nlp)
+
+
+# ---------------------------------------------------------------------------
+# AC #8 + zero-match safety (Devil MAJOR-2 follow-up)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_pagination_total_reflects_filtered_count(
+    client_with_overrides, article_pool, fake_vector_store
+):
+    """AC #8 verbatim: 25 candidates all tagged 'ai', page_size=10.
+    Pages 1/2/3 report total=25 and slice sizes 10/10/5.
+
+    Catches the regression where ``total`` is computed from the raw
+    Chroma hit count (``len(raw)``) rather than the post-hydration
+    filtered set (``len(full_results)``) — the docstring on
+    ``_build_hydration_clauses`` warns about this contract; this test
+    is the gate.
+    """
+    ai_ids = [uuid4() for _ in range(25)]
+    pool_articles = [_make_article(str(aid), topics=["ai"]) for aid in ai_ids]
+    for a in pool_articles:
+        article_pool[str(a.id)] = a
+    fake_vector_store._search_pool = [str(a.id) for a in pool_articles]
+
+    expected_total = 25
+    for page, expected_len in [(1, 10), (2, 10), (3, 5)]:
+        r = await client_with_overrides.post(
+            "/search",
+            json={
+                "query": "x",
+                "page": page,
+                "page_size": 10,
+                "filters": {"topics": ["ai"]},
+            },
+        )
+        body = r.json()
+        assert body["total"] == expected_total, (
+            f"page {page}: expected total={expected_total}, got {body['total']}"
+        )
+        assert len(body["results"]) == expected_len, (
+            f"page {page}: expected {expected_len} results, got {len(body['results'])}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_filter_drops_all_candidates_returns_empty_with_zero_total(
+    client_with_overrides, article_pool, fake_vector_store
+):
+    """Zero-match safety: filter eliminates every candidate.
+    ``total == 0``, ``results == []``, no 5xx.
+
+    Devil MINOR / Devil MAJOR-2 follow-up: AC #6 ("Zero / omitted
+    filters") covers the no-filter baseline; this complements it by
+    asserting the upper edge — filter that matches nothing — returns
+    the same well-formed response shape, not an internal error.
+    """
+    # Pool: 5 articles, none tagged "ai". Filter "topics=['ai']"
+    # should drop every one of them.
+    aids = [uuid4() for _ in range(5)]
+    pool_articles = [_make_article(str(aid), topics=["nlp"]) for aid in aids]
+    for a in pool_articles:
+        article_pool[str(a.id)] = a
+    fake_vector_store._search_pool = [str(a.id) for a in pool_articles]
+
+    r = await client_with_overrides.post(
+        "/search",
+        json={
+            "query": "x",
+            "page": 1,
+            "page_size": 10,
+            "filters": {"topics": ["ai"]},
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] == 0
+    assert body["results"] == []

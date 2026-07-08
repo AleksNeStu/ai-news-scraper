@@ -45,7 +45,7 @@ def _resolve_page_size(payload: SearchRequest) -> int:
     return payload.page_size
 
 
-def _build_hydration_clauses(filters: Optional[SearchFilters], ids: list[str]) -> list:
+def _build_hydration_clauses(filters: Optional[SearchFilters]) -> list:
     """Extra WHERE clauses for the PG hydration step.
 
     Implements ADR-019 §19.7:
@@ -58,9 +58,7 @@ def _build_hydration_clauses(filters: Optional[SearchFilters], ids: list[str]) -
         UTC day (§19.4).
 
     Returns a list of SQLAlchemy expressions; ANDed into the hydration
-    ``select`` in left-to-right order. The ``ids`` parameter is unused
-    in the clause generation (kept for the eventual §19.14 follow-up
-    that may need it for an OR-based fall-back).
+    ``select`` in left-to-right order.
     """
     if filters is None:
         return []
@@ -124,7 +122,7 @@ async def search(
             total=0,
         )
 
-    extra_clauses = _build_hydration_clauses(payload.filters, ids)
+    extra_clauses = _build_hydration_clauses(payload.filters)
     stmt = select(Article).where(Article.id.in_([UUID(i) for i in ids]))
     for clause in extra_clauses:
         stmt = stmt.where(clause)
