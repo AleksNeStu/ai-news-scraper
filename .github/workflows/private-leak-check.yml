@@ -79,8 +79,20 @@ jobs:
           if [[ "$BEFORE" =~ ^0+$ ]]; then
             BEFORE=$(git rev-list --max-parents=0 HEAD)
           fi
-          git log "${BEFORE}..${AFTER}" --format=%B \
-            | bash scripts/private-leak-check.sh --message -
+          # Force-pushes rewrite history; the BEFORE ref may no longer be
+          # reachable from HEAD. In that case, fall back to scanning just
+          # the new HEAD commit's message -- which is what the user
+          # actually pushed. The PR-introduced scan below is the more
+          # thorough check (it sees every commit the contributor is
+          # proposing to merge).
+          MSG_FILE=$(mktemp)
+          if git log -1 --format=%B "$AFTER" > "$MSG_FILE" 2>/dev/null && \
+             git merge-base --is-ancestor "$BEFORE" HEAD 2>/dev/null; then
+            # Normal fast-forward push: scan the full BEFORE..AFTER range.
+            git log "${BEFORE}..${AFTER}" --format=%B > "$MSG_FILE"
+          fi
+          bash scripts/private-leak-check.sh --message "$MSG_FILE"
+          rm -f "$MSG_FILE"
 
       - name: scan commit messages (pull_request)
         if: github.event_name == 'pull_request'
