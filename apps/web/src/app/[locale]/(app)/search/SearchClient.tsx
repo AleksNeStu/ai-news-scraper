@@ -73,11 +73,11 @@ export function SearchClient(props: SearchClientProps) {
   const [response, setResponse] = React.useState<SearchResponse | null>(null)
   const abortRef = React.useRef<AbortController | null>(null)
 
-  // Facets are fetched once on mount and held for FACETS_STALE_MS. URL
-  // changes (source/topic/from/to/page) deliberately do NOT re-trigger
-  // the fetch — the taxonomy is library-wide, not query-scoped — so the
-  // same `searchFacets` cache-key (facets:{user_id}) on the server is
-  // reused until either the TTL elapses or this component unmounts.
+  // Facets are fetched once on mount. URL changes (source/topic/from/to/page)
+  // deliberately do NOT re-trigger the fetch — the taxonomy is library-wide,
+  // not query-scoped — so the same `searchFacets` cache-key (facets:{user_id})
+  // on the server is reused until either the TTL elapses or this component
+  // unmounts.
   const [facets, setFacets] = React.useState<{
     sources: string[]
     topics: MultiSelectOption[]
@@ -105,6 +105,8 @@ export function SearchClient(props: SearchClientProps) {
         // 401/5xx → user-not-signed-in or backend hiccup. The search
         // form keeps working; the empty filter widgets are an acceptable
         // degraded state.
+        // eslint-disable-next-line no-console
+        console.warn('[facets] fetch failed', { status: e.status, message: e.message })
       })
     return () => ctrl.abort()
   }, [])
