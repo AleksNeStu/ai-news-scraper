@@ -10,7 +10,11 @@
  */
 
 import { api, ApiError } from '@/lib/api'
-import type { SearchRequest as SharedSearchRequest, SearchResponse } from '@ai-news-scraper/shared'
+import type {
+  FacetsResponse,
+  SearchRequest as SharedSearchRequest,
+  SearchResponse,
+} from '@ai-news-scraper/shared'
 
 export interface SearchArticlesOpts {
   query: string
@@ -53,4 +57,29 @@ export async function searchArticles(opts: SearchArticlesOpts): Promise<SearchRe
     },
   }
   return api.post<SearchResponse>('/search', body)
+}
+
+/**
+ * Fetch per-dimension facet aggregations for the current user's library.
+ *
+ * Hits `GET /search/facets`. No request body. `init.signal` is forwarded
+ * so React Query / the FilterPanel mount can cancel an in-flight request
+ * on unmount or when the user-id changes.
+ *
+ * Server side is Redis-cached (60s TTL, keyed on `facets:{user_id}`);
+ * the response also ships `Cache-Control: private, max-age=60`. To match
+ * server freshness at the consumer layer, configure
+ * `staleTime: 60_000` on the consuming `useQuery` (or call once per page
+ * load in a mount-only effect).
+ *
+ * Empty library returns `{ sources: [], topics: [], date_range: { min: null, max: null } }`
+ * with HTTP 200 — this is NOT an error. UI should render the "empty
+ * library" placeholder when both date bounds are null.
+ *
+ * Throws `ApiError` (from `@/lib/api`) on non-2xx.
+ */
+export async function searchFacets(
+  init?: RequestInit & { signal?: AbortSignal }
+): Promise<FacetsResponse> {
+  return api.get<FacetsResponse>('/search/facets', init)
 }

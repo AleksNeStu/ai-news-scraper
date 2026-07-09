@@ -24,14 +24,26 @@ import { Search as SearchIcon, Loader2 } from 'lucide-react'
 import { useRouter } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 
-import { searchArticles } from '@/lib/api/search'
+import { searchArticles, searchFacets } from '@/lib/api/search'
 import { ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Pagination } from '@/components/Pagination'
 import { useFilterUrl } from '@/components/filters/useFilterUrl'
+import { FilterPanel } from '@/components/filters/FilterPanel'
+import type { MultiSelectOption } from '@/components/ui/multi-select'
 import type { SearchResponse } from '@ai-news-scraper/shared'
+
+/**
+ * Facets are fetched exactly once on mount. The server caches the
+ * `GET /search/facets` response with a 60s Redis TTL (keyed on
+ * `facets:{user_id}`); URL changes (source/topic/from/to/page) do
+ * NOT re-trigger the fetch here because the facet taxonomy is
+ * library-wide, not query-scoped. A mount-only effect is therefore
+ * the right freshness contract — it both matches the server TTL and
+ * avoids the double-fire the Devil flagged in earlier reviews.
+ */
 
 const DEBOUNCE_MS = 250
 
@@ -60,6 +72,42 @@ export function SearchClient(props: SearchClientProps) {
   const [error, setError] = React.useState<string | null>(null)
   const [response, setResponse] = React.useState<SearchResponse | null>(null)
   const abortRef = React.useRef<AbortController | null>(null)
+
+  // Facets are fetched once on mount and held for FACETS_STALE_MS. URL
+  // changes (source/topic/from/to/page) deliberately do NOT re-trigger
+  // the fetch — the taxonomy is library-wide, not query-scoped — so the
+  // same `searchFacets` cache-key (facets:{user_id}) on the server is
+  // reused until either the TTL elapses or this component unmounts.
+  const [facets, setFacets] = React.useState<{
+    sources: string[]
+    topics: MultiSelectOption[]
+  } | null>(null)
+  const facetsAbortRef = React.useRef<AbortController | null>(null)
+  React.useEffect(() => {
+    const ctrl = new AbortController()
+    facetsAbortRef.current?.abort()
+    facetsAbortRef.current = ctrl
+    searchFacets({ signal: ctrl.signal })
+      .then((r) => {
+        if (ctrl.signal.aborted) return
+        setFacets({
+          sources: r.sources.map((s) => s.value),
+          topics: r.topics.map((t) => ({ value: t.value, label: t.value })),
+        })
+      })
+      .catch((e) => {
+        // Swallow aborts; surface real failures only when relevant. For
+        // the MVP the facets panel renders as empty lists on failure
+        // rather than blocking the page (Task #54 scope: do not break
+        // the existing /search UX if /search/facets is down).
+        if (ctrl.signal.aborted) return
+        if (!(e instanceof ApiError)) return
+        // 401/5xx → user-not-signed-in or backend hiccup. The search
+        // form keeps working; the empty filter widgets are an acceptable
+        // degraded state.
+      })
+    return () => ctrl.abort()
+  }, [])
 
   // Debounce the URL write so we don't churn the router on every keystroke.
   // The 250 ms window is the same value ArticlesToolbar uses for its setParams
@@ -150,127 +198,134 @@ export function SearchClient(props: SearchClientProps) {
       : 1
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
-      <div className="mb-6 flex items-center gap-2">
-        <SearchIcon className="h-5 w-5 text-primary" />
-        <h1 className="text-2xl font-semibold headline-serif">{t('pageTitle')}</h1>
+    <div className="mx-auto max-w-6xl px-6 py-10 lg:flex lg:gap-6">
+      <div className="mb-6 w-full lg:mb-0 lg:w-64 lg:shrink-0">
+        <FilterPanel sources={facets?.sources ?? []} topics={facets?.topics ?? []} />
       </div>
-
-      <form
-        role="search"
-        onSubmit={onSubmit}
-        className="rounded-lg border border-border bg-canvas p-6"
-      >
-        <label htmlFor="search-q" className="mb-2 block text-sm text-muted-foreground">
-          {t('queryLabel')}
-        </label>
-        <div className="flex gap-2">
-          <Input
-            id="search-q"
-            name="q"
-            type="search"
-            required
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={t('queryPlaceholder')}
-            className="flex-1"
-            autoComplete="off"
-          />
-          <Button type="submit" disabled={pending}>
-            {pending ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <SearchIcon className="h-4 w-4" aria-hidden="true" />
-            )}
-            {t('submit')}
-          </Button>
-        </div>
-      </form>
-
-      {error && (
-        <div
-          role="alert"
-          aria-live="assertive"
-          className="mt-4 rounded-lg border border-destructive/40 bg-canvas p-4"
-        >
-          <p className="text-sm text-destructive">{error}</p>
-          <Button type="button" variant="outline" size="sm" onClick={onRetry} className="mt-2">
-            {t('retry')}
-          </Button>
-        </div>
-      )}
-
-      {pending && !response && (
-        <div role="status" aria-live="polite" className="mt-8 space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full rounded-lg" />
-          ))}
-        </div>
-      )}
-
-      {response && response.results.length > 0 && (
-        <section className="mt-8">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">{t('resultsHeading')}</h2>
-            <span className="text-xs text-muted-foreground">
-              {t('resultsMeta', {
-                count: response.results.length,
-                ms: response.took_ms,
-              })}
-            </span>
+      <main className="flex-1">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-6 flex items-center gap-2">
+            <SearchIcon className="h-5 w-5 text-primary" />
+            <h1 className="text-2xl font-semibold headline-serif">{t('pageTitle')}</h1>
           </div>
-          <ul className="space-y-3">
-            {response.results.map((r) => (
-              <li key={r.article.id} className="rounded-lg border border-border bg-canvas p-4">
-                <div className="flex items-baseline justify-between gap-3">
-                  <h3 className="headline-serif text-base">
-                    {r.article.headline ?? r.article.url}
-                  </h3>
-                  <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-xs tabular-nums text-primary">
-                    {t('score', { n: r.score.toFixed(3) })}
-                  </span>
-                </div>
-                {r.article.summary && (
-                  <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
-                    {r.article.summary}
-                  </p>
+
+          <form
+            role="search"
+            onSubmit={onSubmit}
+            className="rounded-lg border border-border bg-canvas p-6"
+          >
+            <label htmlFor="search-q" className="mb-2 block text-sm text-muted-foreground">
+              {t('queryLabel')}
+            </label>
+            <div className="flex gap-2">
+              <Input
+                id="search-q"
+                name="q"
+                type="search"
+                required
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={t('queryPlaceholder')}
+                className="flex-1"
+                autoComplete="off"
+              />
+              <Button type="submit" disabled={pending}>
+                {pending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <SearchIcon className="h-4 w-4" aria-hidden="true" />
                 )}
-                <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>{r.article.source_domain}</span>
-                  {r.article.topics.length > 0 && (
-                    <span>· {r.article.topics.slice(0, 3).join(' · ')}</span>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-6">
-            <Pagination
-              page={response.page}
-              totalPages={totalPages}
-              onPageChange={(p) => filters.set('page', String(p))}
-            />
-          </div>
-        </section>
-      )}
+                {t('submit')}
+              </Button>
+            </div>
+          </form>
 
-      {response && response.results.length === 0 && !pending && (
-        <section
-          aria-live="polite"
-          className="mt-8 rounded-lg border border-dashed border-border bg-canvas/50 p-8 text-center"
-        >
-          <h2 className="text-lg font-semibold">{t('noMatchesHeading')}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t('noMatchesBody')}</p>
-          <div className="mt-4 flex justify-center gap-2">
-            <Link
-              href="/articles"
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+          {error && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mt-4 rounded-lg border border-destructive/40 bg-canvas p-4"
             >
-              {t('browseArticles')}
-            </Link>
-          </div>
-        </section>
-      )}
-    </main>
+              <p className="text-sm text-destructive">{error}</p>
+              <Button type="button" variant="outline" size="sm" onClick={onRetry} className="mt-2">
+                {t('retry')}
+              </Button>
+            </div>
+          )}
+
+          {pending && !response && (
+            <div role="status" aria-live="polite" className="mt-8 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full rounded-lg" />
+              ))}
+            </div>
+          )}
+
+          {response && response.results.length > 0 && (
+            <section className="mt-8">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">{t('resultsHeading')}</h2>
+                <span className="text-xs text-muted-foreground">
+                  {t('resultsMeta', {
+                    count: response.results.length,
+                    ms: response.took_ms,
+                  })}
+                </span>
+              </div>
+              <ul className="space-y-3">
+                {response.results.map((r) => (
+                  <li key={r.article.id} className="rounded-lg border border-border bg-canvas p-4">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h3 className="headline-serif text-base">
+                        {r.article.headline ?? r.article.url}
+                      </h3>
+                      <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-xs tabular-nums text-primary">
+                        {t('score', { n: r.score.toFixed(3) })}
+                      </span>
+                    </div>
+                    {r.article.summary && (
+                      <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
+                        {r.article.summary}
+                      </p>
+                    )}
+                    <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>{r.article.source_domain}</span>
+                      {r.article.topics.length > 0 && (
+                        <span>· {r.article.topics.slice(0, 3).join(' · ')}</span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6">
+                <Pagination
+                  page={response.page}
+                  totalPages={totalPages}
+                  onPageChange={(p) => filters.set('page', String(p))}
+                />
+              </div>
+            </section>
+          )}
+
+          {response && response.results.length === 0 && !pending && (
+            <section
+              aria-live="polite"
+              className="mt-8 rounded-lg border border-dashed border-border bg-canvas/50 p-8 text-center"
+            >
+              <h2 className="text-lg font-semibold">{t('noMatchesHeading')}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t('noMatchesBody')}</p>
+              <div className="mt-4 flex justify-center gap-2">
+                <Link
+                  href="/articles"
+                  className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                >
+                  {t('browseArticles')}
+                </Link>
+              </div>
+            </section>
+          )}
+        </div>
+      </main>
+    </div>
   )
 }
