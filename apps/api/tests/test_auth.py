@@ -367,22 +367,24 @@ async def test_me_rejects_jwt_with_empty_signature(auth_client: AsyncClient) -> 
 
 @pytest.mark.asyncio
 async def test_me_rejects_jwt_with_wrong_algorithm(auth_client: AsyncClient) -> None:
-    """Wrong ``alg`` in the header → 401.
+    """Header ``alg`` differs from the server's allow-list → 401.
 
     Sign the token with HS512 (valid sig for this header), but the
     server is configured for HS256. ``jwt.decode(...,
-    algorithms=['HS256'])`` rejects the alg mismatch in the
-    header. This is the canonical defence against the ``alg=none``
-    downgrade attack.
+    algorithms=['HS256'])`` rejects the alg mismatch in the header
+    with ``InvalidAlgorithmError``. The separate ``alg=none``
+    downgrade attack is covered by
+    ``test_me_rejects_jwt_with_alg_none`` immediately below — PyJWT
+    2.x refuses to MINT an ``alg=none`` token via its public API,
+    so the test for that case hand-constructs the JWT string from
+    base64url-encoded header/payload and an empty signature.
     """
     payload = {
         "sub": "any-user-id",
         "email": "x@y.com",
         "exp": _now_exp(900),
     }
-    bad_token = jwt.encode(
-        payload, _settings.jwt_secret, algorithm="HS512"
-    )
+    bad_token = jwt.encode(payload, _settings.jwt_secret, algorithm="HS512")
 
     resp = await auth_client.get(
         "/auth/me",
@@ -390,6 +392,43 @@ async def test_me_rejects_jwt_with_wrong_algorithm(auth_client: AsyncClient) -> 
     )
     assert resp.status_code == 401, (
         f"wrong-alg JWT accepted: status={resp.status_code} body={resp.text!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_me_rejects_jwt_with_alg_none(auth_client: AsyncClient) -> None:
+    """``alg=none`` downgrade attack → 401.
+
+    Forge a token whose header advertises ``alg=none`` and whose
+    signature segment is empty. PyJWT 2.x refuses to MINT such a
+    token via its public API (``jwt.encode(..., algorithm="none")``
+    raises ``MissingRequiredClaimError``), so the token is
+    hand-constructed from base64url-encoded header + payload and an
+    empty signature: ``f"{_b64url(header)}.{_b64url(payload)}."``.
+
+    ``jwt.decode(..., algorithms=["HS256"])`` raises
+    ``InvalidAlgorithmError`` because ``none`` is not in the
+    allow-list. ``decode_token`` catches that and returns ``None``
+    → 401. This is the canonical ``alg=none`` downgrade defence
+    and the explicit counterpart to
+    ``test_me_rejects_jwt_with_wrong_algorithm`` (which only
+    exercises the alg-mismatch class, not the no-sig-no-key class).
+    """
+    header = {"alg": "none", "typ": "JWT"}
+    payload = {
+        "sub": "any-user-id",
+        "email": "x@y.com",
+        "exp": _now_exp(900),
+    }
+    # Hand-constructed: PyJWT 2.x will not mint alg=none tokens.
+    bad_token = f"{_b64url(header)}.{_b64url(payload)}."
+
+    resp = await auth_client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {bad_token}"},
+    )
+    assert resp.status_code == 401, (
+        f"alg=none JWT accepted: status={resp.status_code} body={resp.text!r}"
     )
 
 
@@ -422,23 +461,21 @@ async def test_me_rejects_expired_jwt(auth_client: AsyncClient) -> None:
 async def test_me_rejects_swapped_payload(auth_client: AsyncClient) -> None:
     """Signature covers a different payload than the one sent → 401.
 
-    Forge a token by taking a valid header+sig pair from a JWT
-    signed for user A and splicing in a payload for user B. PyJWT
-    re-computes the HMAC over the new payload, sees it does not
-    match the supplied signature, and rejects. This is the same
-    surface as the original ``test_me_with_tampered_jwt_returns_401``
-    but with the violation localised to the payload segment
-    (proves the dep actually re-verifies the payload digest — not
-    just the signature bytes).
+    Forge a token with header+sig from a JWT for user A and a
+    payload from a different user B. PyJWT re-computes the HMAC
+    over the new payload and rejects. The test pins the
+    payload-segment violation specifically — it is structurally
+    the same attack class as
+    ``test_me_with_tampered_jwt_returns_401``, but isolating the
+    violation to the payload segment makes future regressions in
+    payload parsing easier to diagnose than a 1-byte sig flip.
     """
     original_payload = {
         "sub": "11111111-1111-1111-1111-111111111111",
         "email": "user-a@example.com",
         "exp": _now_exp(900),
     }
-    real_token = jwt.encode(
-        original_payload, _settings.jwt_secret, algorithm="HS256"
-    )
+    real_token = jwt.encode(original_payload, _settings.jwt_secret, algorithm="HS256")
     head, _orig_payload_b64, sig = real_token.split(".")
 
     swapped_payload = {
@@ -455,8 +492,7 @@ async def test_me_rejects_swapped_payload(auth_client: AsyncClient) -> None:
         headers={"Authorization": f"Bearer {bad_token}"},
     )
     assert resp.status_code == 401, (
-        f"swapped-payload JWT accepted: "
-        f"status={resp.status_code} body={resp.text!r}"
+        f"swapped-payload JWT accepted: status={resp.status_code} body={resp.text!r}"
     )
 
 
