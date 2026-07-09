@@ -246,5 +246,40 @@
   "ScoreRing": {
     "notScored": "Not yet scored",
     "scored": "Score {pct} percent, tier {tier}"
+  },
+  "Share": {
+    "button": "Share",
+    "buttonAria": "Share this article",
+    "dialogTitle": "Share this article",
+    "dialogDescription": "Generate a read-only link you can send to anyone. They won't need an account.",
+    "dialogDescriptionWithTitle": "Generate a read-only link to “{title}” — anyone with the link can read it.",
+    "loading": "Creating share link…",
+    "urlLabel": "Shareable URL",
+    "copy": "Copy",
+    "copyAria": "Copy share link to clipboard",
+    "copied": "Link copied",
+    "expiresIn": "Link expires in {days, plural, one {# day} other {# days}}",
+    "footerNote": "Anyone with this link can read the article until it expires. Revocation is a future iteration.",
+    "error": {
+      "network": "Couldn't reach the server. Try again."
+    },
+    "View": {
+      "summaryHeading": "Summary",
+      "topicsHeading": "Topics",
+      "publishedAt": "Published {date}",
+      "sourceLink": "View original",
+      "sharedAt": "Shared on {time}",
+      "expiresAt": "Link expires {time}",
+      "articleIdLabel": "Article ID: {id}",
+      "homeLink": "Create your own library →",
+      "gone": {
+        "title": "This share link is no longer available",
+        "body": "If you think this is a mistake, ask the person who shared it to send you a new link."
+      },
+      "error": {
+        "title": "Couldn't load this shared article",
+        "network": "Couldn't reach the server. Try again in a moment."
+      }
+    }
   }
 }

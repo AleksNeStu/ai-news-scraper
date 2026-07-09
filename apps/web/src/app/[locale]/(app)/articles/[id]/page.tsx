@@ -6,6 +6,7 @@ import { Link, getPathname } from '@/i18n/navigation'
 import { api } from '@/lib/api'
 import { formatDate, formatRelative } from '@/lib/utils'
 import { StructuredData } from '@/components/StructuredData'
+import { ShareDialog } from '@/components/share/ShareDialog'
 import { SITE_URL } from '@/lib/site'
 import { buildArticleJsonLd, buildBreadcrumbJsonLd } from '@/lib/structured-data/builders'
 import type { ArticleOut } from '@ai-news-scraper/shared'
@@ -108,7 +109,12 @@ export default async function ArticleDetailPage({
       </Link>
       <article className="space-y-6">
         <header>
-          <h1 className="headline-serif text-3xl">{a.headline ?? a.url}</h1>
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="headline-serif text-3xl">{a.headline ?? a.url}</h1>
+            <div className="shrink-0">
+              <ShareDialog articleId={a.id} headline={a.headline ?? a.url} />
+            </div>
+          </div>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <span>{a.source_domain}</span>
             <span>·</span>
