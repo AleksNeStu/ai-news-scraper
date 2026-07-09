@@ -66,7 +66,7 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=30s \
 USER appuser
 
 # Container port = 8000 (uvicorn / FastAPI default). Host port is
-# allocated by nest-solo's PORT_REGISTRY.json — for ai-news-scraper
+# allocated by the canonical port-registry file -- for ai-news-scraper
 # that is 8007; compose maps ``8007:8000``. Do not change the
 # container port without also updating ``apps/api/api/config.py``
 # (``api_port``), ``docker-compose.yml`` (env, healthcheck, port

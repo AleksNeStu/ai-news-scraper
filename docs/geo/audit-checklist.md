@@ -1,8 +1,8 @@
 # GEO 5-Layer Audit — ai-news-scraper
 
 > **Port note (2026-07-08):** every ``localhost:3807`` URL in this document
-> now means ``localhost:3807`` per nest-solo's PORT_REGISTRY.json
-> ``externalLocal.ai-news-scraper``. The substitution is applied below;
+> now means ``localhost:3807`` per the canonical port-registry file's
+> ``externalLocal.ai-news-scraper`` entry. The substitution is applied below;
 > update new entries with the new port.
 
 This checklist documents what shipped for Task #28 (GEO readiness)

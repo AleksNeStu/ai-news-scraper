@@ -22,10 +22,10 @@ class Settings(BaseSettings):
     # API
     api_host: str = "0.0.0.0"
     # Container port follows the FastAPI / uvicorn default (8000). The
-    # host port is allocated by nest-solo's PORT_REGISTRY.json (range
+    # host port is allocated by the canonical port-registry file (range
     # 8000-8099, +1 per project). For ai-news-scraper the host port is
-    # 8007 — see ``E:\nestlab-repo\nest-solo\docs\architecture\PORT_REGISTRY.json``
-    # under ``projects.ai-news-scraper.backend.hostPort``. Compose maps
+    # 8007 -- see the canonical port-registry file under
+    # ``externalLocal.ai-news-scraper.backend.hostPort``. Compose maps
     # ``8007:8000`` (host:container); do not change the container port
     # without also updating ``apps/api/Dockerfile`` (HEALTHCHECK, EXPOSE,
     # CMD uvicorn --port), ``docker-compose.yml`` (env API_PORT,
@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     # Default allow-list for browser dev. Override per environment via the
     # ``CORS_ALLOW_ORIGINS`` env var (comma-separated). The default
     # includes both ``http://localhost:3807`` (new web host port per
-    # nest-solo PORT_REGISTRY.json) and ``http://localhost:3000`` so
+    # the canonical port-registry file) and ``http://localhost:3000`` so
     # a stray ``pnpm dev`` run against the old default still works
     # without having to override the env var. Clean up the legacy
     # entry once dev workflows only use 3807.

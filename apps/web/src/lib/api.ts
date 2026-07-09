@@ -7,8 +7,8 @@ const API_URL =
   // In compose both ``API_INTERNAL_URL`` and ``NEXT_PUBLIC_API_URL`` are
   // set (compose sets them explicitly per the matrix in ``docs/ports.md``),
   // so this fallback only triggers for ad-hoc ``pnpm dev`` runs without
-  // the env block. Default to the new host port 8007 (per nest-solo
-  // ``PORT_REGISTRY.json`` externalLocal.ai-news-scraper.api.host).
+  // the env block. Default to the new host port 8007 (per the canonical
+  // port-registry file's externalLocal.ai-news-scraper.api.host entry).
   process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8007'
 
 export class ApiError extends Error {

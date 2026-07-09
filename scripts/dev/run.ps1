@@ -84,9 +84,9 @@ foreach ($svc in $services) {
 }
 
 # ---- show URLs ----
-# Port matrix follows nest-solo's PORT_REGISTRY.json
-# (E:\nestlab-repo\nest-solo\docs\architecture\PORT_REGISTRY.json,
-# ``externalLocal.ai-news-scraper``). Container ports follow framework
+# Port matrix follows the canonical port-registry file
+# (the canonical port-registry file's
+# ``externalLocal.ai-news-scraper`` entry). Container ports follow framework
 # defaults (Next.js=3000, FastAPI=8000); host ports are the +1
 # increments from the 3800-3899 / 8000-8099 / 5433-5499 ranges
 # documented in ``port-management.md``. Do not change these without

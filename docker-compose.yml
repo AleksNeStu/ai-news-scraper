@@ -117,7 +117,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       API_HOST: 0.0.0.0
       # Container port is 8000 (uvicorn / FastAPI default). Host port
-      # is 8007 — allocated by nest-solo's PORT_REGISTRY.json (range
+      # is 8007 — allocated by the canonical port-registry file (range
       # 8000-8099, +1 per project). See ``apps/api/Dockerfile`` and
       # ``apps/api/api/config.py`` for the same comment. The web
       # container reaches the api via the compose-network DNS name
@@ -168,7 +168,7 @@ services:
     depends_on:
       - api
     environment:
-      # Backend host port = 8007 (per nest-solo PORT_REGISTRY.json);
+      # Backend host port = 8007 (per the canonical port-registry file);
       # this is what the browser uses to reach the api.
       API_INTERNAL_URL: http://api:8000
       NEXT_PUBLIC_API_URL: http://localhost:8007

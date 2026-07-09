@@ -36,7 +36,7 @@ open http://localhost:3807
 
 That's it — Postgres + Redis + ChromaDB + API + Web come up together. Register an account, scrape a URL, search.
 
-> **Port matrix:** web=`3807`, api=`8007`, db=`5440`, redis=`6380`, chromadb=`8500` — see [`docs/ports.md`](./docs/ports.md) for the full table and the canonical source (nest-solo's `PORT_REGISTRY.json` `externalLocal.ai-news-scraper`).
+> **Port matrix:** web=`3807`, api=`8007`, db=`5440`, redis=`6380`, chromadb=`8500` — see [`docs/ports.md`](./docs/ports.md) for the full table and the canonical source (the canonical port-registry file's `externalLocal.ai-news-scraper` entry).
 
 ## 🏗️ Architecture
 
