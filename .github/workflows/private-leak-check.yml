@@ -84,9 +84,22 @@ jobs:
 
       - name: scan commit messages (pull_request)
         if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          BASE="${{ github.event.pull_request.base.sha }}"
-          HEAD="${{ github.event.pull_request.head.sha }}"
-          git log "${BASE}..${HEAD}" --format=%B \
-            | bash scripts/private-leak-check.sh --message -
+          # Scan only the commits INTRODUCED BY THIS PR, not the full
+          # base..head range. ``git log BASE..HEAD`` would include
+          # every commit on the working branch since it diverged from
+          # base -- which, on a long-lived dev branch with frequent
+          # force-pushes (see project memory: 2026-07-05 author-rewrite
+          # + message-body scrub), can include historical commits with
+          # pre-cleanup messages. The PR API gives us the actual set
+          # of commits the user is proposing to merge.
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          MSG_FILE=$(mktemp)
+          gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/commits" \
+            --jq '.[].commit.message' \
+            > "$MSG_FILE"
+          bash scripts/private-leak-check.sh --message "$MSG_FILE"
+          rm -f "$MSG_FILE"
