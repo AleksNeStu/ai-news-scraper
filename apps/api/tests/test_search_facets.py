@@ -203,20 +203,44 @@ def fake_session_factory(articles_pool):
                 return self._rows[0] if self._rows else (None, None)
 
         def _walk_for_func(stmt, name):
-            """True iff any column expression or its wrapped element
-            is a SQLAlchemy ``Function`` with ``.name == name``."""
-            cols = stmt.column_descriptions
-            for c in cols:
+            """True iff any column expression, its wrapped element,
+            or any FROM-clause alias element is a SQLAlchemy
+            ``Function`` with ``.name == name``.
+
+            Two walking paths because the production aggregator uses
+            ``func.unnest(Article.topics).alias('topic')`` (a
+            TableValuedAlias in the FROM clause) while the date-range
+            aggregator uses ``func.min(...)`` / ``func.max(...)`` (in
+            column_descriptions). On the column-descriptions path,
+            ``func.unnest(...).alias(...)`` materialises as a
+            ``ColumnClause`` whose ``.name`` is a bindparam key
+            (``"%(NNN unnest)s"``) and whose ``.element`` is None --
+            so the function name is NOT reachable from
+            column_descriptions. The FROM path (``get_final_froms()``)
+            walks the unnest TableValuedAlias to its ``.element``
+            Function directly. The combined walker handles both.
+            """
+            # Path 1: column_descriptions. Works for plain
+            # ``func.min(...)`` / ``func.max(...)`` in the SELECT.
+            for c in stmt.column_descriptions:
                 expr = c["expr"]
-                # ``func.unnest(Article.topics)`` is exposed as a
-                # ``Function`` at the top level (when not aliased)
-                # or wrapped in an Alias. The function's ``.name``
-                # attribute is the string literal the SQL would
-                # render ('unnest', 'min', 'max').
                 if getattr(expr, "name", None) == name:
                     return True
                 inner = getattr(expr, "element", None)
-                if getattr(inner, "name", None) == name:
+                if inner is not None and getattr(inner, "name", None) == name:
+                    return True
+            # Path 2: FROM-clause walk. Required for
+            # ``func.unnest(Article.topics).alias('topic')`` whose
+            # function node lives on the TableValuedAlias's
+            # ``.element``, not on the column descriptions.
+            for from_obj in stmt.get_final_froms():
+                if getattr(from_obj, "name", None) == name:
+                    return True
+                from_element = getattr(from_obj, "element", None)
+                if (
+                    from_element is not None
+                    and getattr(from_element, "name", None) == name
+                ):
                     return True
             return False
 
@@ -557,10 +581,19 @@ async def test_T5_two_users_with_disjoint_libraries_see_disjoint_facets(
     articles_pool[str(a_art.id)] = a_art
     articles_pool[str(b_art.id)] = b_art
 
+    # Sequential, NOT nested: ``app.dependency_overrides`` is a single
+    # global dict, so the inner-context override for user_b replaces
+    # user_a's while both contexts are active. Calling user_a's facets
+    # request AFTER the user_b context is set up routes it through
+    # user_b's ``_override_user`` (and the matching fake session).
+    # Calling each in its own context keeps the override scope
+    # unambiguous. The fixture's save/restore only fires on __exit__,
+    # not on nested-entry, so the per-user isolation depends on
+    # sequential context entry.
     async with client_for_user(user_a) as ca:
-        async with client_for_user(user_b) as cb:
-            ra = await ca.get("/search/facets")
-            rb = await cb.get("/search/facets")
+        ra = await ca.get("/search/facets")
+    async with client_for_user(user_b) as cb:
+        rb = await cb.get("/search/facets")
 
     assert ra.status_code == 200
     assert rb.status_code == 200
