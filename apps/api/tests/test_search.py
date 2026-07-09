@@ -4,6 +4,13 @@ Patches the vector store + embedder to return deterministic ranked hits
 so the router's slicing + hydration logic is exercised without needing
 a live ChromaDB / OpenAI key. The over-fetch + post-slice behaviour is
 the load-bearing contract here.
+
+The DB fake follows the same ``_FakeSession`` + ``app.dependency_overrides[get_db]``
+pattern as ``test_search_filters.py`` (reference: lines 261-300). The
+older ``monkeypatch.setattr("api.routers.search.db.execute", ...)`` +
+``_override_db() yield None`` pattern never reaches the route — FastAPI
+resolves ``db`` via the dependency override, not via module attribute
+lookup, and the dotted-string form silently no-ops in pytest 9.
 """
 
 from __future__ import annotations
@@ -57,7 +64,17 @@ def fake_vector_store(monkeypatch):
 @pytest.fixture
 def fake_articles(monkeypatch):
     """A pool of Article rows keyed by id; only those referenced by the
-    vector-store hits are queried for in the hydration step."""
+    vector-store hits are queried for in the hydration step.
+
+    The pool dict also carries a bound ``fake_execute`` coroutine so
+    ``client_with_overrides`` can build a FakeSession around the same
+    closure. We deliberately do NOT use ``monkeypatch.setattr`` on
+    ``api.routers.search.db.execute`` — that pattern is broken in
+    pytest 9 (the dotted string form requires a real module path) and
+    never actually reached the route's ``db`` parameter (FastAPI
+    resolves ``db`` via the ``get_db`` dependency override, not via
+    module attribute lookup).
+    """
 
     pool: dict[str, Article] = {}
 
@@ -85,27 +102,45 @@ def fake_articles(monkeypatch):
             ids.extend(c.value)
         return FakeResult([pool[i] for i in ids if i in pool])
 
-    monkeypatch.setattr("api.routers.search.db.execute", fake_execute, raising=False)
+    pool["fake_execute"] = fake_execute
     return pool
 
 
 @pytest.fixture
 async def client_with_overrides(fake_embedder, fake_vector_store, fake_articles):
     """An httpx AsyncClient over the FastAPI app with auth + DB
-    overrides so we can call POST /search without a real session."""
+    overrides so we can call POST /search without a real session.
+
+    FastAPI dependency override yields a ``FakeSession`` whose
+    ``.execute`` method delegates to ``fake_articles``'s bound
+    ``fake_execute`` coroutine. The earlier pattern that yielded
+    ``None`` and relied on dotted-path ``monkeypatch.setattr`` on
+    ``api.routers.search.db.execute`` was broken in pytest 9 and
+    never matched the route's actual ``db`` parameter (which FastAPI
+    resolves via the dependency override, not via module lookup).
+    """
 
     from httpx import ASGITransport, AsyncClient
 
     async def _override_user():
         return uuid4()
 
+    fake_execute = fake_articles["fake_execute"]
+
+    class _FakeSession:
+        async def execute(self, stmt):
+            return await fake_execute(stmt)
+
+        async def close(self):
+            return None
+
     async def _override_db():
-        yield None
+        yield _FakeSession()
 
     app.dependency_overrides[get_current_user_id] = _override_user
     app.dependency_overrides[get_db] = _override_db
 
-    transport = ASGITransport(app=app)
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
 
