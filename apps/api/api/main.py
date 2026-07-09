@@ -19,6 +19,7 @@ from api.routers import (
     articles,
     auth,
     digest,
+    embeddings,
     feeds,
     health,
     notifications,
@@ -259,6 +260,10 @@ app.include_router(notifications.router)
 # locale-aware web pages (the path segment is part of the contract).
 app.include_router(share.router)
 app.include_router(public.router)
+# Task #34 / ADR-022 — embedding playground (provider enumeration,
+# text → vector, two-text cosine compare). JWT-required; per-user
+# rate limit applied inside each route handler.
+app.include_router(embeddings.router)
 if _settings.effective_digest_enabled and _settings.openai_key_usable:
     app.include_router(digest.router)
 else:
