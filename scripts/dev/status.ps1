@@ -19,7 +19,7 @@ Write-Host "=== health states ===" -ForegroundColor Cyan
 docker ps --filter "name=ai-news-" --format "{{.Names}}	{{.Status}}"
 Write-Host ""
 Write-Host "=== urls (when healthy) ===" -ForegroundColor Cyan
-# Per nest-solo PORT_REGISTRY.json externalLocal.ai-news-scraper.
+# Per the canonical port-registry file's externalLocal.ai-news-scraper entry.
 Write-Host "  Web UI:  http://localhost:3807"
 Write-Host "  API:     http://localhost:8007"
 Write-Host "  API doc: http://localhost:8007/docs"
