@@ -367,3 +367,139 @@ export interface SharedArticleView {
   /** When the share expires (ISO 8601 UTC). Always non-null in v1. */
   expires_at: string;
 }
+
+// ============================================================================
+// Embedding playground (Task #34, ADR-022)
+// ============================================================================
+//
+// Internal tool: a logged-in user pastes text, picks an embedding model, sees
+// the vector and a side-by-side cosine similarity. Surfaces the LLM factory's
+// provider inventory (ADR-011) without forcing the web app to hard-code the
+// list. See `.agent/adr/022-embedding-playground.md` for the locked
+// decisions (provider enumeration, full-vector API, 422-not-500 for unsupported
+// providers, key gating, rate limit, no-cache, auth posture).
+
+/** One provider entry returned by `GET /embeddings/providers`. The list is
+ * derived from the LLM factory at `apps/api/api/services/llm/__init__.py`
+ * (ADR-011 §11.4) — the API is the source of truth; the front-end picker is
+ * driven entirely by this payload. Mirrors the Pydantic `EmbeddingProvider`
+ * in `apps/api/api/schemas/embeddings.py`. */
+export interface EmbeddingProvider {
+  /** Stable string identifier matching the factory key (e.g. `"deepseek"`,
+   * `"gemini"`, `"openrouter"`). Echoed back in `EmbedRequest.provider_id`
+   * and `SimilarityRequest.provider_id`. */
+  id: string;
+  /** Human-readable name for the provider picker UI (e.g. `"DeepSeek"`,
+   * `"Google Gemini"`, `"OpenRouter"`). */
+  display_name: string;
+  /** Whether this provider implements the `embed()` contract (ADR-011
+   * §11.1). `false` for DeepSeek — its `embed()` raises
+   * `NotImplementedError` (see `apps/api/api/services/llm/deepseek.py:19-22`).
+   * The front-end picker MUST disable + annotate these entries, and any
+   * call referencing them is rejected with 422 (not 500). */
+  supports_embed: boolean;
+  /** Whether this provider needs its own API key separate from the
+   * project's default LLM key. When `true`, `key_configured` MUST also be
+   * `true` for calls to succeed. */
+  requires_own_key: boolean;
+  /** Whether the provider's key is configured in the deployment env. The
+   * key value itself is NEVER returned in this payload — even to an
+   * authenticated user (ADR-022 §22.5). When `false` and the provider is
+   * selected, the API responds 422 with `provider_key_missing`. */
+  key_configured: boolean;
+  /** Native output dimension for the provider's default embed model. The
+   * API always returns the FULL vector (no truncation), so the front-end
+   * can compress for display while keeping the raw values available for
+   * exact comparison. `null` when `supports_embed === false` (DeepSeek). */
+  dimensions: number | null;
+  /** Default embed model identifier the provider will use when no override
+   * is supplied. Surfaced in the picker so the user knows what they're
+   * testing against. `null` when `supports_embed === false`. */
+  default_model: string | null;
+}
+
+/** Response body for `GET /embeddings/providers`. Mirrors the Pydantic
+ * `EmbeddingProvidersResponse` in `apps/api/api/schemas/embeddings.py`. */
+export interface EmbeddingProvidersResponse {
+  providers: EmbeddingProvider[];
+}
+
+/** Payload for `POST /embeddings/embed`. The API re-embeds on every call
+ * (no server-side cache for v1, ADR-022 §22.8) so the user always sees a
+ * live vector from the chosen model — caching would defeat the
+ * "compare across providers" use case if a provider silently updated its
+ * model. Mirrors the Pydantic `EmbedRequest` in
+ * `apps/api/api/schemas/embeddings.py`. */
+export interface EmbedRequest {
+  /** Provider id from `EmbeddingProvidersResponse` (e.g. `"gemini"`).
+   * Must satisfy `supports_embed === true` AND
+   * `(requires_own_key === false || key_configured === true)`. Otherwise
+   * the API responds 422 (never 500). */
+  provider_id: string;
+  /** Free-form input text. Server-side cap matches the existing embedder
+   * path in `apps/api/api/services/embedder.py:31` (texts truncated to
+   * 8000 chars). */
+  text: string;
+  /** Optional model override; falls back to the provider's `default_model`.
+   * `null`/unset means "use the provider default". */
+  model?: string | null;
+}
+
+/** Response body for `POST /embeddings/embed`. The vector is the FULL
+ * native-dimension output (ADR-022 §22.7) — no API-side truncation.
+ * Truncation is a display concern owned by the front-end. Mirrors the
+ * Pydantic `EmbedResponse` in `apps/api/api/schemas/embeddings.py`. */
+export interface EmbedResponse {
+  provider_id: string;
+  /** Model that produced the vector. Echoes the requested model or the
+   * provider's `default_model` when the request omitted one. */
+  model: string;
+  /** Native output dimension (matches `EmbeddingProvider.dimensions`). */
+  dimensions: number;
+  /** Full embedding vector. Length equals `dimensions`. Front-end may
+   * compress to hex + first-8-dims for display, but the raw floats are
+   * kept here for exact comparison research. */
+  vector: number[];
+}
+
+/** Payload for `POST /embeddings/similarity`. Two texts against one
+ * provider — the comparison is always provider-scoped (ADR-022 §22.3).
+ * Cross-provider similarity is out of scope for v1 and can be added by
+ * calling `/embeddings/embed` twice and computing client-side. Mirrors
+ * the Pydantic `SimilarityRequest` in
+ * `apps/api/api/schemas/embeddings.py`. */
+export interface SimilarityRequest {
+  provider_id: string;
+  text_a: string;
+  text_b: string;
+  /** Optional model override; falls back to the provider's `default_model`. */
+  model?: string | null;
+}
+
+/** Response body for `POST /embeddings/similarity`. Returns both vectors
+ * AND the cosine similarity so the front-end can render a comparison view
+ * without a second round-trip. `dot_product` and `euclidean` are bonus
+ * fields (ADR-022 §22.3) — present when the implementation surfaces them,
+ * omitted otherwise. Mirrors the Pydantic `SimilarityResponse` in
+ * `apps/api/api/schemas/embeddings.py`. */
+export interface SimilarityResponse {
+  provider_id: string;
+  /** Model that produced both vectors. */
+  model: string;
+  /** Native output dimension (matches `EmbeddingProvider.dimensions`). */
+  dimensions: number;
+  /** Full embedding for `text_a`. */
+  vector_a: number[];
+  /** Full embedding for `text_b`. */
+  vector_b: number[];
+  /** Cosine similarity in `[-1, 1]`. The default and required metric —
+   * every provider in ADR-011 §11.7 emits unit-normalised vectors, so the
+   * cosine result is also the dot product of the normalised vectors. */
+  cosine_similarity: number;
+  /** Optional dot product (raw, un-normalised). Surfaced when the
+   * implementation computes it cheaply; `null` if absent. */
+  dot_product?: number | null;
+  /** Optional Euclidean distance between the two vectors. Surfaced when
+   * the implementation computes it cheaply; `null` if absent. */
+  euclidean?: number | null;
+}

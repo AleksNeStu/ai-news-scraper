@@ -19,6 +19,14 @@ from api.schemas.share import (
     ShareResponse,
     SharedArticleView,
 )
+from api.schemas.embeddings import (
+    EmbeddingProvider,
+    EmbeddingProvidersResponse,
+    EmbedRequest,
+    EmbedResponse,
+    SimilarityRequest,
+    SimilarityResponse,
+)
 
 __all__ = [
     "ArticleOut",
@@ -40,4 +48,10 @@ __all__ = [
     "ShareCreateRequest",
     "ShareResponse",
     "SharedArticleView",
+    "EmbeddingProvider",
+    "EmbeddingProvidersResponse",
+    "EmbedRequest",
+    "EmbedResponse",
+    "SimilarityRequest",
+    "SimilarityResponse",
 ]
