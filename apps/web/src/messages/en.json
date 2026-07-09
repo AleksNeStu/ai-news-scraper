@@ -18,6 +18,7 @@
       "articles": "Articles",
       "brief": "Brief",
       "feeds": "Feeds",
+      "embeddings": "Embeddings",
       "settings": "Settings"
     }
   },
@@ -280,6 +281,41 @@
         "title": "Couldn't load this shared article",
         "network": "Couldn't reach the server. Try again in a moment."
       }
+    }
+  },
+  "Embeddings": {
+    "pageTitle": "Embedding playground",
+    "pageDescription": "Internal tool: paste two texts, pick an embedding model, and see how close the model thinks they are. No data is saved.",
+    "picker": {
+      "heading": "Model",
+      "ready": "ready",
+      "noKey": "no key",
+      "noEmbed": "no embed"
+    },
+    "inputs": {
+      "heading": "Inputs",
+      "textA": "Text A",
+      "textB": "Text B",
+      "placeholderA": "Paste the first text here…",
+      "placeholderB": "Paste the second text here…",
+      "submit": "Compute similarity",
+      "submitting": "Computing…"
+    },
+    "results": {
+      "heading": "Results",
+      "empty": "Pick a model and enter two texts to see the comparison.",
+      "cosine": "Cosine similarity",
+      "vectorA": "Text A",
+      "vectorB": "Text B",
+      "dotProduct": "Dot product",
+      "euclidean": "Euclidean"
+    },
+    "error": {
+      "title": "Something went wrong",
+      "network": "Couldn't reach the server. Try again.",
+      "unsupported": "This model doesn't support embeddings.",
+      "noKey": "API key not configured for this model — ask your admin to add it in settings.",
+      "unknown": "Unknown model. Refresh the page to reload the picker."
     }
   }
 }

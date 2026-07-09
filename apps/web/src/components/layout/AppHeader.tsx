@@ -1,6 +1,6 @@
 import type { Route } from 'next'
 import { Suspense } from 'react'
-import { Languages, Newspaper, Search, Rss, Settings } from 'lucide-react'
+import { Languages, Newspaper, Search, Rss, Settings, Sparkles } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { NotificationBell } from '@/components/NotificationBell'
@@ -48,6 +48,9 @@ export async function AppHeader() {
           </NavLink>
           <NavLink href="/feeds" icon={<Rss className="h-4 w-4" />}>
             {t('nav.feeds')}
+          </NavLink>
+          <NavLink href="/embeddings" icon={<Sparkles className="h-4 w-4" />}>
+            {t('nav.embeddings')}
           </NavLink>
           <NavLink href="/settings" icon={<Settings className="h-4 w-4" />}>
             {t('nav.settings')}
