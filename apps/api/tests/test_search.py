@@ -157,11 +157,18 @@ def fake_articles(monkeypatch, hit_registry):
         # ``_extract_id_in`` for the same pattern.
         ids: list[str] = []
         for c in (
-            stmt.whereclause.children
-            if hasattr(stmt.whereclause, "children")
-            else [stmt.whereclause]
+            stmt.whereclause.clauses
+            if hasattr(stmt.whereclause, "clauses")
+            else (
+                stmt.whereclause.children
+                if hasattr(stmt.whereclause, "children")
+                else [stmt.whereclause]
+            )
         ):
-            ids.extend(str(v) for v in c.value)
+            right = getattr(c, "right", None)
+            if right is None or not hasattr(right, "value"):
+                continue
+            ids.extend(str(v) for v in right.value)
         return FakeResult([pool[i] for i in ids if i in pool])
 
     pool["fake_execute"] = fake_execute
