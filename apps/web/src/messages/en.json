@@ -154,7 +154,11 @@
     "clearSource": "Clear source filter",
     "clearDate": "Clear date range",
     "searchSources": "Search sources…",
+    "searchTopics": "Search topics…",
     "noSources": "No sources.",
+    "noTopics": "No topics.",
+    "allSources": "All sources",
+    "allTopics": "All topics",
     "anyDate": "Any date",
     "from": "From",
     "to": "To"

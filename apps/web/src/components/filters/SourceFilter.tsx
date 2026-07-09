@@ -45,8 +45,10 @@ export interface SourceFilterProps {
 export function SourceFilter({
   options,
   className,
-  placeholder = 'All sources',
+  placeholder: placeholderProp,
 }: SourceFilterProps) {
+  const t = useTranslations('Filters')
+  const placeholder = placeholderProp ?? t('allSources')
   const t = useTranslations('Filters')
   const filters = useFilterUrl()
   const [open, setOpen] = React.useState(false)

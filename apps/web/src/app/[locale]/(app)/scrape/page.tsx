@@ -42,9 +42,12 @@ export default function ScrapePage() {
       </div>
 
       <form onSubmit={onSubmit} className="rounded-lg border border-border bg-canvas p-6">
-        <label className="mb-2 block text-sm text-muted-foreground">{t('urlLabel')}</label>
+        <label htmlFor="scrape-url" className="mb-2 block text-sm text-muted-foreground">
+          {t('urlLabel')}
+        </label>
         <div className="flex gap-2">
           <input
+            id="scrape-url"
             type="url"
             required
             value={url}

@@ -13,6 +13,8 @@
  * ready when the topic extractor lands.
  */
 
+import { useTranslations } from 'next-intl'
+
 import { useFilterUrl } from '@/components/filters/useFilterUrl'
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select'
 
@@ -24,6 +26,7 @@ export interface TopicMultiSelectProps {
 export function TopicMultiSelect({ options, className }: TopicMultiSelectProps) {
   const filters = useFilterUrl()
   const value = filters.getAll('topic')
+  const t = useTranslations('Filters')
 
   return (
     <MultiSelect
@@ -42,9 +45,9 @@ export function TopicMultiSelect({ options, className }: TopicMultiSelectProps) 
         }
       }}
       className={className}
-      placeholder="All topics"
-      searchPlaceholder="Search topics…"
-      emptyMessage="No topics."
+      placeholder={t('allTopics')}
+      searchPlaceholder={t('searchTopics')}
+      emptyMessage={t('noTopics')}
     />
   )
 }

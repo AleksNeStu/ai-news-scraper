@@ -64,8 +64,11 @@ export default function RegisterPage() {
         </div>
         <form action={action} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm text-muted-foreground">{t('emailLabel')}</label>
+            <label htmlFor="register-email" className="mb-1 block text-sm text-muted-foreground">
+              {t('emailLabel')}
+            </label>
             <input
+              id="register-email"
               name="email"
               type="email"
               required
@@ -78,8 +81,11 @@ export default function RegisterPage() {
             )}
           </div>
           <div>
-            <label className="mb-1 block text-sm text-muted-foreground">{t('passwordLabel')}</label>
+            <label htmlFor="register-password" className="mb-1 block text-sm text-muted-foreground">
+              {t('passwordLabel')}
+            </label>
             <input
+              id="register-password"
               name="password"
               type="password"
               required

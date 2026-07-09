@@ -154,7 +154,11 @@
     "clearSource": "Очистить фильтр источника",
     "clearDate": "Очистить диапазон дат",
     "searchSources": "Поиск источников…",
+    "searchTopics": "Поиск тем…",
     "noSources": "Источников нет.",
+    "noTopics": "Тем нет.",
+    "allSources": "Все источники",
+    "allTopics": "Все темы",
     "anyDate": "Любая дата",
     "from": "С",
     "to": "По"
