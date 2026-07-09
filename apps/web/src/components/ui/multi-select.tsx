@@ -107,6 +107,7 @@ export function MultiSelect({
           aria-expanded={open}
           aria-controls={listId}
           disabled={disabled}
+          aria-label={summary}
           className={cn(
             'w-full justify-between font-normal',
             value.length === 0 && 'text-muted-foreground',

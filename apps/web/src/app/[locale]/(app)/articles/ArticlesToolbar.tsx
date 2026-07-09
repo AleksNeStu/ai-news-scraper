@@ -118,7 +118,11 @@ function FilterChip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'rounded-full px-3 py-1 text-xs font-medium transition',
+        // min-h-8 + px-3 py-1 keeps a comfortable click target even on
+        // wrap; text-xs still gives a compact visual rhythm. WCAG 2.5.8
+        // (target-size) needs >= 24x24 CSS px, addressed by min-h-8 +
+        // min-w-8 (32px).
+        'rounded-full min-h-8 min-w-8 px-3 py-1 text-xs font-medium transition',
         active
           ? 'bg-primary text-primary-foreground'
           : 'bg-muted text-muted-foreground hover:text-foreground'

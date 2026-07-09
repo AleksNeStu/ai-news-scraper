@@ -71,6 +71,7 @@ export function SourceFilter({
           role="combobox"
           aria-expanded={open}
           aria-controls={listId}
+          aria-label={selected ?? placeholder}
           className={cn('w-full justify-between font-normal', className)}
         >
           <span className={cn('truncate', !selected && 'text-muted-foreground')}>
