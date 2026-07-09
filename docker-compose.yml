@@ -172,6 +172,15 @@ services:
       # this is what the browser uses to reach the api.
       API_INTERNAL_URL: http://api:8000
       NEXT_PUBLIC_API_URL: http://localhost:8007
+      # Dev auth bypass — see apps/web/src/middleware.ts. When set to
+      # the demo user's email, the middleware mints a fresh HS256 JWT
+      # and sets the auth_token cookie on every request so the dev can
+      # click around the app without going through /login first. The
+      # minted token uses the same JWT_SECRET the API verifies against,
+      # so the API accepts it identically. Set to empty string to
+      # disable (e.g. for testing the real login flow).
+      DEV_AUTH_BYPASS_USER: ${DEV_AUTH_BYPASS_USER:-alex@example.com}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
     ports:
       - "3807:3000"
     volumes:
