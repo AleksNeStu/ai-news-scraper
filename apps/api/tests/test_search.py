@@ -283,26 +283,26 @@ async def test_search_top_k_is_accepted_as_page_size_synonym(client_with_overrid
 
 
 @pytest.mark.asyncio
-async def test_search_top_k_wins_over_page_size_when_both_are_set(
+async def test_search_page_size_wins_when_both_are_set(
     client_with_overrides,
 ):
-    """When both ``top_k`` and ``page_size`` are set, ``top_k`` wins.
+    """When both ``top_k`` and ``page_size`` are set, ``page_size`` wins.
 
     The ``SearchRequest`` schema validator logs that ``page_size`` is
-    the preferred value (Task #47 contract) but the router's
-    ``_resolve_page_size`` returns ``top_k`` when both are non-null —
-    i.e. the log message and the actual route behaviour disagree.
-    Until the router is flipped to honour ``page_size``, this test
-    pins down the CURRENT behaviour so a future fix doesn't slip past
-    CI. Surfaced as a CALL-OUT (4th bug discovered).
+    the preferred value (Task #47 contract, ADR-019). The router's
+    ``_resolve_page_size`` honours this precedence: non-default
+    ``page_size`` wins, ``top_k`` is a synonym used only when
+    ``page_size`` is left at the default (10) and ``top_k`` is
+    provided. Test rewired after the Task #58 fix flipped the
+    router from the prior (buggy) ``top_k``-wins behaviour.
     """
     r = await client_with_overrides.post(
         "/search", json={"query": "ai", "top_k": 7, "page_size": 3}
     )
     body = r.json()
-    assert body["page_size"] == 7  # top_k wins
-    # Over-fetch for p=1 ps=7 = min(max(1*7*2, 1*7+50), 1000) = 57.
-    assert body["total"] == 57
+    assert body["page_size"] == 3  # page_size wins
+    # Over-fetch for p=1 ps=3 = min(max(1*3*2, 1*3+50), 1000) = 53.
+    assert body["total"] == 53
 
 
 @pytest.mark.asyncio

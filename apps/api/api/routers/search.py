@@ -47,7 +47,19 @@ _vector_store = ChromaVectorStore()
 
 
 def _resolve_page_size(payload: SearchRequest) -> int:
-    """Effective page_size, honouring the deprecated `top_k` synonym."""
+    """Effective page_size, honouring the deprecated `top_k` synonym.
+
+    Per SearchRequest._no_both_top_k_and_page_size, callers that set
+    both ``top_k`` and a non-default ``page_size`` are documented to
+    prefer ``page_size`` (the validator logs the same). Previously the
+    router inverted this and returned ``top_k`` -- a contract violation
+    caught by Task #58 / Devil review. We honour the documented
+    precedence: explicit ``page_size`` wins, ``top_k`` is a synonym
+    used only when ``page_size`` is left at its default and ``top_k``
+    is provided.
+    """
+    if payload.page_size != 10 and payload.page_size is not None:
+        return payload.page_size
     if payload.top_k is not None:
         return payload.top_k
     return payload.page_size
