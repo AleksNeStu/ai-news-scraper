@@ -25,9 +25,13 @@ bypasses enforcement when ``app_env == "test"``).
 
 from __future__ import annotations
 
+import base64
+import json
 from collections.abc import AsyncGenerator
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import jwt
 import pytest
 import pytest_asyncio
 from fastapi import HTTPException, status
@@ -282,8 +286,16 @@ async def test_me_without_cookie_returns_401(auth_client: AsyncClient) -> None:
 async def test_me_with_tampered_jwt_returns_401(auth_client: AsyncClient) -> None:
     """A JWT with its signature flipped must NOT decode → 401.
 
-    Use the cookie shape the auth router actually sets. Mutating the
-    trailing character changes the signature byte; pyjwt will reject it.
+    Use the ``Authorization: Bearer`` header (not the cookie jar) so
+    the assertion is decoupled from httpx's cookie-merge semantics —
+    the dep at ``apps/api/api/deps/__init__.py:35-36`` checks Bearer
+    FIRST, so the jar is irrelevant for this test.
+
+    Mutating the trailing character of the base64url-encoded
+    signature segment changes the signature byte; pyjwt will reject
+    it with ``InvalidSignatureError``, which ``decode_token``
+    catches and returns ``None`` → ``get_current_user_id`` raises
+    401 (see ``apps/api/api/services/auth.py:47-56``).
     """
     reg = await auth_client.post(
         "/auth/register",
@@ -299,9 +311,185 @@ async def test_me_with_tampered_jwt_returns_401(auth_client: AsyncClient) -> Non
 
     resp = await auth_client.get(
         "/auth/me",
-        cookies={AUTH_COOKIE_NAME: tampered},
+        headers={"Authorization": f"Bearer {tampered}"},
     )
-    assert resp.status_code == 401, resp.text
+    assert resp.status_code == 401, (
+        f"tampered JWT accepted: status={resp.status_code} body={resp.text!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# JWT verification — 5-case regression matrix (Task #63).
+#
+# Each case constructs a JWT with a SPECIFIC violation, sends it via
+# the ``Authorization: Bearer`` header, and asserts 401. Sending via
+# the header (not the cookie) keeps each test deterministic: the
+# cookie jar left over from a previous ``/auth/register`` call is
+# irrelevant because ``_extract_token`` checks Bearer FIRST
+# (apps/api/api/deps/__init__.py:35). This is also why this regression
+# matrix is robust against the cookie-jar flake that motivated Task #63.
+# ---------------------------------------------------------------------------
+
+
+def _b64url(payload: dict) -> str:
+    """Encode a dict as base64url-no-padding (the JWT payload encoding)."""
+    raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+
+def _now_exp(seconds_from_now: int) -> int:
+    return int(
+        (datetime.now(timezone.utc) + timedelta(seconds=seconds_from_now)).timestamp()
+    )
+
+
+@pytest.mark.asyncio
+async def test_me_rejects_jwt_with_empty_signature(auth_client: AsyncClient) -> None:
+    """Empty signature segment → 401.
+
+    Header and payload are valid, but the signature is empty. PyJWT
+    sees zero signature bytes and raises ``InvalidSignatureError``.
+    """
+    header = _b64url({"alg": "HS256", "typ": "JWT"})
+    payload = _b64url({"sub": "any", "email": "x@y.com", "exp": _now_exp(900)})
+    # signature segment intentionally empty — trailing dot kept, the
+    # empty middle string is what makes pyjwt reject.
+    bad_token = f"{header}.{payload}."
+
+    resp = await auth_client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {bad_token}"},
+    )
+    assert resp.status_code == 401, (
+        f"empty-sig JWT accepted: status={resp.status_code} body={resp.text!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_me_rejects_jwt_with_wrong_algorithm(auth_client: AsyncClient) -> None:
+    """Wrong ``alg`` in the header → 401.
+
+    Sign the token with HS512 (valid sig for this header), but the
+    server is configured for HS256. ``jwt.decode(...,
+    algorithms=['HS256'])`` rejects the alg mismatch in the
+    header. This is the canonical defence against the ``alg=none``
+    downgrade attack.
+    """
+    payload = {
+        "sub": "any-user-id",
+        "email": "x@y.com",
+        "exp": _now_exp(900),
+    }
+    bad_token = jwt.encode(
+        payload, _settings.jwt_secret, algorithm="HS512"
+    )
+
+    resp = await auth_client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {bad_token}"},
+    )
+    assert resp.status_code == 401, (
+        f"wrong-alg JWT accepted: status={resp.status_code} body={resp.text!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_me_rejects_expired_jwt(auth_client: AsyncClient) -> None:
+    """Valid signature, but ``exp`` is in the past → 401.
+
+    PyJWT's ``verify_exp`` (default True) raises
+    ``ExpiredSignatureError``, which ``decode_token`` catches and
+    returns ``None`` → 401. Same defence path as tampered signature.
+    """
+    payload = {
+        "sub": "any-user-id",
+        "email": "x@y.com",
+        "iat": _now_exp(-3600),
+        "exp": _now_exp(-60),  # expired 1 minute ago
+    }
+    expired_token = jwt.encode(payload, _settings.jwt_secret, algorithm="HS256")
+
+    resp = await auth_client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {expired_token}"},
+    )
+    assert resp.status_code == 401, (
+        f"expired JWT accepted: status={resp.status_code} body={resp.text!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_me_rejects_swapped_payload(auth_client: AsyncClient) -> None:
+    """Signature covers a different payload than the one sent → 401.
+
+    Forge a token by taking a valid header+sig pair from a JWT
+    signed for user A and splicing in a payload for user B. PyJWT
+    re-computes the HMAC over the new payload, sees it does not
+    match the supplied signature, and rejects. This is the same
+    surface as the original ``test_me_with_tampered_jwt_returns_401``
+    but with the violation localised to the payload segment
+    (proves the dep actually re-verifies the payload digest — not
+    just the signature bytes).
+    """
+    original_payload = {
+        "sub": "11111111-1111-1111-1111-111111111111",
+        "email": "user-a@example.com",
+        "exp": _now_exp(900),
+    }
+    real_token = jwt.encode(
+        original_payload, _settings.jwt_secret, algorithm="HS256"
+    )
+    head, _orig_payload_b64, sig = real_token.split(".")
+
+    swapped_payload = {
+        # Different subject — would be a different user.
+        "sub": "22222222-2222-2222-2222-222222222222",
+        "email": "user-b@example.com",
+        "exp": _now_exp(900),
+    }
+    swapped_payload_b64 = _b64url(swapped_payload)
+    bad_token = f"{head}.{swapped_payload_b64}.{sig}"
+
+    resp = await auth_client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {bad_token}"},
+    )
+    assert resp.status_code == 401, (
+        f"swapped-payload JWT accepted: "
+        f"status={resp.status_code} body={resp.text!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_me_rejects_jwt_missing_subject_claim(auth_client: AsyncClient) -> None:
+    """Valid signature, but no ``sub`` claim → 401.
+
+    PyJWT verifies the signature successfully. ``get_current_user_id``
+    then checks ``payload.get('sub') is None`` and raises 401 with
+    detail ``'Token missing subject'`` (see
+    ``apps/api/api/deps/__init__.py:56-62``). This guards against a
+    signing key leak being usable for tokens without an identity.
+    """
+    payload = {
+        # Note: no 'sub' claim.
+        "email": "ghost@example.com",
+        "exp": _now_exp(900),
+    }
+    no_sub_token = jwt.encode(payload, _settings.jwt_secret, algorithm="HS256")
+
+    resp = await auth_client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {no_sub_token}"},
+    )
+    assert resp.status_code == 401, (
+        f"missing-sub JWT accepted: status={resp.status_code} body={resp.text!r}"
+    )
+    # The dep emits a specific detail here; pin it so a future
+    # refactor that drops the sub-check will be caught.
+    detail = resp.json().get("detail", "")
+    assert "subject" in str(detail).lower() or "sub" in str(detail).lower(), (
+        f"expected sub-related detail; got {detail!r}"
+    )
 
 
 # ---------------------------------------------------------------------------
