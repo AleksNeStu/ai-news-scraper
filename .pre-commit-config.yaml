@@ -117,7 +117,13 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        entry: bash -c 'git diff --cached -- . ":!scripts/private-leak-check.sh" | bash scripts/private-leak-check.sh'
+        # Scan the staged file contents (not the diff). Scanning `git diff
+        # --cached` over-flags because the diff contains OLD content marked
+        # with `-` that we're REMOVING -- the new file no longer contains
+        # the leaked text, but the diff context does. By staging only the
+        # modified file paths and cat'ing their on-disk content, the hook
+        # sees what the commit will actually introduce.
+        entry: bash -c 'git diff --cached --name-only --diff-filter=AM -- . ":!scripts/private-leak-check.sh" | xargs -r cat | bash scripts/private-leak-check.sh'
       - id: leak-check-msg
         name: private-leak-check (commit-msg)
         stages: [commit-msg]
