@@ -301,7 +301,7 @@ def fake_session_factory(articles_pool):
     return _build_session
 
 
-@pytest.fixture(scope="function", loop_scope="function")
+@pytest.fixture(scope="function")
 async def client_for_user(fake_redis, fake_session_factory):
     """Per-user httpx AsyncClient factory.
 
