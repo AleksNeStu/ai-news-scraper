@@ -310,3 +310,60 @@ export interface UnsubscribeResponse {
   /** ISO 8601 UTC. On replay, this is the original `consumed_at`, not now. */
   at: string;
 }
+
+// ============================================================================
+// Public shareable article links (Task #33, ADR-021)
+// ============================================================================
+//
+// `POST /share` mints an opaque, unguessable token; the API responds with the
+// full URL a user can paste into a chat / email. `GET /s/{token}` is the
+// public, unauthenticated read endpoint that serves the article's public
+// projection (`SharedArticleView`). See `.agent/adr/021-*` for the threat
+// model and the explicit allow-list rationale.
+
+/** Payload for `POST /share`. Mirrors the Pydantic `ShareCreateRequest`
+ * (`apps/api/api/schemas/share.py`): `article_id: UUID`,
+ * `ttl_days: int` (1..365, default 30). */
+export interface ShareCreateRequest {
+  /** Article to publish a snapshot of. */
+  article_id: ID;
+  /** Lifetime in days (1..365). Defaults to 30. */
+  ttl_days?: number;
+}
+
+/** Response body for `POST /share`. The `url` is server-built from
+ * `request.base_url` + the new token; clients do not compose it. Mirrors
+ * the Pydantic `ShareResponse` in `apps/api/api/schemas/share.py`. */
+export interface ShareResponse {
+  /** Opaque, unguessable token (>= 256 bits entropy, `secrets.token_urlsafe(32)`). */
+  token: string;
+  /** Full shareable URL (origin + `/s/{token}`); built server-side. */
+  url: string;
+  /** ISO 8601 UTC expiry. Always non-null in v1. */
+  expires_at: string;
+  /** Article the snapshot is bound to. */
+  article_id: ID;
+}
+
+/** Unauthenticated public projection of an article, served by
+ * `GET /s/{token}`. The field set is an explicit allow-list — every field
+ * not listed here is intentionally excluded. See ADR-021 §21.3 for the
+ * exclusion rationale (no `owner_id`, no `embedding_vector`, no raw body,
+ * no internal metadata). Mirrors the Pydantic `SharedArticleView` in
+ * `apps/api/api/schemas/share.py`. */
+export interface SharedArticleView {
+  article_id: ID;
+  title: string;
+  /** LLM-generated summary; `null` when never summarised. */
+  summary: string | null;
+  /** Topic tags, deduped and sorted. */
+  topics: string[];
+  /** Original source URL; `null` for scraped-but-sourceless rows. */
+  source_url: string | null;
+  /** Original publication timestamp (ISO 8601 UTC); `null` if unknown. */
+  published_at: string | null;
+  /** When the share was created (ISO 8601 UTC). Distinct from visit time. */
+  shared_at: string;
+  /** When the share expires (ISO 8601 UTC). Always non-null in v1. */
+  expires_at: string;
+}

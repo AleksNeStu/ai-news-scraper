@@ -14,6 +14,11 @@ from api.schemas.search import (
 )
 from api.schemas.feed import FeedOut, FeedCreate, FeedListResponse, FeedItemOut
 from api.schemas.auth import UserCreate, UserLogin, UserOut, AuthResponse
+from api.schemas.share import (
+    ShareCreateRequest,
+    ShareResponse,
+    SharedArticleView,
+)
 
 __all__ = [
     "ArticleOut",
@@ -32,4 +37,7 @@ __all__ = [
     "UserLogin",
     "UserOut",
     "AuthResponse",
+    "ShareCreateRequest",
+    "ShareResponse",
+    "SharedArticleView",
 ]
