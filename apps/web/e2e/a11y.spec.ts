@@ -68,15 +68,25 @@ function summarise(label: string, items: ReadonlyArray<AxeViolation>): string {
  * with minimal test runtime. Adding a route? Either add it here (if
  * it's a template-level change) or document why it's covered by
  * another spec.
+ *
+ * NOTE on locale prefix: the production app uses next-intl with
+ * `localePrefix: 'as-needed'`. The bare paths (`/articles`, `/login`,
+ * etc.) ALSO resolve via the middleware rewrite to `/en/...`, but the
+ * non-locale page.tsx files at app/(app)/, app/(auth)/, and
+ * app/unsubscribe/ are leftover from before the i18n migration and
+ * render under the pass-through root layout (no <html lang>) when
+ * hit directly. Hitting the locale-prefixed URL renders the
+ * [locale]/layout.tsx wrapper which sets `<html lang="en">` properly,
+ * which is what the axe-core a11y gate requires.
  */
 const ROUTES: ReadonlyArray<{ path: string; name: string; requiresAuth: boolean }> = [
-  { path: '/', name: 'dashboard', requiresAuth: true },
-  { path: '/articles', name: 'articles-list', requiresAuth: true },
-  { path: '/scrape', name: 'scrape-form', requiresAuth: true },
-  { path: '/search', name: 'search', requiresAuth: true },
-  { path: '/login', name: 'login', requiresAuth: false },
-  { path: '/register', name: 'register', requiresAuth: false },
-  { path: '/unsubscribe', name: 'unsubscribe', requiresAuth: false },
+  { path: '/en', name: 'dashboard', requiresAuth: true },
+  { path: '/en/articles', name: 'articles-list', requiresAuth: true },
+  { path: '/en/scrape', name: 'scrape-form', requiresAuth: true },
+  { path: '/en/search', name: 'search', requiresAuth: true },
+  { path: '/en/login', name: 'login', requiresAuth: false },
+  { path: '/en/register', name: 'register', requiresAuth: false },
+  { path: '/en/unsubscribe', name: 'unsubscribe', requiresAuth: false },
 ]
 
 for (const route of ROUTES) {
