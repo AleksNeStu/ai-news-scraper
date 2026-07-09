@@ -29,6 +29,7 @@ from api.db.database import get_db
 from api.deps import get_current_user_id
 from api.main import app
 from api.models.article import Article
+from api.routers.search import over_fetch_count
 from api.services.embedder import ArticleEmbedder
 from api.services.vector_store import ChromaVectorStore
 
@@ -243,6 +244,19 @@ async def test_search_explicit_page_2_returns_correct_slice(client_with_override
     # Over-fetch for p=2 ps=5 = min(max(2*5*2, 2*5+50), 1000) = 60.
     assert body["total"] == 60
     assert len(body["results"]) == 5
+
+
+def test_over_fetch_count_formula_matches_router():
+    """Lock the ADR-019 §19.2 over-fetch formula as a single source of
+    truth (Devil F2 / Task #59). The router imports this same function,
+    so any future change to the formula MUST co-change this test in the
+    same commit -- the import is the lock.
+    """
+    assert over_fetch_count(1, 10) == 60  # max(20, 60)  = 60
+    assert over_fetch_count(2, 10) == 70  # max(40, 70)  = 70
+    assert over_fetch_count(2, 5) == 60  # max(20, 60)  = 60 (test fixture)
+    assert over_fetch_count(99, 10) == 1000  # ceiling
+    assert over_fetch_count(5, 50) == 500  # max(500, 300) = 500
 
 
 @pytest.mark.asyncio

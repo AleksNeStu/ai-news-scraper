@@ -65,6 +65,23 @@ def _resolve_page_size(payload: SearchRequest) -> int:
     return payload.page_size
 
 
+def over_fetch_count(page: int, page_size: int) -> int:
+    """Over-fetch width for ADR-019 §19.2.
+
+    The formula: ``min(max(page * page_size * 2, page * page_size + 50), 1000)``.
+    A 2x multiplier absorbs the expected PG hydration dropout when
+    topics/date filters are applied; a +50 floor protects very early
+    pages where 2x would under-fetch; the 1000 ceiling protects Chroma
+    latency.
+
+    Imported by ``tests/test_search.py`` so the suite references this
+    single source of truth rather than re-deriving the formula
+    in-line. Devil F2 (Task #59) -- changes here MUST co-change the
+    test cases that consume the formula; the import is the lock.
+    """
+    return min(max(page * page_size * 2, page * page_size + 50), 1000)
+
+
 def _build_hydration_clauses(filters: Optional[SearchFilters]) -> list:
     """Extra WHERE clauses for the PG hydration step.
 
@@ -122,8 +139,9 @@ async def search(
     # 50-item floor and a 2x multiplier on later pages to absorb the
     # expected PG hydration dropout when topics/date filters are
     # applied. The 1000 ceiling protects Chroma latency.
-    effective = min(max(page * page_size * 2, page * page_size + 50), 1000)
-    over_fetch = effective
+    # The formula is extracted to `over_fetch_count` so the test suite
+    # can import the single source of truth (Devil F2 / Task #59).
+    over_fetch = over_fetch_count(page, page_size)
     raw = await _vector_store.query(
         collection="articles",
         query_embedding=qvec,
