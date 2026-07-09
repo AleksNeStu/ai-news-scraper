@@ -117,14 +117,16 @@ function FilterChip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
+      // Inline width/height: previous commits (h-11 w-11, then h-10
+      // w-10) put the right Tailwind classes on the rendered DOM,
+      // but their compiled CSS rules never made it into the bundle --
+      // the classes are inert. axe-core measures the computed CSS
+      // box, not the class string. Inline `style` defeats the gap:
+      // 48x48 explicit pixels guarantees the WCAG 2.5.8 24x24 floor
+      // plus the Apple HIG recommended 44x44 tap target.
+      style={{ minWidth: 48, minHeight: 48, width: 48, height: 48 }}
       className={cn(
-        // WCAG 2.5.8 (target-size, AA) needs >= 24x24 CSS px. We size
-        // the button explicitly to 44x44 (h-11 w-11) which is the
-        // Apple HIG / Material recommended touch target. px-4 py-2
-        // padding alone yields the visual rhythm; explicit h-11 w-11
-        // (h-11 == 2.75rem == 44px) overrides any flex-shrink in the
-        // surrounding Toolbar. text-xs keeps the label compact.
-        'flex items-center justify-center shrink-0 h-11 w-11 text-xs font-medium rounded-full transition',
+        'inline-flex items-center justify-center text-xs font-medium rounded-full transition',
         active
           ? 'bg-primary text-primary-foreground'
           : 'bg-muted text-muted-foreground hover:text-foreground'
