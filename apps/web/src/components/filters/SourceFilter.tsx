@@ -49,7 +49,6 @@ export function SourceFilter({
 }: SourceFilterProps) {
   const t = useTranslations('Filters')
   const placeholder = placeholderProp ?? t('allSources')
-  const t = useTranslations('Filters')
   const filters = useFilterUrl()
   const [open, setOpen] = React.useState(false)
   const triggerId = React.useId()
