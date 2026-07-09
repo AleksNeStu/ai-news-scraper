@@ -24,6 +24,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from fastapi import HTTPException, status
 from httpx import AsyncClient
 from sqlalchemy import select, text
 
@@ -214,9 +215,7 @@ async def test_visit_counter_collapse_under_concurrent_gets(
 
     # Fire 10 GETs in parallel — they should all 200 because the
     # ``ON CONFLICT DO NOTHING`` insert is idempotent under replay.
-    responses = await asyncio.gather(
-        *(client.get(f"/s/{token}") for _ in range(10))
-    )
+    responses = await asyncio.gather(*(client.get(f"/s/{token}") for _ in range(10)))
     for r in responses:
         assert r.status_code == 200, r.text
 
@@ -259,9 +258,7 @@ async def test_visit_counter_grows_across_seconds(
     # Seed an audit row in a past bucket so the next GET cannot
     # collide with it.
     async with AsyncSessionLocal() as session:
-        past = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(
-            seconds=60
-        )
+        past = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(seconds=60)
         await session.execute(
             text(
                 "INSERT INTO shared_link_visits "
@@ -279,10 +276,7 @@ async def test_visit_counter_grows_across_seconds(
 
     async with AsyncSessionLocal() as session:
         count = await session.scalar(
-            text(
-                "SELECT COUNT(*) FROM shared_link_visits "
-                "WHERE shared_link_id = :sid"
-            ),
+            text("SELECT COUNT(*) FROM shared_link_visits WHERE shared_link_id = :sid"),
             {"sid": str(shared_link.id)},
         )
         assert int(count) == 2
@@ -296,3 +290,33 @@ async def _first_shared_link(token_hash: str) -> SharedLink:
         )
         assert row is not None
         return row
+
+
+# ---------------------------------------------------------------------------
+# Rate limit (Task #65 — Devil F2 follow-up from Task #33)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_shared_article_rate_limited_returns_429(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When the share_public IP-bucket is full, GET /s/{token} returns
+    429 with a Retry-After header. Mirrors the test_auth.py 429
+    pattern: stub the module-level ``_enforce`` to always raise.
+    """
+    from api.middleware import rate_limit as rate_limit_module
+
+    async def _always_429(spec: object) -> None:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded",
+            headers={"Retry-After": "60"},
+        )
+
+    monkeypatch.setattr(rate_limit_module, "_enforce", _always_429)
+
+    resp = await client.get("/s/anything-43-chars-of-urlsafe-base64-aaaa")
+    assert resp.status_code == 429
+    assert resp.headers.get("Retry-After") == "60"

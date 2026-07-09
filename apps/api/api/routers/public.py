@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db.database import get_db
 from api.exceptions import AppException
+from api.middleware.rate_limit import rate_limit_ip
 from api.schemas.share import SharedArticleView
 from api.services.shared_links import (
     ShareExpired,
@@ -111,6 +112,12 @@ def _to_view_payload(
 )
 async def get_shared_article(
     token: str,
+    # Defense-in-depth rate limit: 30 token resolutions per IP per
+    # minute. Token entropy is the primary defense (258 bits); the
+    # bucket exists to back-pressure brute-force scan attempts on
+    # the public surface (Task #65 — Devil F2 follow-up from
+    # Task #33). IP-based because the route is unauthenticated.
+    _rl: None = Depends(rate_limit_ip("share_public", limit=30, window_s=60)),
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
     """Resolve a token to the public article projection.

@@ -31,6 +31,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
+from fastapi import HTTPException, status
 from httpx import AsyncClient
 from sqlalchemy import select
 
@@ -177,7 +178,9 @@ async def test_post_share_token_hash_persisted_sha256(
 
     async with AsyncSessionLocal() as session:
         row = await session.scalar(
-            select(SharedLink).where(SharedLink.token_hash == hashlib.sha256(raw_token.encode()).hexdigest())
+            select(SharedLink).where(
+                SharedLink.token_hash == hashlib.sha256(raw_token.encode()).hexdigest()
+            )
         )
         assert row is not None
         # Raw token MUST NOT be in any column.
@@ -280,3 +283,40 @@ async def test_article_delete_cascades_shared_link(
             .all()
         )
         assert rows == [], "FK CASCADE did not wipe shared_links rows"
+
+
+# ---------------------------------------------------------------------------
+# Rate limit (Task #65 — Devil F2 follow-up from Task #33)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_post_share_rate_limited_returns_429(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When the share_create bucket is full, POST /share returns 429
+    with a Retry-After header. Mirrors the ``rl_429_client`` pattern in
+    ``tests/test_auth.py::test_register_rate_limited_after_5_calls``.
+    """
+    from api.middleware import rate_limit as rate_limit_module
+
+    async def _always_429(spec: object) -> None:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded",
+            headers={"Retry-After": "60"},
+        )
+
+    monkeypatch.setattr(rate_limit_module, "_enforce", _always_429)
+
+    user = await _register_user(client, "share-rl@example.com")
+    article_id = await _make_article(user["user_id"])
+
+    resp = await client.post(
+        "/share",
+        headers=user["headers"],
+        json={"article_id": article_id},
+    )
+    assert resp.status_code == 429
+    assert resp.headers.get("Retry-After") == "60"
