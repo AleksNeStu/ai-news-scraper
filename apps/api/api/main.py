@@ -22,8 +22,10 @@ from api.routers import (
     feeds,
     health,
     notifications,
+    public,
     scrape,
     search,
+    share,
 )
 from api.scheduler.brief import BriefScheduler
 
@@ -250,6 +252,13 @@ app.include_router(search.router)
 app.include_router(feeds.router)
 app.include_router(health.router)
 app.include_router(notifications.router)
+# Task #33 / ADR-021 — shareable article links. ``share.router``
+# serves the authenticated ``POST /share`` mint; ``public.router``
+# serves the unauthenticated ``GET /s/{token}`` read. Mounted at
+# the API root because the share URL must be stable across the
+# locale-aware web pages (the path segment is part of the contract).
+app.include_router(share.router)
+app.include_router(public.router)
 if _settings.effective_digest_enabled and _settings.openai_key_usable:
     app.include_router(digest.router)
 else:

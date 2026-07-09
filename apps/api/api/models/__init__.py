@@ -6,6 +6,7 @@ from api.models.feed import Feed
 from api.models.feed_item import FeedItem
 from api.models.digest import Digest, DigestUnsubscribeLog, Notification
 from api.models.refresh_token import RefreshToken
+from api.models.shared_link import SharedLink, SharedLinkVisit
 
 __all__ = [
     "User",
@@ -16,4 +17,6 @@ __all__ = [
     "DigestUnsubscribeLog",
     "Notification",
     "RefreshToken",
+    "SharedLink",
+    "SharedLinkVisit",
 ]
