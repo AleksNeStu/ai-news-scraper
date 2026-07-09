@@ -27,17 +27,20 @@ describe('useNotifications', () => {
   })
 
   it('fetches on mount and exposes the list', async () => {
-    const listSpy = vi.spyOn(apiMod, 'listNotifications').mockResolvedValue([makeNotification()])
+    const listSpy = vi.spyOn(apiMod, 'listNotifications').mockResolvedValue({
+      items: [makeNotification()],
+      total: 1,
+    })
     const { result } = renderHook(() => useNotifications())
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(listSpy).toHaveBeenCalled()
-    expect(result.current.data).toHaveLength(1)
+    expect(result.current.data.items).toHaveLength(1)
     expect(result.current.error).toBeNull()
   })
 
   it('polls every 30 seconds', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    const listSpy = vi.spyOn(apiMod, 'listNotifications').mockResolvedValue([])
+    const listSpy = vi.spyOn(apiMod, 'listNotifications').mockResolvedValue({ items: [], total: 0 })
     renderHook(() => useNotifications({ limit: 10 }))
     await waitFor(() => expect(listSpy).toHaveBeenCalledTimes(1))
     await act(async () => {
@@ -51,28 +54,31 @@ describe('useNotifications', () => {
   })
 
   it('markRead optimistically removes the notification and calls the API', async () => {
-    const initial = [makeNotification({ id: 'a' }), makeNotification({ id: 'b' })]
+    const initial = {
+      items: [makeNotification({ id: 'a' }), makeNotification({ id: 'b' })],
+      total: 2,
+    }
     const readSpy = vi.spyOn(apiMod, 'markNotificationRead').mockResolvedValue()
     vi.spyOn(apiMod, 'listNotifications').mockResolvedValue(initial)
 
     const { result } = renderHook(() => useNotifications())
-    await waitFor(() => expect(result.current.data).toHaveLength(2))
+    await waitFor(() => expect(result.current.data.items).toHaveLength(2))
 
     await act(async () => {
       await result.current.markRead('a')
     })
 
     expect(readSpy).toHaveBeenCalledWith('a')
-    expect(result.current.data.map((n) => n.id)).toEqual(['b'])
+    expect(result.current.data.items.map((n) => n.id)).toEqual(['b'])
   })
 
   it('recovers state when markRead fails', async () => {
-    const initial = [makeNotification({ id: 'a' })]
+    const initial = { items: [makeNotification({ id: 'a' })], total: 1 }
     const refetchSpy = vi.spyOn(apiMod, 'listNotifications').mockResolvedValue(initial)
     vi.spyOn(apiMod, 'markNotificationRead').mockRejectedValue(new Error('boom'))
 
     const { result } = renderHook(() => useNotifications())
-    await waitFor(() => expect(result.current.data).toHaveLength(1))
+    await waitFor(() => expect(result.current.data.items).toHaveLength(1))
 
     await act(async () => {
       await result.current.markRead('a')

@@ -37,11 +37,14 @@ describe('NotificationBell', () => {
   })
 
   it('renders the unread count badge with an updated aria-label', async () => {
-    vi.spyOn(apiMod, 'listNotifications').mockResolvedValue([
-      makeNotification({ id: '1' }),
-      makeNotification({ id: '2' }),
-      makeNotification({ id: '3', read: true }),
-    ])
+    vi.spyOn(apiMod, 'listNotifications').mockResolvedValue({
+      items: [
+        makeNotification({ id: '1' }),
+        makeNotification({ id: '2' }),
+        makeNotification({ id: '3', read: true }),
+      ],
+      total: 3,
+    })
 
     renderBell()
     await waitFor(() => {
@@ -51,7 +54,7 @@ describe('NotificationBell', () => {
   })
 
   it('does not show a badge when there are no unread notifications', async () => {
-    vi.spyOn(apiMod, 'listNotifications').mockResolvedValue([])
+    vi.spyOn(apiMod, 'listNotifications').mockResolvedValue({ items: [], total: 0 })
 
     renderBell()
     await waitFor(() => {
@@ -61,9 +64,10 @@ describe('NotificationBell', () => {
   })
 
   it('clicking the bell toggles the dropdown open and closed', async () => {
-    vi.spyOn(apiMod, 'listNotifications').mockResolvedValue([
-      makeNotification({ id: '1', title: 'Brief ready' }),
-    ])
+    vi.spyOn(apiMod, 'listNotifications').mockResolvedValue({
+      items: [makeNotification({ id: '1', title: 'Brief ready' })],
+      total: 1,
+    })
 
     renderBell()
     const btn = await screen.findByRole('button', { name: /Notifications/ })
@@ -79,10 +83,13 @@ describe('NotificationBell', () => {
 
   it('clicking a notification calls markNotificationRead and closes the dropdown', async () => {
     const readSpy = vi.spyOn(apiMod, 'markNotificationRead').mockResolvedValue()
-    vi.spyOn(apiMod, 'listNotifications').mockResolvedValue([
-      makeNotification({ id: 'n1', title: 'First' }),
-      makeNotification({ id: 'n2', title: 'Second' }),
-    ])
+    vi.spyOn(apiMod, 'listNotifications').mockResolvedValue({
+      items: [
+        makeNotification({ id: 'n1', title: 'First' }),
+        makeNotification({ id: 'n2', title: 'Second' }),
+      ],
+      total: 2,
+    })
 
     renderBell()
     const bell = await screen.findByRole('button', { name: /Notifications/ })
@@ -101,7 +108,10 @@ describe('NotificationBell', () => {
   })
 
   it('closes the dropdown when Escape is pressed', async () => {
-    vi.spyOn(apiMod, 'listNotifications').mockResolvedValue([makeNotification()])
+    vi.spyOn(apiMod, 'listNotifications').mockResolvedValue({
+      items: [makeNotification()],
+      total: 1,
+    })
     renderBell()
     const btn = await screen.findByRole('button', { name: /Notifications/ })
     fireEvent.click(btn)
@@ -111,7 +121,7 @@ describe('NotificationBell', () => {
   })
 
   it('shows the empty state when there are no notifications', async () => {
-    vi.spyOn(apiMod, 'listNotifications').mockResolvedValue([])
+    vi.spyOn(apiMod, 'listNotifications').mockResolvedValue({ items: [], total: 0 })
     renderBell()
     const btn = await screen.findByRole('button', { name: /Notifications/ })
     fireEvent.click(btn)

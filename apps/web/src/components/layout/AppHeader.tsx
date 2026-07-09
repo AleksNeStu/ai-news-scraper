@@ -81,7 +81,12 @@ function NavLink({
   return (
     <Link
       href={href as Route}
-      className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-surface hover:text-foreground"
+      // min-w-24 (6rem / 96px) + justify-center keeps the nav
+      // row visually consistent regardless of label length
+      // ("Feeds" is 5 chars, "Articles" is 8 -- without a
+      // min-width the buttons fan out at the top of the bar, which
+      // reads as a misalignment on a polished header).
+      className="inline-flex min-w-24 items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-surface hover:text-foreground"
     >
       {icon} {children}
     </Link>

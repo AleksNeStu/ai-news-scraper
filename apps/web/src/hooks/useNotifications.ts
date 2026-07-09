@@ -20,7 +20,17 @@ import type { Notification } from '@ai-news-scraper/shared'
 const POLL_INTERVAL_MS = 30_000
 
 export function useNotifications(opts: ListNotificationsOpts = {}) {
-  const [data, setData] = useState<Notification[]>([])
+  // The API returns a `NotificationListResponse` wrapper
+  // ({ items, total }); the hook now mirrors that shape so consumers
+  // can read either the array OR the count. Previously this held
+  // the raw array, but the API has always returned the wrapper --
+  // the mismatch caused `TypeError: m.filter is not a function`
+  // when NotificationBell called `data.filter(...)` (line 39) on
+  // the wrapper object instead of an array.
+  const [data, setData] = useState<{ items: Notification[]; total: number }>({
+    items: [],
+    total: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const optsRef = useRef(opts)
@@ -79,7 +89,10 @@ export function useNotifications(opts: ListNotificationsOpts = {}) {
   const markRead = useCallback(
     async (id: string) => {
       // Optimistic update — clear the item locally before the network round-trip.
-      setData((prev) => (prev ? prev.filter((n) => n.id !== id) : prev))
+      setData((prev) => ({
+        ...prev,
+        items: prev.items.filter((n) => n.id !== id),
+      }))
       try {
         await markNotificationRead(id)
       } catch {

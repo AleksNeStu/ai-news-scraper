@@ -36,7 +36,10 @@ export function NotificationBell() {
   const { data, markRead } = useNotifications({ limit: DROPDOWN_LIMIT })
   // Unread count derived from the polled list (the server returns up to 50,
   // so `unread` here is an accurate count for the dropdown window).
-  const unread = data.filter((n) => !n.read).length
+  // The hook now returns the { items, total } wrapper from
+  // /notifications -- the dev fix for `m.filter is not a function`
+  // (where `m` was the wrapper object) is to use `data.items` here.
+  const unread = data.items.filter((n) => !n.read).length
 
   // Close on click outside / Escape.
   useEffect(() => {
@@ -97,11 +100,11 @@ export function NotificationBell() {
           <div className="border-b border-border px-4 py-2 text-xs uppercase tracking-wider text-muted-foreground">
             {t('heading')}
           </div>
-          {data.length === 0 ? (
+          {data.items.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-muted-foreground">{t('empty')}</p>
           ) : (
             <ul className="max-h-96 overflow-y-auto">
-              {data.slice(0, DROPDOWN_LIMIT).map((n, i) => {
+              {data.items.slice(0, DROPDOWN_LIMIT).map((n, i) => {
                 const isFirst = i === 0
                 const body = (
                   <>
