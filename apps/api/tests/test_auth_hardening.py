@@ -513,7 +513,18 @@ async def test_stale_refresh_returns_401(
 
 @pytest.mark.asyncio
 async def test_refresh_without_cookie_returns_401(client: AsyncClient) -> None:
-    """POST /auth/refresh without the cookie → 401 (not 500)."""
+    """POST /auth/refresh without the cookie → 401 (not 500).
+
+    Wipes the cookie jar explicitly: even though this test passes
+    NO ``cookies=`` kwarg, ``test_refresh_rotates`` (which runs
+    earlier in the same file and is not order-randomized) leaves
+    a rotated cookie pair in the jar via its first call's
+    ``Set-Cookie`` response. Without the wipe, httpx auto-attaches
+    those jar cookies, the endpoint sees a valid refresh token,
+    rotates again, and returns 200 — masking the security property
+    this test is meant to pin. See Devil Finding 4 in Task #64.
+    """
+    client.cookies.clear()
     resp = await client.post("/auth/refresh")
     assert resp.status_code == 401, resp.text
 
