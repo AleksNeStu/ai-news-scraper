@@ -147,6 +147,18 @@ describe('CommandPalette', () => {
     })
   })
 
+  it('closes on Escape (Radix Dialog native)', async () => {
+    renderPalette()
+    fireCmdK({ metaKey: true })
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    })
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
   it('resets the query between opens so a stale value does not stick', async () => {
     renderPalette()
     fireCmdK({ metaKey: true })
