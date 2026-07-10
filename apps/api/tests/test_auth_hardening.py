@@ -449,6 +449,11 @@ async def test_refresh_rotates(
     set, a new row exists, both cookies on the response are
     populated, and the returned body is a fresh ``AuthResponse``.
     """
+    # Wipe the cookie jar so a prior test's leftover auth_token /
+    # auth_refresh can't be merged into the call below — see Devil
+    # Finding 4 in the Task #63 review for the same pattern that
+    # flaked test_me_with_tampered_jwt_returns_401.
+    client.cookies.clear()
     cookies = registered_user["cookies"]
     resp = await client.post("/auth/refresh", cookies=cookies)
     assert resp.status_code == 200, resp.text
@@ -487,11 +492,20 @@ async def test_stale_refresh_returns_401(
     token's row is revoked. Replaying the same cookie MUST be
     rejected — that's the security property H3 buys.
     """
+    # Wipe the cookie jar so prior-test state (and the rotated
+    # cookies that the first call below writes into the jar) don't
+    # bleed into the replay assertion — see Devil Finding 4.
+    client.cookies.clear()
     cookies = registered_user["cookies"]
     # First refresh succeeds and rotates.
     first = await client.post("/auth/refresh", cookies=cookies)
     assert first.status_code == 200, first.text
 
+    # Wipe again: the first call's Set-Cookie response populated
+    # the jar with the rotated pair, and we want the SECOND call
+    # to dispatch only the ORIGINAL (now-revoked) cookies, not a
+    # merge of original + rotated.
+    client.cookies.clear()
     # Replay the original cookie.
     replay = await client.post("/auth/refresh", cookies=cookies)
     assert replay.status_code == 401, replay.text
@@ -511,6 +525,9 @@ async def test_logout_revokes_refresh(
     registered_user: dict[str, Any],
 ) -> None:
     """POST /auth/logout revokes the DB row and clears both cookies."""
+    # Wipe the cookie jar so prior-test leftover cookies don't
+    # merge into the logout call — see Devil Finding 4.
+    client.cookies.clear()
     cookies = registered_user["cookies"]
     user_id = registered_user["user"]["id"]
 
@@ -540,6 +557,9 @@ async def test_logout_revokes_refresh(
 @pytest.mark.asyncio
 async def test_unknown_refresh_returns_401(client: AsyncClient) -> None:
     """A refresh token that was never issued → 401."""
+    # Wipe the cookie jar so a prior test's auth_refresh doesn't
+    # override the never-issued token below — see Devil Finding 4.
+    client.cookies.clear()
     cookies = {AUTH_REFRESH_COOKIE_NAME: "deadbeef" * 8}  # never inserted
     resp = await client.post("/auth/refresh", cookies=cookies)
     assert resp.status_code == 401, resp.text
