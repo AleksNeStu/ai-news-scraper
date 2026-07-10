@@ -321,13 +321,22 @@ async def test_me_with_tampered_jwt_returns_401(auth_client: AsyncClient) -> Non
 # ---------------------------------------------------------------------------
 # JWT verification — 5-case regression matrix (Task #63).
 #
-# Each case constructs a JWT with a SPECIFIC violation, sends it via
-# the ``Authorization: Bearer`` header, and asserts 401. Sending via
-# the header (not the cookie) keeps each test deterministic: the
-# cookie jar left over from a previous ``/auth/register`` call is
-# irrelevant because ``_extract_token`` checks Bearer FIRST
-# (apps/api/api/deps/__init__.py:35). This is also why this regression
-# matrix is robust against the cookie-jar flake that motivated Task #63.
+# Each case derives a malformed JWT from the ``auth_user`` fixture's
+# real, signed, in-DB token (same code path as the real login) and
+# mutates one segment in-place. Sending via ``Authorization: Bearer``
+# (not the cookie) keeps each test deterministic: the cookie jar left
+# over from a previous request is irrelevant because ``_extract_token``
+# checks Bearer FIRST (apps/api/api/deps/__init__.py:35). This also
+# keeps the matrix robust against the cookie-jar flake that motivated
+# Task #63.
+#
+# Deriving the bad token from a real one (rather than constructing
+# one from scratch) makes the matrix hermetic against a future
+# refactor that moves the ``sub`` -> User lookup into
+# ``get_current_user_id`` (apps/api/api/deps/__init__.py:47-69): the
+# ``auth_user`` fixture has already flushed the user row, so the dep
+# would still find it, and any route-level DB join would also be
+# exercised rather than short-circuiting on a missing user.
 # ---------------------------------------------------------------------------
 
 
@@ -347,6 +356,21 @@ def _b64url(payload: dict) -> str:
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
 
 
+def _decode_b64url(segment: str) -> dict:
+    """Decode a base64url-no-padding JWT segment (header or payload) back to a dict.
+
+    Inverse of :func:`_b64url` for *reading* a real PyJWT-minted
+    segment — does NOT use ``sort_keys=True`` on the encode side,
+    so a round-trip is only identity when the segment came from a
+    real ``jwt.encode`` (no sort) and not from :func:`_b64url`
+    (which sorts). Used by the regression matrix to inspect a
+    fixture-minted token before mutating it in-place.
+    """
+    pad = "=" * (-len(segment) % 4)
+    raw = base64.urlsafe_b64decode(segment + pad)
+    return json.loads(raw)
+
+
 def _now_exp(seconds_from_now: int) -> int:
     return int(
         (datetime.now(timezone.utc) + timedelta(seconds=seconds_from_now)).timestamp()
@@ -354,17 +378,22 @@ def _now_exp(seconds_from_now: int) -> int:
 
 
 @pytest.mark.asyncio
-async def test_me_rejects_jwt_with_empty_signature(auth_client: AsyncClient) -> None:
+async def test_me_rejects_jwt_with_empty_signature(
+    auth_client: AsyncClient,
+    auth_user: dict[str, Any],
+) -> None:
     """Empty signature segment → 401.
 
-    Header and payload are valid, but the signature is empty. PyJWT
-    sees zero signature bytes and raises ``InvalidSignatureError``.
+    Header and payload are valid (from the ``auth_user`` fixture's
+    real signed token), but the signature is dropped. PyJWT sees
+    zero signature bytes and raises ``InvalidSignatureError``,
+    which ``decode_token`` catches and converts to ``None`` →
+    ``get_current_user_id`` raises 401.
     """
-    header = _b64url({"alg": "HS256", "typ": "JWT"})
-    payload = _b64url({"sub": "any", "email": "x@y.com", "exp": _now_exp(900)})
-    # signature segment intentionally empty — trailing dot kept, the
+    head, payload, _sig = auth_user["token"].split(".")
+    # Signature segment intentionally empty — trailing dot kept, the
     # empty middle string is what makes pyjwt reject.
-    bad_token = f"{header}.{payload}."
+    bad_token = f"{head}.{payload}."
 
     resp = await auth_client.get(
         "/auth/me",
@@ -376,25 +405,29 @@ async def test_me_rejects_jwt_with_empty_signature(auth_client: AsyncClient) -> 
 
 
 @pytest.mark.asyncio
-async def test_me_rejects_jwt_with_wrong_algorithm(auth_client: AsyncClient) -> None:
+async def test_me_rejects_jwt_with_wrong_algorithm(
+    auth_client: AsyncClient,
+    auth_user: dict[str, Any],
+) -> None:
     """Header ``alg`` differs from the server's allow-list → 401.
 
-    Sign the token with HS512 (valid sig for this header), but the
-    server is configured for HS256. ``jwt.decode(...,
+    Take the ``auth_user`` fixture's real token, flip the header's
+    ``alg`` to ``HS512`` (server is configured for ``HS256``), and
+    keep the original signature. ``jwt.decode(...,
     algorithms=['HS256'])`` rejects the alg mismatch in the header
-    with ``InvalidAlgorithmError``. The separate ``alg=none``
-    downgrade attack is covered by
-    ``test_me_rejects_jwt_with_alg_none`` immediately below — PyJWT
-    2.x refuses to MINT an ``alg=none`` token via its public API,
-    so the test for that case hand-constructs the JWT string from
-    base64url-encoded header/payload and an empty signature.
+    with ``InvalidAlgorithmError`` BEFORE recomputing the HMAC, so
+    the stale sig is irrelevant here — the rejection is on the
+    header claim alone.
+
+    The separate ``alg=none`` downgrade attack is covered by
+    ``test_me_rejects_jwt_with_alg_none`` immediately below —
+    that's a distinct attack class (no-sig-no-key vs
+    signature-algorithm mismatch).
     """
-    payload = {
-        "sub": "any-user-id",
-        "email": "x@y.com",
-        "exp": _now_exp(900),
-    }
-    bad_token = jwt.encode(payload, _settings.jwt_secret, algorithm="HS512")
+    head_b64, payload_b64, sig = auth_user["token"].split(".")
+    head = _decode_b64url(head_b64)
+    head["alg"] = "HS512"
+    bad_token = f"{_b64url(head)}.{payload_b64}.{sig}"
 
     resp = await auth_client.get(
         "/auth/me",
@@ -406,15 +439,19 @@ async def test_me_rejects_jwt_with_wrong_algorithm(auth_client: AsyncClient) -> 
 
 
 @pytest.mark.asyncio
-async def test_me_rejects_jwt_with_alg_none(auth_client: AsyncClient) -> None:
+async def test_me_rejects_jwt_with_alg_none(
+    auth_client: AsyncClient,
+    auth_user: dict[str, Any],
+) -> None:
     """``alg=none`` downgrade attack → 401.
 
-    Forge a token whose header advertises ``alg=none`` and whose
-    signature segment is empty. PyJWT 2.x refuses to MINT such a
-    token via its public API (``jwt.encode(..., algorithm="none")``
-    raises ``MissingRequiredClaimError``), so the token is
-    hand-constructed from base64url-encoded header + payload and an
-    empty signature: ``f"{_b64url(header)}.{_b64url(payload)}."``.
+    Take the ``auth_user`` fixture's real token, flip the header's
+    ``alg`` to ``"none"``, and drop the signature segment. PyJWT
+    2.x refuses to MINT such a token via its public API
+    (``jwt.encode(..., algorithm="none")`` raises
+    ``MissingRequiredClaimError``), so the test hand-constructs
+    the JWT from the mutated header, the original payload, and
+    an empty signature.
 
     ``jwt.decode(..., algorithms=["HS256"])`` raises
     ``InvalidAlgorithmError`` because ``none`` is not in the
@@ -424,14 +461,10 @@ async def test_me_rejects_jwt_with_alg_none(auth_client: AsyncClient) -> None:
     ``test_me_rejects_jwt_with_wrong_algorithm`` (which only
     exercises the alg-mismatch class, not the no-sig-no-key class).
     """
-    header = {"alg": "none", "typ": "JWT"}
-    payload = {
-        "sub": "any-user-id",
-        "email": "x@y.com",
-        "exp": _now_exp(900),
-    }
-    # Hand-constructed: PyJWT 2.x will not mint alg=none tokens.
-    bad_token = f"{_b64url(header)}.{_b64url(payload)}."
+    head_b64, payload_b64, _sig = auth_user["token"].split(".")
+    head = _decode_b64url(head_b64)
+    head["alg"] = "none"
+    bad_token = f"{_b64url(head)}.{payload_b64}."
 
     resp = await auth_client.get(
         "/auth/me",
@@ -443,19 +476,26 @@ async def test_me_rejects_jwt_with_alg_none(auth_client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_me_rejects_expired_jwt(auth_client: AsyncClient) -> None:
+async def test_me_rejects_expired_jwt(
+    auth_client: AsyncClient,
+    auth_user: dict[str, Any],
+) -> None:
     """Valid signature, but ``exp`` is in the past → 401.
 
-    PyJWT's ``verify_exp`` (default True) raises
-    ``ExpiredSignatureError``, which ``decode_token`` catches and
-    returns ``None`` → 401. Same defence path as tampered signature.
+    Take the ``auth_user`` fixture's real token, mutate the payload's
+    ``exp`` to 1 minute ago, then re-sign with the same secret so
+    the HMAC matches the mutated payload. The dep must therefore
+    accept the signature and trip on ``verify_exp`` instead of on
+    ``InvalidSignatureError`` — pinning the expiry-rejection path
+    specifically. PyJWT raises ``ExpiredSignatureError``, which
+    ``decode_token`` catches and converts to ``None`` →
+    ``get_current_user_id`` raises 401.
     """
-    payload = {
-        "sub": "any-user-id",
-        "email": "x@y.com",
-        "iat": _now_exp(-3600),
-        "exp": _now_exp(-60),  # expired 1 minute ago
-    }
+    head_b64, payload_b64, _sig = auth_user["token"].split(".")
+    payload = _decode_b64url(payload_b64)
+    payload["exp"] = _now_exp(-60)  # expired 1 minute ago
+    # Re-sign: PyJWT computes the HMAC over the byte string it
+    # itself produces for this dict, so the sig stays valid.
     expired_token = jwt.encode(payload, _settings.jwt_secret, algorithm="HS256")
 
     resp = await auth_client.get(
@@ -468,34 +508,37 @@ async def test_me_rejects_expired_jwt(auth_client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_me_rejects_swapped_payload(auth_client: AsyncClient) -> None:
+async def test_me_rejects_swapped_payload(
+    auth_client: AsyncClient,
+    auth_user: dict[str, Any],
+) -> None:
     """Signature covers a different payload than the one sent → 401.
 
-    Forge a token with header+sig from a JWT for user A and a
-    payload from a different user B. PyJWT re-computes the HMAC
-    over the new payload and rejects. The test pins the
-    payload-segment violation specifically — it is structurally
-    the same attack class as
-    ``test_me_with_tampered_jwt_returns_401``, but isolating the
-    violation to the payload segment makes future regressions in
-    payload parsing easier to diagnose than a 1-byte sig flip.
-    """
-    original_payload = {
-        "sub": "11111111-1111-1111-1111-111111111111",
-        "email": "user-a@example.com",
-        "exp": _now_exp(900),
-    }
-    real_token = jwt.encode(original_payload, _settings.jwt_secret, algorithm="HS256")
-    head, _orig_payload_b64, sig = real_token.split(".")
+    Take the ``auth_user`` fixture's real token, mutate the payload's
+    ``sub`` to a different UUID, and keep the original signature.
+    PyJWT re-computes the HMAC over the supplied payload segment
+    and rejects with ``InvalidSignatureError``. The test isolates
+    the payload-segment violation from a 1-byte sig flip
+    (``test_me_with_tampered_jwt_returns_401``), making future
+    regressions in payload parsing easier to diagnose.
 
-    swapped_payload = {
-        # Different subject — would be a different user.
-        "sub": "22222222-2222-2222-2222-222222222222",
-        "email": "user-b@example.com",
-        "exp": _now_exp(900),
-    }
-    swapped_payload_b64 = _b64url(swapped_payload)
-    bad_token = f"{head}.{swapped_payload_b64}.{sig}"
+    Note: same structural attack class as the tampered-sig case
+    — both end up at ``InvalidSignatureError`` on HMAC re-compute
+    because PyJWT always HMACs ``head.payload`` together. Kept as
+    its own case for the isolation diagnostic, per Devil's
+    Finding 2 in the Task #63 review.
+    """
+    head_b64, payload_b64, sig = auth_user["token"].split(".")
+    payload = _decode_b64url(payload_b64)
+    # Different subject — would be a different user. Use a fresh
+    # UUID with no matching DB row so a future refactor that moves
+    # the user lookup into the dep would still see this as a
+    # non-hermetic edge case (the dep would 401 on missing user,
+    # masking the violation-specific 401 — same hermeticity caveat
+    # as Devil Finding 3).
+    payload["sub"] = "22222222-2222-2222-2222-222222222222"
+    swapped_payload_b64 = _b64url(payload)
+    bad_token = f"{head_b64}.{swapped_payload_b64}.{sig}"
 
     resp = await auth_client.get(
         "/auth/me",
@@ -507,20 +550,24 @@ async def test_me_rejects_swapped_payload(auth_client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_me_rejects_jwt_missing_subject_claim(auth_client: AsyncClient) -> None:
+async def test_me_rejects_jwt_missing_subject_claim(
+    auth_client: AsyncClient,
+    auth_user: dict[str, Any],
+) -> None:
     """Valid signature, but no ``sub`` claim → 401.
 
-    PyJWT verifies the signature successfully. ``get_current_user_id``
-    then checks ``payload.get('sub') is None`` and raises 401 with
-    detail ``'Token missing subject'`` (see
-    ``apps/api/api/deps/__init__.py:56-62``). This guards against a
-    signing key leak being usable for tokens without an identity.
+    Take the ``auth_user`` fixture's real token, drop ``sub`` from
+    the payload, then re-sign with the same secret so the HMAC
+    stays valid. PyJWT verifies the signature successfully, then
+    ``get_current_user_id`` checks ``payload.get('sub') is None``
+    and raises 401 with detail ``'Token missing subject'`` (see
+    ``apps/api/api/deps/__init__.py:56-62``). This guards against
+    a signing key leak being usable for tokens without an
+    identity.
     """
-    payload = {
-        # Note: no 'sub' claim.
-        "email": "ghost@example.com",
-        "exp": _now_exp(900),
-    }
+    head_b64, payload_b64, _sig = auth_user["token"].split(".")
+    payload = _decode_b64url(payload_b64)
+    del payload["sub"]
     no_sub_token = jwt.encode(payload, _settings.jwt_secret, algorithm="HS256")
 
     resp = await auth_client.get(
