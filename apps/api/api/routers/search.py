@@ -231,6 +231,17 @@ async def facets(
     response.headers["Cache-Control"] = (
         f"private, max-age={facet_cache.CACHE_TTL_SECONDS}"
     )
+    # No `Vary` is set, deliberately (Task #53 Devil M-4). The facets
+    # body varies ONLY by `user_id` (carried in the JWT, not a request
+    # header) and by the (query, filters) pair — none of which are
+    # represented as `Vary` axes. The response does NOT depend on
+    # `Accept-Encoding` (server emits JSON only) or `Accept-Language`
+    # (dimension labels are stable strings; the topic taxonomy is the
+    # same for every locale in v1). `private` already prevents
+    # cross-user sharing at shared caches, so adding `Vary: Authorization`
+    # would be redundant. If a future revision wants to differentiate
+    # logged-in vs anonymous facets (e.g. to broaden the topics for
+    # anon users), that decision belongs in a follow-up ADR — NOT here.
     # Ops-only — `Vary` is not strictly needed (no Accept-Encoding based
     # negotiation here) but we mark the hit/miss so on-call can grep the
     # log; this header is NOT a contract.
