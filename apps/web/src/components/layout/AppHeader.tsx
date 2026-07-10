@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { Languages, Newspaper, Search, Rss, Settings, Sparkles } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
+import { CommandPalette } from '@/components/CommandPalette'
 import { NotificationBell } from '@/components/NotificationBell'
 import { LogoutButton } from '@/components/auth/LogoutButton'
 import { LocaleSwitcher } from '@/components/LocaleSwitcher'
@@ -55,6 +56,7 @@ export async function AppHeader() {
           <NavLink href="/settings" icon={<Settings className="h-4 w-4" />}>
             {t('nav.settings')}
           </NavLink>
+          <CommandPalette />
           {/* LocaleSwitcher uses useSearchParams() — Next.js 15's
               static-prerender rule requires a Suspense boundary around
               any client component that calls the hook. Same pattern

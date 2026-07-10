@@ -20,6 +20,14 @@
       "feeds": "Feeds",
       "embeddings": "Embeddings",
       "settings": "Settings"
+    },
+    "palette": {
+      "openLabel": "Open search",
+      "openTitle": "Search articles",
+      "placeholder": "Search",
+      "searchPlaceholder": "Type a query and press Enter…",
+      "emptyHint": "Type to search articles",
+      "kbdHint": "⌘K"
     }
   },
   "LocaleSwitcher": {

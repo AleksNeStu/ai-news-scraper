@@ -20,6 +20,14 @@
       "feeds": "Ленты",
       "embeddings": "Эмбеддинги",
       "settings": "Настройки"
+    },
+    "palette": {
+      "openLabel": "Открыть поиск",
+      "openTitle": "Поиск статей",
+      "placeholder": "Поиск",
+      "searchPlaceholder": "Введите запрос и нажмите Enter…",
+      "emptyHint": "Введите запрос для поиска статей",
+      "kbdHint": "⌘K"
     }
   },
   "LocaleSwitcher": {
