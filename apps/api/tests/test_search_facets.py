@@ -45,7 +45,7 @@ from api.db.database import get_db
 from api.deps import get_current_user_id
 from api.main import app
 from api.models.article import Article
-from api.services import facet_cache
+from api.services import facet_aggregator, facet_cache
 
 
 # ---------------------------------------------------------------------------
@@ -823,3 +823,64 @@ async def test_T8_unauthenticated_returns_401():
     assert "sources" not in body
     assert "topics" not in body
     assert "date_range" not in body
+
+
+# ---------------------------------------------------------------------------
+# T9 — Devil M-2: per-dim exception → 200 with degraded_dimensions
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_T9_per_dim_exception_returns_200_with_degraded_dimensions(
+    client_for_user, articles_pool, monkeypatch
+):
+    """A single dimension raising must NOT 500 the whole endpoint.
+
+    Devil M-2 follow-up: the per-dim try/except inside
+    ``aggregate_facets`` already swallowed the error, but the failure
+    was invisible to the front-end. We surface it via the new
+    ``degraded_dimensions`` field on ``FacetsResponse`` so the web UI
+    can render a "partial facets" banner.
+
+    Strategy: monkeypatch the module-private ``_aggregate_topics`` to
+    raise ``RuntimeError``. The other two dimensions (sources,
+    date_range) still hit the real FakeSession and return their
+    normal data. We assert:
+
+      * HTTP 200 (not 500).
+      * ``degraded_dimensions`` contains the failing dim name.
+      * The other dimensions are populated normally.
+      * The failing dim is returned as an empty list (so the JSON
+        shape is stable — the front-end does not have to special-case
+        missing vs empty).
+    """
+
+    async def _boom(db, uid):  # noqa: ARG001 — signature mirror
+        raise RuntimeError("simulated topics aggregation failure")
+
+    monkeypatch.setattr(facet_aggregator, "_aggregate_topics", _boom)
+
+    aid = uuid4()
+    user = uuid4()
+    articles_pool[str(aid)] = _make_article(
+        aid,
+        source_domain="reuters.com",
+        topics=["ai"],
+        indexed_at=datetime(2026, 7, 8, 10, 0, 0, tzinfo=timezone.utc),
+        user_id=user,
+    )
+
+    async with client_for_user(user) as c:
+        r = await c.get("/search/facets")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    # Sources populated normally — the failing dim was only topics.
+    assert body["sources"] == [{"value": "reuters.com", "count": 1}]
+    # Topics degraded: empty list, not the real ``[{"ai", 1}]``.
+    assert body["topics"] == []
+    # Date range populated normally.
+    assert body["date_range"]["min"] == "2026-07-08T10:00:00Z"
+    assert body["date_range"]["max"] == "2026-07-08T10:00:00Z"
+    # The failing dim is named in degraded_dimensions, the others
+    # are NOT.
+    assert body["degraded_dimensions"] == ["topics"]

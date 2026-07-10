@@ -147,7 +147,10 @@ async def aggregate_facets(db: AsyncSession, user_id: UUID) -> FacetsResponse:
     is far more useful than a 500, and the next request (60s later,
     after the Redis TTL expires) will retry from scratch. We never
     silently swallow; each failure is logged with the user_id so an
-    operator can grep for the impact.
+    operator can grep for the impact. The names of the failed
+    dimensions are also surfaced via ``FacetsResponse.degraded_dimensions``
+    (Task #53 Devil M-2) so the front-end can show a "partial facets"
+    banner without parsing log lines.
 
     Why the three aggregations are SEQUENTIAL, not ``asyncio.gather``-ed
     (Task #53 Devil M-5): SQLAlchemy's ``AsyncSession`` is **not** safe
@@ -165,6 +168,8 @@ async def aggregate_facets(db: AsyncSession, user_id: UUID) -> FacetsResponse:
     library is already <30 ms and the extra complexity is not yet
     earned.
     """
+    degraded: list[str] = []
+
     # Sources — cheapest of the three; index on ``source_domain``
     # covers the WHERE + GROUP BY.
     try:
@@ -172,6 +177,7 @@ async def aggregate_facets(db: AsyncSession, user_id: UUID) -> FacetsResponse:
     except Exception:
         logger.exception("facets: sources aggregation failed for user_id=%s", user_id)
         sources = []
+        degraded.append("sources")
 
     # Topics — uses UNNEST on an ARRAY column; no covering index, but
     # bounded by article count, so a 5k-article library scans ~5k rows
@@ -181,6 +187,7 @@ async def aggregate_facets(db: AsyncSession, user_id: UUID) -> FacetsResponse:
     except Exception:
         logger.exception("facets: topics aggregation failed for user_id=%s", user_id)
         topics = []
+        degraded.append("topics")
 
     # Date range — MIN/MAX over indexed_at; uses the per-column index.
     try:
@@ -190,8 +197,14 @@ async def aggregate_facets(db: AsyncSession, user_id: UUID) -> FacetsResponse:
             "facets: date_range aggregation failed for user_id=%s", user_id
         )
         date_range = FacetDateRange(min=None, max=None)
+        degraded.append("date_range")
 
-    return FacetsResponse(sources=sources, topics=topics, date_range=date_range)
+    return FacetsResponse(
+        sources=sources,
+        topics=topics,
+        date_range=date_range,
+        degraded_dimensions=degraded,
+    )
 
 
 __all__ = ["aggregate_facets"]

@@ -125,6 +125,18 @@ export interface FacetsResponse {
   topics: FacetCount[];
   /** Min / max `indexed_at` across the user's library. */
   date_range: FacetDateRange;
+  /** Names of dimensions whose aggregation raised inside
+   * `aggregate_facets` and were replaced with empty / null values
+   * (Task #53 Devil M-2). Always emitted by the API; empty array on
+   * the happy path. The route returns 200 even on partial failure so
+   * the filter UI degrades gracefully; the front-end can show a
+   * "partial facets" banner by checking this list is non-empty.
+   * Possible entries: `"sources"`, `"topics"`, `"date_range"`.
+   * Marked optional in the TS mirror so older callers and test
+   * fixtures that pre-date the field keep compiling — the API
+   * always populates it, but the type accepts the legacy shape
+   * where the field is omitted. */
+  degraded_dimensions?: string[];
 }
 
 export interface Feed {

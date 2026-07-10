@@ -136,8 +136,17 @@ class FacetsResponse(BaseModel):
       with article counts, sorted DESC by count.
     * ``date_range`` — ``{min, max}`` over ``indexed_at`` for the current
       user. Both null on an empty library.
+    * ``degraded_dimensions`` — names of dimensions whose aggregation
+      raised in ``aggregate_facets`` and were replaced by an empty
+      list / null date_range (Task #53 Devil M-2). Always present;
+      empty list on the happy path. The route stays 200 in the partial-
+      failure case so the filter UI degrades gracefully — operators
+      grep the application log for the matching ``logger.exception``
+      lines, and the front-end can surface a "partial facets" banner
+      by inspecting this list.
     """
 
     sources: list[FacetCount]
     topics: list[FacetCount]
     date_range: FacetDateRange
+    degraded_dimensions: list[str] = Field(default_factory=list)
