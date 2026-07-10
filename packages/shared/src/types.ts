@@ -132,11 +132,15 @@ export interface FacetsResponse {
    * the filter UI degrades gracefully; the front-end can show a
    * "partial facets" banner by checking this list is non-empty.
    * Possible entries: `"sources"`, `"topics"`, `"date_range"`.
-   * Marked optional in the TS mirror so older callers and test
-   * fixtures that pre-date the field keep compiling — the API
-   * always populates it, but the type accepts the legacy shape
-   * where the field is omitted. */
-  degraded_dimensions?: string[];
+   *
+   * Required (not optional) because the API contract guarantees its
+   * presence and the partial-failure signal is load-bearing — callers
+   * that omit it from a typed literal will get a TS error, which is
+   * the correct behavior. (Initial Task #57 review shipped this as
+   * optional to avoid breaking `SearchClient.test.tsx`'s pre-existing
+   * literal; the fixture has since been updated to include the
+   * field, so the optional marker was lifted in the follow-up.) */
+  degraded_dimensions: string[];
 }
 
 export interface Feed {

@@ -49,6 +49,10 @@ const FACETS_RESPONSE = {
     { value: 'ml', count: 3 },
   ],
   date_range: { min: '2026-06-01T00:00:00Z', max: '2026-07-08T00:00:00Z' },
+  // Task #53 Devil M-2: API always populates this; the TS mirror
+  // types it as required (was optional until the test fixture caught
+  // up). Empty array on the happy path.
+  degraded_dimensions: [],
 }
 
 function renderClient() {
