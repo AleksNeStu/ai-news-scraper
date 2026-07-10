@@ -188,7 +188,7 @@ async def get_or_compute(
 
 # Exposed for tests so they can monkeypatch the client / TTL without
 # reaching into private module state.
-def _reset_for_tests() -> None:  # pragma: no cover — test helper
+def reset_for_tests() -> None:  # pragma: no cover — test helper
     global _client
     _client = None
 
@@ -196,6 +196,9 @@ def _reset_for_tests() -> None:  # pragma: no cover — test helper
 __all__ = [
     "CACHE_TTL_SECONDS",
     "get_or_compute",
-    "_reset_for_tests",
+    "reset_for_tests",  # exposed for tests (Task #53 Devil L-2: renamed
+    # from ``_reset_for_tests`` because the function is in ``__all__``
+    # and is part of the public test surface; the leading underscore
+    # implied private module state, which was misleading).
     "_cache_key",
 ]

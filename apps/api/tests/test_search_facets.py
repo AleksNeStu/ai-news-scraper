@@ -100,15 +100,15 @@ def fake_redis(monkeypatch):
 
     The cache wrapper lazily builds its client on first use; we
     monkeypatch ``facet_cache._get_redis`` so the lazy builder returns
-    our fake. ``_reset_for_tests`` clears the module-cached client
+    our fake. ``reset_for_tests`` clears the module-cached client
     before each test so the fake takes effect on the very first
     cache call (not the second one).
     """
-    facet_cache._reset_for_tests()
+    facet_cache.reset_for_tests()
     fake = _FakeRedis()
     monkeypatch.setattr(facet_cache, "_get_redis", lambda: fake)
     yield fake
-    facet_cache._reset_for_tests()
+    facet_cache.reset_for_tests()
 
 
 @pytest.fixture
