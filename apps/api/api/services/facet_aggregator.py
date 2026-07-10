@@ -106,6 +106,15 @@ async def _aggregate_topics(db: AsyncSession, user_id: UUID) -> list[FacetCount]
     stmt = (
         select(topic_col, func.count(distinct(Article.id)).label("cnt"))
         .where(Article.user_id == user_id)
+        # Filter PG NULL array elements (and NULL-unnest rows) so a
+        # row with ``topics == NULL`` or an explicit NULL element does
+        # not appear as the literal string "None" in the response.
+        # Without this guard, ``str(row[0])`` happily coerces None to
+        # ``"None"`` and a topic named "None" would be created. The
+        # ``isnot(None)`` predicate is applied on the unnested column
+        # itself so the per-element check rides on the same
+        # ``CROSS JOIN LATERAL`` PG materialises for ``UNNEST``.
+        .where(topic_col.isnot(None))
         .group_by(topic_col)
         .order_by(func.count(distinct(Article.id)).desc())
     )
@@ -139,6 +148,22 @@ async def aggregate_facets(db: AsyncSession, user_id: UUID) -> FacetsResponse:
     after the Redis TTL expires) will retry from scratch. We never
     silently swallow; each failure is logged with the user_id so an
     operator can grep for the impact.
+
+    Why the three aggregations are SEQUENTIAL, not ``asyncio.gather``-ed
+    (Task #53 Devil M-5): SQLAlchemy's ``AsyncSession`` is **not** safe
+    for concurrent statements on the same instance. Issuing two
+    ``await db.execute(stmt)`` calls in flight via ``asyncio.gather``
+    races on the connection's transactional state and raises
+    "this session is in 'committed' state" (or, more insidiously,
+    interleaves result rows between the two queries — the kind of
+    bug that passes tests but corrupts data in prod). Each dimension
+    must ``await`` to completion before the next begins. The
+    migration path to true concurrency is per-dimension
+    ``async_sessionmaker()`` instances (each query gets its own
+    session) — flagged in Task #53 / ADR-020 as a follow-up, not
+    done here, because the current end-to-end latency on a 5k-row
+    library is already <30 ms and the extra complexity is not yet
+    earned.
     """
     # Sources — cheapest of the three; index on ``source_domain``
     # covers the WHERE + GROUP BY.
