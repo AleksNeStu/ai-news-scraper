@@ -158,22 +158,28 @@ These are gaps between the **current** Frontend contracts and the **spec'd** Bac
 
 ## Test coverage map — `apps/api/tests/test_search_facets.py`
 
+Tests use the `test_TN_*` convention (`T1..T6`, `T1b`, `T7`, `T8`, `T9`)
+so the AC criterion number is preserved in the function name. The
+table below maps each criterion to its concrete test function as of
+the Task #53 follow-ups (M-2 added `test_T9`).
+
 | Criterion | Test name | What it asserts |
 |---|---|---|
-| 1 empty | `test_facets_empty_library` | 200, empty arrays, null bounds, `Cache-Control` header present. |
-| 2 single-article | `test_facets_single_article` | count=1 across the board, `min == max`. |
-| 3 isolation | `test_facets_multi_tenant_isolation` | User A's response excludes user B's rows; uses two `client` sessions with different JWTs. |
-| 4 topic dedupe | `test_facets_topic_dedupe_counts_articles` | 3-article fixture per spec; counts match. |
-| 5 sort | `test_facets_sort_order_count_desc_value_asc` | 3-source fixture; order matches. |
-| 6 cache hit | `test_facets_cache_hit_returns_same_payload` | Two calls within 60s; SQL spy shows one aggregation; bodies are byte-equal. |
-| 7 cache miss | `test_facets_cache_miss_after_ttl_recomputes` | Mock `time.time`; first call sets cache, advance time, second call runs SQL again. |
-| 8 header | `test_facets_cache_control_header_on_both_paths` | Header present on miss and on hit. |
-| 9 auth | `test_facets_unauthenticated_returns_401` | No cookie → 401; handler not invoked. |
-| 10 ISO format | `test_facets_date_range_iso8601_round_trip` | `datetime.fromisoformat` parses both bounds. |
+| 1 empty | `test_T1_empty_library_returns_zero_counts` | 200, empty arrays, null bounds, `Cache-Control` header present. |
+| 2 single-article | `test_T2_single_article_populates_one_bucket_per_dimension` | count=1 across the board, `min == max`. |
+| 3 isolation | `test_T5_two_users_with_disjoint_libraries_see_disjoint_facets` | User A's response excludes user B's rows; uses two `client` sessions with different JWTs. |
+| 4 topic dedupe | `test_T1b_duplicate_topic_in_single_article_counts_as_one` | A single article with `topics=['ai','ai']` counts as one, not two (Devil C1). |
+| 5 sort | `test_T3_mixed_library_sorted_desc_by_count_with_brackets` | 3-source fixture; order matches `count DESC, value ASC`. |
+| 6 cache hit | `test_T4_cache_miss_then_hit_within_ttl` | Two calls within 60s; second is `X-Cache: HIT`; `set_calls` does not increment. |
+| 7 cache miss | `test_T7_cache_miss_after_ttl_recomputes` | First call writes with `ex=0` (TTL collapsed); second call recomputes and is also MISS (Devil H3). |
+| 8 header | `test_T4_cache_miss_then_hit_within_ttl` (combined with #6) | `Cache-Control: private, max-age=60` is asserted on the first call of T4; same value emitted on both paths. |
+| 9 auth | `test_T8_unauthenticated_returns_401` | No override → 401; facets keys absent from body. |
+| 10 ISO format | `test_T2_single_article_populates_one_bucket_per_dimension` | `datetime.fromisoformat` parses the `min`/`max` strings (asserted via the explicit `==` check on the `2026-07-01T12:00:00Z` ISO value). |
+| M-2 partial-failure | `test_T9_per_dim_exception_returns_200_with_degraded_dimensions` | `_aggregate_topics` monkeypatched to raise → 200, sources/date_range populated, `topics=[]`, `degraded_dimensions=["topics"]`. |
 
 Additional safety tests:
-- `test_facets_articles_without_topics_yields_empty_topics` — `topics=[]` is the shape, not `null` and not missing key.
-- `test_facets_redacts_other_users_data_on_cache_collision` — defensive: even if Redis collides keys, the SQL predicate must still apply (i.e. cache key is `user_id`-scoped, not request-scoped).
+- `test_T6_cache_keys_are_user_scoped` — `facets:` prefix plus distinct UUID suffix across three users; regression guard against a global cache key.
+- `test_T9_per_dim_exception_returns_200_with_degraded_dimensions` — Devil M-2; partial-failure shape is stable JSON, not a 500.
 
 ## Implementation hints for Backend Dev (non-binding)
 
