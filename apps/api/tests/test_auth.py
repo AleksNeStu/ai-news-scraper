@@ -319,7 +319,7 @@ async def test_me_with_tampered_jwt_returns_401(auth_client: AsyncClient) -> Non
 
 
 # ---------------------------------------------------------------------------
-# JWT verification — 5-case regression matrix (Task #63).
+# JWT verification — 6-case regression matrix (Task #63).
 #
 # Each case derives a malformed JWT from the ``auth_user`` fixture's
 # real, signed, in-DB token (same code path as the real login) and
@@ -330,13 +330,20 @@ async def test_me_with_tampered_jwt_returns_401(auth_client: AsyncClient) -> Non
 # keeps the matrix robust against the cookie-jar flake that motivated
 # Task #63.
 #
-# Deriving the bad token from a real one (rather than constructing
-# one from scratch) makes the matrix hermetic against a future
-# refactor that moves the ``sub`` -> User lookup into
-# ``get_current_user_id`` (apps/api/api/deps/__init__.py:47-69): the
-# ``auth_user`` fixture has already flushed the user row, so the dep
-# would still find it, and any route-level DB join would also be
-# exercised rather than short-circuiting on a missing user.
+# Hermeticity scope: deriving the bad token from a real one makes the
+# JWT layer hermetic against a future refactor that moves the
+# signature-vs-violation check earlier in the dep — the token's HMAC
+# is from ``create_token`` (same code path as real login), so the
+# signature layer is genuinely exercised. The DB layer is NOT
+# hermetic in the same way: ``auth_user`` writes the user row to
+# ``test_engine`` via ``flush()`` in an uncommitted transaction, but
+# the route's ``Depends(get_db)`` uses the production ``engine`` on a
+# separate connection — READ COMMITTED isolation means the route
+# cannot see the fixture's row. Today this does not break the matrix
+# because every case rejects at the JWT or dep layer before any DB
+# lookup. If a future refactor moves a DB lookup ahead of the dep's
+# ``payload.get('sub')`` check, the route would 404 (not 401) — a
+# different failure mode than a pure 401 regression, but a loud one.
 # ---------------------------------------------------------------------------
 
 
@@ -578,10 +585,15 @@ async def test_me_rejects_jwt_missing_subject_claim(
         f"missing-sub JWT accepted: status={resp.status_code} body={resp.text!r}"
     )
     # The dep emits a specific detail here; pin it so a future
-    # refactor that drops the sub-check will be caught.
-    detail = resp.json().get("detail", "")
-    assert "subject" in str(detail).lower() or "sub" in str(detail).lower(), (
-        f"expected sub-related detail; got {detail!r}"
+    # refactor that drops the sub-check (e.g. lets ``UUID(str(sub))``
+    # raise the 401 for no-sub tokens via the UUID-conversion path
+    # instead of the explicit ``payload.get('sub') is None`` branch)
+    # is caught. The exact substring matters: "missing subject" is
+    # only emitted by the explicit None branch, not by the UUID
+    # path which would say "subject is not a UUID".
+    detail = str(resp.json().get("detail", "")).lower()
+    assert "missing subject" in detail, (
+        f"expected 'missing subject' detail from sub-None branch; got {detail!r}"
     )
 
 
