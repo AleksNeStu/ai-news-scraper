@@ -33,6 +33,41 @@ from ``api.middleware.rate_limit`` because:
 
 Cache miss path (``get_or_compute``) is built so the route handler
 can stay one line: ``response = await get_or_compute(uid, db)``.
+
+Singleton invariant (Task #53 Devil M-1)
+-----------------------------------------
+
+``_client`` (declared at module scope below) is a single shared
+``redis.asyncio.Redis`` instance, built lazily on the first
+``_get_redis()`` call. The invariant callers must respect is:
+
+    At most ONE in-flight command on the client at any time.
+
+``redis-py``'s asyncio client (and the underlying connection pool)
+serialises commands onto a single connection. Using
+``client.pipeline()`` / ``client.transaction()`` across an
+``await`` boundary would interleave two coroutines' commands on the
+same connection — Redis itself tolerates this (responses are tagged
+by request ID) but our Pydantic round-trip (``await client.get(...)``
+followed by ``await client.set(...)``) is NOT pipeline-safe in the
+same way: a concurrent caller could land its ``DELETE`` between our
+``GET`` and our ``SET`` and silently invalidate the entry we just
+wrote. The current call sites (``_try_get_cached``,
+``_try_set_cached``) are short, awaited atomically per
+``get_or_compute``, and the route handler is the only caller — so
+the invariant holds by construction.
+
+If a future caller needs to issue multiple commands atomically,
+they must ``async with client.pipeline(transaction=False)`` (NO
+``MULTI``/``EXEC`` — Redis cluster forbids them) OR move to
+``redis.asyncio.cluster.RedisCluster`` where each shard owns its
+own connection. Adding any ``asyncio.gather`` over the client is a
+bug.
+
+Cross-reference: the same single-connection constraint is
+documented at ``api.middleware.rate_limit`` (the rate limiter, by
+contrast, opens a fresh connection per request via ``from_url``
+because each call is a single command — different failure surface).
 """
 
 from __future__ import annotations
