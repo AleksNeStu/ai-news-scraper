@@ -332,7 +332,17 @@ async def test_me_with_tampered_jwt_returns_401(auth_client: AsyncClient) -> Non
 
 
 def _b64url(payload: dict) -> str:
-    """Encode a dict as base64url-no-padding (the JWT payload encoding)."""
+    """Encode a dict as base64url-no-padding (the JWT payload encoding).
+
+    Encode-only — NOT round-trip safe. ``sort_keys=True`` means the
+    produced byte string differs from what PyJWT mints for the same
+    dict (PyJWT does not sort keys). If a future test needs to
+    round-trip a real token's payload (e.g. to recompute the sig
+    after a mutation), use a no-sort encode helper instead —
+    otherwise the verification side will re-HMAC a different byte
+    string and reject the token with ``InvalidSignatureError``,
+    masking whatever the test was actually trying to exercise.
+    """
     raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
 
