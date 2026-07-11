@@ -109,6 +109,7 @@ const ROUTES: ReadonlyArray<{ path: string; name: string; requiresAuth: boolean 
   { path: '/en/dashboard/brief', name: 'brief-list', requiresAuth: true },
   { path: '/en/dashboard/brief/2026-01-15', name: 'brief-detail', requiresAuth: true },
   { path: '/en/feeds', name: 'feeds', requiresAuth: true },
+  { path: '/en/feeds/import', name: 'feeds-import', requiresAuth: true },
   { path: '/en/settings', name: 'settings', requiresAuth: true },
 ]
 

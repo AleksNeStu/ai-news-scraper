@@ -125,6 +125,15 @@ async def bulk_import_feeds(
     """
     urls = [str(f.xml_url) for f in payload.feeds]
 
+    # Observability breadcrumbs (Devil LOW-1): v1 keeps the parse step
+    # synchronous, so a 500-item all-fail import can take ~4 minutes
+    # and risk an upstream timeout. Log start/end for operator
+    # correlation until the v2 job-queue path lands (ADR-024 §24.4).
+    logger.info(
+        "bulk_import started",
+        extra={"user_id": str(user_id), "size": len(payload.feeds)},
+    )
+
     # 1. Pre-fetch existing URLs in one query so we can skip them
     #    without round-tripping per item.
     existing_rows = await db.execute(
@@ -148,9 +157,7 @@ async def bulk_import_feeds(
             continue
         if url_str in seen_in_request:
             failed.append(
-                BulkImportFailure(
-                    url=url_str, reason="Duplicate URL in same request"
-                )
+                BulkImportFailure(url=url_str, reason="Duplicate URL in same request")
             )
             continue
         seen_in_request[url_str] = None
@@ -163,23 +170,26 @@ async def bulk_import_feeds(
 
     for ref in to_create:
         url_str = str(ref.xml_url)
-        try:
-            parsed = parser.parse(url_str)
-        except Exception:
-            failed.append(
-                BulkImportFailure(url=url_str, reason="Could not parse feed")
-            )
-            continue
+        # Devil LOW-2: FeedParser.parse already swallows network/parse
+        # errors and returns None, so the prior bare `except Exception`
+        # was masking programmer bugs (TypeError, AttributeError) as
+        # "Could not parse feed". Rely on FeedParser as the error
+        # boundary; let unexpected exceptions bubble to the 500 path
+        # with a stack trace.
+        parsed = parser.parse(url_str)
         if parsed is None:
-            failed.append(
-                BulkImportFailure(url=url_str, reason="Could not parse feed")
-            )
+            failed.append(BulkImportFailure(url=url_str, reason="Could not parse feed"))
             continue
         feed = Feed(
             user_id=user_id,
             feed_url=url_str,
             title=parsed.title,
             description=parsed.description,
+            # Devil HIGH-1: `category` is accepted by OpmlFeedRef on the
+            # wire (forward-compat with v2 category grouping) but
+            # intentionally dropped here — Feed has no `category` column
+            # yet (ADR-024 §24.2). Do NOT assign ref.category below
+            # without first adding the column.
         )
         try:
             db.add(feed)
@@ -188,11 +198,24 @@ async def bulk_import_feeds(
         except IntegrityError:
             # Race: another request inserted the same URL between our
             # SELECT and INSERT. Roll back this row only — keep the
-            # outer transaction alive for the rest of the batch.
+            # outer transaction alive for the rest of the batch. Devil
+            # LOW-3: expire the failed instance so it doesn't linger in
+            # the session's identity map across the rest of the batch.
             await db.rollback()
+            await db.expire(feed)
             skipped_duplicates += 1
 
     await db.commit()
+
+    logger.info(
+        "bulk_import finished",
+        extra={
+            "user_id": str(user_id),
+            "created": created_count,
+            "skipped_duplicates": skipped_duplicates,
+            "failed_count": len(failed),
+        },
+    )
 
     return BulkImportResult(
         created=created_count,
