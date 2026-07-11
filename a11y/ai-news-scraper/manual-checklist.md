@@ -135,6 +135,8 @@ Use **NVDA** (Windows) or **VoiceOver** (macOS / iOS). For each route:
 
 ## Phase 2.C — Reflow + zoom (15 min)
 
+### Zoom (WCAG 1.4.10 Reflow)
+
 - [ ] Set browser zoom to **200%** (Ctrl/Cmd + + + +). Page content
       reflows; no horizontal scroll on the `<main>` content area
       (WCAG 1.4.10). Side nav may scroll horizontally if it's a
@@ -144,10 +146,70 @@ Use **NVDA** (Windows) or **VoiceOver** (macOS / iOS). For each route:
 - [ ] **Set browser font size to 24px** (Chrome: Settings →
       Appearance → Font size). Verify text spacing (WCAG 1.4.12,
       finding #5) — content should remain usable.
-- [ ] **Apply user stylesheet** that overrides `line-height: 1.5`,
-      `letter-spacing: 0.12em`, `word-spacing: 0.16em`,
-      `paragraph-spacing: 2×`. Verify content remains usable
-      (WCAG 1.4.12 — all four must be tested).
+
+### Text Spacing — WCAG 1.4.12 (closes finding #5)
+
+Reference: `a11y/ai-news-scraper/spec-text-spacing.md`. The
+`:where()`-scoped rule in `apps/web/src/app/globals.css` (inside
+`@layer base`) sets `line-height: 1.5` on `html, body, p, li, dd,
+td, blockquote, pre` and `margin-block-end: 2em` on `p, li, dd`.
+The `:where()` selector zeros specificity so user stylesheets
+override cleanly.
+
+**Operator computed-style test (Chrome dev tools → Elements →
+Computed panel):**
+
+- [ ] Open any article page (e.g. `/articles/[id]`). Inspect any
+      `<p>` element.
+- [ ] Confirm computed `line-height` is `1.5` × font-size. For
+      example, if `font-size: 24px`, computed `line-height` should
+      read `36px` (= 24 × 1.5).
+- [ ] Confirm computed `margin-block-end` on the same `<p>` is
+      `2em`. With `font-size: 24px`, the computed value should read
+      `48px` (= 24 × 2).
+
+**Heading exclusion:**
+
+- [ ] On the same article page, inspect any `<h1>` or `<h2>`.
+      Confirm computed `line-height` is **NOT** `1.5` × font-size
+      (display type uses a tighter leading per the typographic
+      scale, ~1.2). The rule deliberately excludes headings.
+
+**Form-control exclusion:**
+
+- [ ] Open `/scrape` and inspect the submit button. Confirm
+      vertical centering of the `Plus` icon + "Submit" label is
+      not visibly shifted up or down by line-height inheritance.
+      The rule deliberately excludes `input`, `select`, `button`,
+      `textarea`.
+
+**User stylesheet override survival (WCAG 1.4.12 strongest signal):**
+
+- [ ] Chrome dev tools → Sources panel → left sidebar →
+      **Overrides** tab → enable Local Overrides → create a new
+      override stylesheet for `localhost:3807`.
+- [ ] Add this rule to the override stylesheet:
+      ```css
+      p {
+        line-height: 1 !important;
+        margin-block-end: 0 !important;
+      }
+      ```
+- [ ] Reload the article page. Confirm:
+      - No clipped text (lines don't cut off mid-sentence).
+      - No overlapping elements (paragraphs do not collide).
+      - Scroll behaviour is preserved (page still scrolls
+        end-to-end, sticky header still follows).
+- [ ] Pass criterion: the page remains usable with the override
+      active. Either the new rule wins (page survives a tighter
+      layout) or the page still works without the rule applied —
+      both pass WCAG 1.4.12.
+
+**Document the result** in the sign-off block at the top of this
+file using the standard `Manual pass: YYYY-MM-DD / Operator /
+Result: PASS|FAIL` template. Reference
+`a11y/ai-news-scraper/spec-text-spacing.md` in any FAIL notes so
+Frontend can reproduce against the exact selector list.
 
 ---
 
