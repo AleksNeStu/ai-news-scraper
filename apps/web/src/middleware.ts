@@ -1,6 +1,7 @@
 import createMiddleware from 'next-intl/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 import { routing } from '@/i18n/routing'
+import { stripLocalePrefix, withLocalePrefix } from '@/lib/routing-helpers'
 
 /**
  * Dev auth bypass — see DEV_AUTH_BYPASS_USER below.
@@ -10,10 +11,7 @@ import { routing } from '@/i18n/routing'
  * JWT_SECRET + algorithm as the API (``apps/api/api/services/auth.py``),
  * so it verifies identically on the backend.
  */
-async function signJwtHS256(
-  payload: Record<string, unknown>,
-  secret: string,
-): Promise<string> {
+async function signJwtHS256(payload: Record<string, unknown>, secret: string): Promise<string> {
   const encoder = new TextEncoder()
   const header = { alg: 'HS256', typ: 'JWT' }
   const headerB64 = btoa(JSON.stringify(header))
@@ -30,7 +28,7 @@ async function signJwtHS256(
     encoder.encode(secret),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
-    ['sign'],
+    ['sign']
   )
   const sig = await crypto.subtle.sign('HMAC', key, data)
   const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)))
@@ -41,12 +39,14 @@ async function signJwtHS256(
 }
 
 /**
- * Composed middleware (Task #32): locale resolution + auth gating.
+ * Composed middleware (Task #32, revisited in Task #66): locale resolution + auth gating.
  *
  * Order matters. The locale middleware runs FIRST so that:
- *   - Incoming `/foo` → resolved as `/en/foo` (default locale),
- *     preserving the original auth path.
- *   - Incoming `/ru/foo` → preserved as `/ru/foo`.
+ *   - Incoming `/foo` → redirected 307 to `/en/foo` (default locale),
+ *     because `localePrefix: 'always'` requires every URL to carry a
+ *     locale segment.
+ *   - Incoming `/en/foo` → served as-is (canonical for English).
+ *   - Incoming `/ru/foo` → served as-is (canonical for Russian).
  *   - `Link` / `useRouter` from `@/i18n/navigation` auto-prefix the
  *     active locale into navigation.
  *
@@ -60,6 +60,15 @@ async function signJwtHS256(
  * PUBLIC_PREFIXES (api/auth, _next, favicon) similarly strip the
  * leading locale segment before matching.
  *
+ * Why `'always'` (Task #66): with `'as-needed'`, next-intl middleware
+ * redirected `/en/X` → `/X` for the default locale (treating `/en/` as
+ * a superfluous prefix on the English URL). On a bare `/login` URL, the
+ * compose middleware then needed to redirect an unauthenticated user
+ * to `/en/login?next=...`, which the browser re-followed — and next-intl
+ * then redirected `/en/login` back to `/login` again. That ping-pong is
+ * the `ERR_TOO_MANY_REDIRECTS` loop that broke the a11y CI gate on all
+ * 13 audited routes. `'always'` makes `/en/X` canonical, no redirect.
+ *
  * Matcher:
  *   - Includes `api/` in the negative lookahead so the existing
  *     rewrite `/api/backend/:path*` → FastAPI proxy is unaffected.
@@ -67,26 +76,6 @@ async function signJwtHS256(
  *     jpg, jpeg, gif, webp).
  */
 const intlMiddleware = createMiddleware(routing)
-
-// Strips a leading locale segment so the auth check below sees the
-// canonical path the original (pre-i18n) middleware used.
-//   '/en/dashboard' → '/dashboard'
-//   '/ru/login'     → '/login'
-//   '/dashboard'    → '/dashboard'  (as-needed, default locale)
-function stripLocalePrefix(pathname: string): string {
-  for (const locale of routing.locales) {
-    if (pathname === `/${locale}`) return '/'
-    if (pathname.startsWith(`/${locale}/`)) return pathname.slice(locale.length + 1)
-  }
-  return pathname
-}
-
-// Reverse helper: given a canonical path, return the locale-prefixed
-// form for the requested active locale (or bare path for default).
-function withLocalePrefix(canonical: string, activeLocale: string): string {
-  if (activeLocale === routing.defaultLocale) return canonical
-  return `/${activeLocale}${canonical === '/' ? '' : canonical}`
-}
 
 // Public paths — must match the canonical (no-locale) form.
 // The locale prefix is stripped before the comparison.
@@ -124,13 +113,14 @@ const PUBLIC_PREFIXES = ['/api/auth', '/_next', '/favicon']
  *     ``dev-secret-change-me`` in the project's docker-compose.
  */
 const DEV_BYPASS_USER = process.env.DEV_AUTH_BYPASS_USER
-const DEV_BYPASS_USER_ID = process.env.DEV_AUTH_BYPASS_USER_ID ?? '11111111-1111-1111-1111-111111111111'
+const DEV_BYPASS_USER_ID =
+  process.env.DEV_AUTH_BYPASS_USER_ID ?? '11111111-1111-1111-1111-111111111111'
 const DEV_BYPASS_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me'
 const DEV_BYPASS_COOKIE_MAX_AGE = 60 * 60 * 24 // 24h
 
 async function buildDevBypassResponse(
   req: NextRequest,
-  intlResponse: NextResponse,
+  intlResponse: NextResponse
 ): Promise<NextResponse> {
   // Mint a fresh HS256 JWT for the demo user. The payload mirrors
   // what the API's ``create_token`` produces: ``sub`` (user id),
@@ -142,7 +132,7 @@ async function buildDevBypassResponse(
   const exp = iat + 60 * 60 * 24 * 365 * 5
   const token = await signJwtHS256(
     { sub: DEV_BYPASS_USER_ID, email: DEV_BYPASS_USER, iat, exp },
-    DEV_BYPASS_SECRET,
+    DEV_BYPASS_SECRET
   )
 
   // Set the cookie on the response the locale middleware already
@@ -159,14 +149,23 @@ async function buildDevBypassResponse(
 }
 
 export function middleware(req: NextRequest) {
-  // 1) Locale resolution first. This rewrites /dashboard → /en/dashboard,
-  //    preserves /ru/dashboard, attaches hreflang Link header, etc.
+  // 1) Locale resolution first. Under `localePrefix: 'always'`:
+  //      - `/foo`        → 307 redirect to `/en/foo` (next-intl handles)
+  //      - `/en/foo`     → served as-is (canonical for English)
+  //      - `/ru/foo`     → served as-is (canonical for Russian)
+  //    The compose middleware runs only on the post-resolve URL (so a
+  //    bare `/foo` never reaches this function — next-intl has already
+  //    307'd it to `/en/foo`). hreflang Link header is attached by
+  //    next-intl internally.
   const intlResponse = intlMiddleware(req)
 
   // Determine the locale the request resolved to. We look at the
   // incoming pathname: if the URL already starts with /<locale>/,
-  // that's the active locale; otherwise the default-locale strategy
-  // means the active locale is the default. We use this for the
+  // that's the active locale; otherwise we fall back to the default
+  // locale (defensive — under `'always'` the upstream middleware
+  // guarantees a locale prefix is present on every request that
+  // reaches us, but the fallback keeps the helper correct if the
+  // matcher ever lets a bare path slip through). We use this for the
   // auth-redirect targets so we land the user back on the right locale.
   const incoming = req.nextUrl.pathname
   const activeLocale =

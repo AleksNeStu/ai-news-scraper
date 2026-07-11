@@ -23,9 +23,8 @@ representative templates on every PR. Severity-gated:
 
 The spec lives at `apps/web/e2e/a11y.spec.ts` and covers these
 representative templates (all locale-prefixed per `next-intl`
-`localePrefix: 'as-needed'`; the bare paths shown in earlier
-revisions of this table resolve to the same templates via the
-middleware rewrite):
+`localePrefix: 'always'` — every URL carries a `/<locale>` segment,
+including the default `en` locale):
 
 | Route | Why representative |
 |---|---|

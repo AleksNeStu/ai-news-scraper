@@ -204,11 +204,11 @@ done
 # og:locale, and a twitter:card, twitter:title, twitter:description.
 
 # 2. Canonical matches the in-locale URL (no cross-locale leakage).
-curl -fsS http://localhost:3807/articles/1 | grep -oE 'rel="canonical"[^>]*'
+curl -fsS http://localhost:3807/en/articles/1 | grep -oE 'rel="canonical"[^>]*'
 curl -fsS http://localhost:3807/ru/articles/1 | grep -oE 'rel="canonical"[^>]*'
 # Expect: canonical hrefs that include the matching locale segment
-# (or omit the segment for the default locale under
-# localePrefix: 'as-needed').
+# under localePrefix: 'always' (BOTH locales get a /<locale> prefix —
+# en at /en/articles/1, ru at /ru/articles/1).
 ```
 
 ---

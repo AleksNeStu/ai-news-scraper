@@ -78,14 +78,13 @@ function summarise(label: string, items: ReadonlyArray<AxeViolation>): string {
  *     dashboard/brief/[date]
  *
  * NOTE on locale prefix: the production app uses next-intl with
- * `localePrefix: 'as-needed'`. The bare paths (`/articles`, `/login`,
- * etc.) ALSO resolve via the middleware rewrite to `/en/...`, but the
- * non-locale page.tsx files at app/(app)/, app/(auth)/, and
- * app/unsubscribe/ are leftover from before the i18n migration and
- * render under the pass-through root layout (no <html lang>) when
- * hit directly. Hitting the locale-prefixed URL renders the
- * [locale]/layout.tsx wrapper which sets `<html lang="en">` properly,
- * which is what the axe-core a11y gate requires.
+ * `localePrefix: 'always'` (Task #66), so EVERY URL carries a locale
+ * segment (`/en/login`, `/ru/login`). Hitting a bare `/login` would
+ * trigger a single 307 → `/en/login` from next-intl, but the a11y
+ * spec hits the locale-prefixed URLs directly to assert the canonical
+ * forms. Under `'always'` the `[locale]/layout.tsx` wrapper sets
+ * `<html lang="en">` properly, which is what the axe-core a11y gate
+ * requires.
  *
  * NOTE on dynamic segments: `/articles/[id]` and
  * `/dashboard/brief/[date]` use sample values that exercise the route

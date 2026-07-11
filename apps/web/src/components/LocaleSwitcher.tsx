@@ -16,7 +16,9 @@
  *                          e.g. `/articles` even on `/ru/articles`).
  *   - `useRouter()`      — locale-aware wrapper; `router.replace(path, { locale })`
  *                          navigates to the SAME path under the new locale,
- *                          correctly handling `as-needed` prefixing.
+ *                          correctly emitting the `/<locale>` prefix
+ *                          for both `en` and `ru` (localePrefix:
+ *                          'always').
  *
  * UI:
  *   - A <select> for accessibility (native keyboard, screen-reader

@@ -44,7 +44,8 @@ async function safeFetch(opts: Parameters<typeof listArticles>[0]): Promise<Fetc
 /**
  * Page metadata (Task #28): canonical + og:* + twitter:*. Reuses the
  * /dashboard path across both locales via `getPathname` so the absolute
- * URL respects `localePrefix: 'as-needed'`.
+ * URL respects `localePrefix: 'always'` (`/en/dashboard` for `en`,
+ * `/ru/dashboard` for `ru`).
  */
 export async function generateMetadata({
   params,

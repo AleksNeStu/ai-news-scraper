@@ -91,9 +91,9 @@ export default async function ArticlesPage({
   const tTiers = await getTranslations('Tiers')
 
   // Locale-internal path used by both the CollectionPage and the
-  // BreadcrumbList. `getPathname` honours `localePrefix: 'as-needed'`
-  // so the default `en` locale resolves to `/articles` and `ru` to
-  // `/ru/articles`.
+  // BreadcrumbList. `getPathname` honours `localePrefix: 'always'` so
+  // `en` resolves to `/en/articles` and `ru` to `/ru/articles`. There
+  // is no bare `/articles` variant under `'always'`.
   const articlesPath = getPathname({ locale, href: '/articles' })
 
   return (

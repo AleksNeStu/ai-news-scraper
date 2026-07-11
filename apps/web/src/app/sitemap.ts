@@ -42,7 +42,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return ROUTES.flatMap((path) =>
     routing.locales.map((locale) => {
       // getPathname(locale-aware path) — the canonical routing wrapper
-      // knows whether to prefix based on localePrefix: 'as-needed'.
+      // from @/i18n/navigation prefixes every URL with the active
+      // locale under `localePrefix: 'always'`. For `locale: 'en'` this
+      // returns `/en/articles`; for `locale: 'ru'` it returns
+      // `/ru/articles`. No bare `/articles` variant exists.
       const localizedPath = getPathname({ locale, href: path })
       const url = `${SITE_URL}${localizedPath}`
       return {
@@ -57,7 +60,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
               `${SITE_URL}${getPathname({ locale: alt, href: path })}`,
             ])
           ),
-          // x-default points to the bare (default-locale) variant.
+          // x-default points at the default-locale variant, which under
+          // `localePrefix: 'always'` is still `/en/<path>` (not bare).
           canonical: url,
         },
       }

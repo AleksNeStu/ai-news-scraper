@@ -19,9 +19,10 @@ import Link from 'next/link'
  * 404 is just a heading.
  */
 export default function RootNotFound() {
-  // `localePrefix: 'as-needed'` means the default-locale home renders
-  // at bare `/en` (not `/`); other locales use `/<locale>`. We hardcode
-  // `/en` because routing.defaultLocale is fixed at en in this repo.
+  // `localePrefix: 'always'` means EVERY URL carries a locale segment.
+  // The default-locale home renders at `/en` and Russian at `/ru`.
+  // We hardcode `/en` because routing.defaultLocale is fixed at en in
+  // this repo.
   const home = '/en'
   return (
     <html lang="en">

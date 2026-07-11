@@ -18,7 +18,8 @@
  *   - `mainEntityOfPage` and `BreadcrumbList.item` are absolute URLs —
  *     build them from `SITE_URL + canonicalPath`, where `canonicalPath`
  *     comes from `getPathname({ locale, href })` so the path respects
- *     `localePrefix: 'as-needed'`.
+ *     `localePrefix: 'always'` (both `en` and `ru` get a `/<locale>`
+ *     prefix — no bare default-locale URL).
  *   - `inLanguage` always matches the active route segment.
  *   - SearchAction `urlTemplate` always points at the `/search` route in
  *     the requested locale.

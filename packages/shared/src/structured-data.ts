@@ -272,7 +272,7 @@ function formatLinkLine(link: LlmsLink): string {
  * Render one section heading. Locale-suffixed so AI crawlers that
  * parse the file linearly can map each block to a locale without
  * having to guess path prefixes (which differ per locale under
- * `localePrefix: 'as-needed'`).
+ * `localePrefix: 'always'`).
  */
 function formatSectionHeading(heading: string, locale: LlmsLocale): string {
   return `## ${heading} (${locale})`;
