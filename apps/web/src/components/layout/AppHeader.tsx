@@ -29,12 +29,12 @@ export async function AppHeader() {
   const common = await getTranslations('Common')
   return (
     <header className="border-b border-border bg-canvas">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-4">
         <div className="flex items-center gap-2">
           <Newspaper className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-semibold tracking-tight">{common('appName')}</h1>
         </div>
-        <nav aria-label="Primary" className="flex items-center gap-1">
+        <nav aria-label="Primary" className="flex flex-wrap items-center justify-end gap-1">
           <NavLink href="/scrape" icon={<Newspaper className="h-4 w-4" />}>
             {t('nav.scrape')}
           </NavLink>
@@ -86,12 +86,10 @@ function NavLink({
   return (
     <Link
       href={href as Route}
-      // min-w-24 (6rem / 96px) + justify-center keeps the nav
-      // row visually consistent regardless of label length
-      // ("Feeds" is 5 chars, "Articles" is 8 -- without a
-      // min-width the buttons fan out at the top of the bar, which
-      // reads as a misalignment on a polished header).
-      className="inline-flex min-w-24 items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-surface hover:text-foreground"
+      // min-w-24 keeps the visual rhythm; min-h-6 keeps
+      // each nav link at the WCAG 2.2 AA 24px target-size
+      // floor when the header wraps on narrow viewports.
+      className="inline-flex min-h-6 min-w-24 items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-surface hover:text-foreground"
     >
       {icon} {children}
     </Link>
