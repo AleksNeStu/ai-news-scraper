@@ -133,7 +133,29 @@
     "empty": "No subscriptions yet.",
     "itemCount": "{count, plural, one {# item} other {# items}}",
     "pollNow": "Poll now",
-    "unsubscribe": "Unsubscribe"
+    "unsubscribe": "Unsubscribe",
+    "importPageTitle": "Import feeds from OPML",
+    "importInstructions": "Upload an OPML file exported from Feedly, Inoreader, or another RSS reader.",
+    "importFileLabel": "OPML file",
+    "importParseButton": "Parse file",
+    "importSelectAll": "Select all",
+    "importSelectNone": "Deselect all",
+    "importSelectedCount": "{selected} of {total} selected",
+    "importSubmit": "Subscribe to selected",
+    "importSubmitting": "Subscribing…",
+    "importMalformed": "OPML file is malformed. Please check the file and try again.",
+    "importPreviewEmpty": "No feeds with `xmlUrl` found in this OPML file.",
+    "importResultHeading": "Import complete",
+    "importResult": {
+      "created": "{n, plural, one {# new feed} other {# new feeds}}",
+      "duplicates": "{n, plural, one {# duplicate} other {# duplicates}}",
+      "failed": "{n, plural, one {# failed} other {# failed}}",
+      "viewAll": "View your feeds"
+    },
+    "importFailedItem": "{title} — {reason}",
+    "importOverLimit": "Too many feeds (max {max}). Try splitting the file.",
+    "importFromFeedsPage": "Import OPML",
+    "importCheckboxLabel": "Subscribe to {title}"
   },
   "Scrape": {
     "pageTitle": "Scrape a URL",

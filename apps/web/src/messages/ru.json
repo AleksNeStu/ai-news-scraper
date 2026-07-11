@@ -133,7 +133,29 @@
     "empty": "Подписок пока нет.",
     "itemCount": "{count, plural, one {# запись} few {# записи} many {# записей} other {# записей}}",
     "pollNow": "Проверить сейчас",
-    "unsubscribe": "Отписаться"
+    "unsubscribe": "Отписаться",
+    "importPageTitle": "Импорт лент из OPML",
+    "importInstructions": "Загрузите OPML-файл, экспортированный из Feedly, Inoreader или другого RSS-читалки.",
+    "importFileLabel": "OPML-файл",
+    "importParseButton": "Разобрать файл",
+    "importSelectAll": "Выбрать все",
+    "importSelectNone": "Снять все",
+    "importSelectedCount": "Выбрано {selected} из {total}",
+    "importSubmit": "Подписаться на выбранные",
+    "importSubmitting": "Подписка…",
+    "importMalformed": "OPML-файл повреждён. Проверьте файл и попробуйте снова.",
+    "importPreviewEmpty": "В этом OPML-файле не найдено лент с `xmlUrl`.",
+    "importResultHeading": "Импорт завершён",
+    "importResult": {
+      "created": "{n, plural, one {# новая лента} few {# новые ленты} many {# новых лент} other {# новой ленты}}",
+      "duplicates": "{n, plural, one {# дубль} few {# дубля} many {# дублей} other {# дубля}}",
+      "failed": "{n, plural, one {# ошибка} few {# ошибки} many {# ошибок} other {# ошибки}}",
+      "viewAll": "Посмотреть ваши ленты"
+    },
+    "importFailedItem": "{title} — {reason}",
+    "importOverLimit": "Слишком много лент (макс. {max}). Разделите файл.",
+    "importFromFeedsPage": "Импорт OPML",
+    "importCheckboxLabel": "Подписаться на {title}"
   },
   "Scrape": {
     "pageTitle": "Собрать URL",
