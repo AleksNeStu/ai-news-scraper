@@ -39,3 +39,39 @@ export function stripLocalePrefix(pathname: string): string {
 export function withLocalePrefix(canonical: string, activeLocale: string): string {
   return `/${activeLocale}${canonical === '/' ? '' : canonical}`
 }
+
+/**
+ * Validate a `next` query-param target for post-login redirect.
+ * (Task #67) Returns a safe same-origin relative path, or `/` on rejection.
+ *
+ * Rejects (returns `/`):
+ *   - non-string input (null, undefined, numbers, objects, arrays)
+ *   - empty / whitespace-only
+ *   - absolute URLs (`http://...`, `https://...`)
+ *   - protocol-relative URLs (`//evil.com/...`) — browsers resolve these
+ *     against the page's scheme; attacker-controlled host
+ *   - backslash variants (`/\\evil.com`, `\\\\evil.com`) — some browsers
+ *     normalize `\` to `/` in URL contexts, so a `//` written with backslashes
+ *     can sneak past a naive startsWith('/') check
+ *   - anything not starting with `/` (e.g. `javascript:alert(1)`,
+ *     `evil.com/foo`)
+ *
+ * Accepts (returns the trimmed value):
+ *   - `/`, `/en`, `/en/dashboard`, `/ru/articles/123`
+ *   - `/../../admin` — relative traversal is the consumer's policy, not ours;
+ *     the path itself stays same-origin so a browser-side navigation lands on
+ *     an app-internal route, not an attacker host.
+ *
+ * Threat model + ADR: see `.agent/adr/021-open-redirect-prevention.md` (local-only).
+ * AC checklist: see `docs/security/open-redirect-next-param.md`.
+ */
+export function validateNextTarget(input: unknown): string {
+  if (typeof input !== 'string') return '/'
+  const v = input.trim()
+  if (!v) return '/'
+  if (!v.startsWith('/')) return '/'
+  if (v.startsWith('//')) return '/'
+  if (v.startsWith('/\\')) return '/'
+  if (v.startsWith('\\\\')) return '/'
+  return v
+}

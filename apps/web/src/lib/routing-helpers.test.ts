@@ -20,7 +20,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { stripLocalePrefix, withLocalePrefix } from './routing-helpers'
+import { stripLocalePrefix, validateNextTarget, withLocalePrefix } from './routing-helpers'
 
 describe('stripLocalePrefix', () => {
   it('strips /en/ from a deep path', () => {
@@ -86,5 +86,82 @@ describe('withLocalePrefix', () => {
       const out = withLocalePrefix('/login', locale)
       expect(out, `${locale} must produce a prefixed URL`).toMatch(/^\/(en|ru)\//)
     }
+  })
+})
+
+describe('validateNextTarget', () => {
+  // Acceptance criteria: Task #67 (open-redirect defense-in-depth).
+  // Source of truth: docs/security/open-redirect-next-param.md.
+
+  // Protocol-relative URLs (//host/path) — browsers resolve against scheme.
+  it('rejects protocol-relative //', () => {
+    expect(validateNextTarget('//evil.com/phish')).toBe('/')
+  })
+
+  // Backslash variants — some browsers normalize \ to /, bypassing startsWith('/').
+  it('rejects backslash-protocol-relative /\\', () => {
+    expect(validateNextTarget('/\\evil.com/phish')).toBe('/')
+  })
+  it('rejects double-backslash protocol-relative \\\\', () => {
+    expect(validateNextTarget('\\\\evil.com/phish')).toBe('/')
+  })
+
+  // Absolute URLs.
+  it('rejects absolute http URL', () => {
+    expect(validateNextTarget('http://evil.com/phish')).toBe('/')
+  })
+  it('rejects absolute https URL', () => {
+    expect(validateNextTarget('https://evil.com/phish')).toBe('/')
+  })
+
+  // Scheme injection — no leading /, browser would treat as `javascript:` URL.
+  it('rejects scheme-injection javascript:', () => {
+    expect(validateNextTarget('javascript:alert(1)')).toBe('/')
+  })
+
+  // Missing leading slash.
+  it('rejects missing-leading-slash', () => {
+    expect(validateNextTarget('evil.com/phish')).toBe('/')
+  })
+
+  // Relative traversal — same-origin; consumer canonicalizes.
+  it('allows relative traversal (consumer policy)', () => {
+    expect(validateNextTarget('/../../admin')).toBe('/../../admin')
+  })
+
+  // Valid forms — must pass through unchanged (with trim).
+  it('allows locale-prefixed path', () => {
+    expect(validateNextTarget('/en/dashboard')).toBe('/en/dashboard')
+    expect(validateNextTarget('/ru/articles/123')).toBe('/ru/articles/123')
+  })
+  it('allows bare locale', () => {
+    expect(validateNextTarget('/en')).toBe('/en')
+    expect(validateNextTarget('/ru')).toBe('/ru')
+  })
+  it('allows root', () => {
+    expect(validateNextTarget('/')).toBe('/')
+  })
+
+  // Empty / nullish / non-string — fall back to /.
+  it('returns root for empty string', () => {
+    expect(validateNextTarget('')).toBe('/')
+  })
+  it('returns root for whitespace-only', () => {
+    expect(validateNextTarget('   ')).toBe('/')
+  })
+  it('returns root for nullish input', () => {
+    expect(validateNextTarget(null)).toBe('/')
+    expect(validateNextTarget(undefined)).toBe('/')
+  })
+  it('returns root for non-string input', () => {
+    expect(validateNextTarget(42)).toBe('/')
+    expect(validateNextTarget({})).toBe('/')
+    expect(validateNextTarget([])).toBe('/')
+    expect(validateNextTarget(true)).toBe('/')
+  })
+
+  // Trims whitespace on valid input.
+  it('trims whitespace from valid paths', () => {
+    expect(validateNextTarget('  /en/dashboard  ')).toBe('/en/dashboard')
   })
 })

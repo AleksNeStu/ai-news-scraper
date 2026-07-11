@@ -1,7 +1,7 @@
 import createMiddleware from 'next-intl/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 import { routing } from '@/i18n/routing'
-import { stripLocalePrefix, withLocalePrefix } from '@/lib/routing-helpers'
+import { stripLocalePrefix, validateNextTarget, withLocalePrefix } from '@/lib/routing-helpers'
 
 /**
  * Dev auth bypass — see DEV_AUTH_BYPASS_USER below.
@@ -203,7 +203,12 @@ export function middleware(req: NextRequest) {
     // including its locale prefix, so the post-login redirect lands
     // them back on e.g. /ru/dashboard.
     const nextTarget = withLocalePrefix(canonical === '/' ? '/' : canonical, activeLocale)
-    loginUrl.searchParams.set('next', nextTarget)
+    // Defense-in-depth against open-redirect (Task #67 / ADR-021): even though
+    // today's login page hardcodes `/`, validate `next` here so any future
+    // consumer (loginAction, share-link flows, dashboard deep-links) can trust
+    // the value as a same-origin relative path.
+    const safeNext = validateNextTarget(nextTarget)
+    loginUrl.searchParams.set('next', safeNext)
     return NextResponse.redirect(loginUrl)
   }
 
