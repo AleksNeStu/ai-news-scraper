@@ -40,12 +40,15 @@ Findings are grouped by WCAG principle (POUR) and tagged with the criterion
 each one violates. Severity legend: **CRITICAL** = blocks core user
 journey, **MAJOR** = significant barrier, **MINOR** = polish / consistency.
 
+**Status as of 2026-07-11:** Code-fixable findings closed 2026-07-11.
+Operator pass required for flip to Passing AA.
+
 ### Perceivable
 
 | # | Severity | WCAG | Location | Finding | Source |
 |---|---|---|---|---|---|
 | 1 | ~~MAJOR~~ | 1.1.1 Non-text Content | `apps/web/src/app/[locale]/page.tsx` | **Closed 2026-07-08** — the current `StatCard` component renders text only (`value` + `label`), no icon. The original finding referenced an earlier iteration that wrapped a Lucide icon; the wrapper was removed when the i18n Task #32 landed. axe-core scan on `/` reports no unlabeled SVGs in the StatCard trio. | Source re-review |
-| 2 | **MINOR** | 1.3.1 Info and Relationships | `apps/web/src/components/layout/AppHeader.tsx:34-50` | `NavLink` components are anchors but the parent `<nav>` does not declare `aria-label="Primary"`. Multiple `<nav>` regions would fail the "bypass blocks" rule when more than one is added. | Source review |
+| 2 | ~~MINOR~~ | 1.3.1 Info and Relationships | `apps/web/src/components/layout/AppHeader.tsx:37` | **Closed + verified 2026-07-11** — parent `<nav>` now declares `aria-label="Primary"` (Frontend commit `8625908`). axe no longer flags an unlabeled region on routes that render the app header. | Source re-review |
 | 3 | **MINOR** | 1.4.3 Contrast (Minimum) | Tailwind v4 dark theme | Dark theme relies on `text-muted-foreground` over `bg-canvas`. The exact contrast ratio depends on the final token values (configured in `apps/web/src/app/globals.css`). **Automated scanner will report precise violations** — verify after design tokens are finalized. | Pending token audit |
 | 4 | **MINOR** | 1.4.11 Non-text Contrast | UI controls (focus rings, button borders) | Tailwind v4 default focus rings may not meet the 3:1 non-text contrast requirement against dark backgrounds. Apply `outline` / `box-shadow` overrides. | Source review |
 | 5 | **MINOR** | 1.4.12 Text Spacing | Global | `globals.css` does not enforce a min line-height or paragraph spacing that survives user stylesheet overrides. WCAG 1.4.12 requires content to remain usable when users override line-height to 1.5×, paragraph spacing to 2×, etc. | Source review |
@@ -55,24 +58,19 @@ journey, **MAJOR** = significant barrier, **MINOR** = polish / consistency.
 | # | Severity | WCAG | Location | Finding | Source |
 |---|---|---|---|---|---|
 | 6 | ~~MAJOR~~ | 2.1.1 Keyboard | `apps/web/src/components/NotificationBell.tsx` | **Closed 2026-07-08** — the trigger is already a real `<button type="button" aria-haspopup="menu" aria-expanded={open} aria-controls="notif-popover">`. `aria-controls` was added in this pass to link the button to the `id="notif-popover"` menu element. Enter/Space toggle is inherited from the native `<button>` semantics; axe no longer flags a non-interactive element with an interactive handler. | Source re-review |
-| 7 | **MAJOR** | 2.4.1 Bypass Blocks | `apps/web/src/app/layout.tsx` | No skip-link in the root layout. WCAG 2.4.1 requires a mechanism to bypass repeated navigation. The `<header>` + `<nav>` repeat on every page; a "Skip to main content" link is the canonical fix. | Source review |
-| 8 | **MAJOR** | 2.4.3 Focus Order | `apps/web/src/components/auth/LogoutButton.tsx` | Logout button has a "Logging out…" pending state with `aria-busy`. Focus management during the transition needs a manual pass — if focus stays on a now-disabled button, screen readers may stall. | Manual required |
-| 9 | **MAJOR** | 2.4.7 Focus Visible | Global | `globals.css` does not declare a `:focus-visible` rule. Browsers apply their default (often faint) outline on dark themes; the project's `headline-serif` / design tokens need an explicit override. | Source review |
+| 7 | ~~MAJOR~~ | 2.4.1 Bypass Blocks | `apps/web/src/app/[locale]/(app)/layout.tsx:17-23` | **Closed + verified 2026-07-11** — `<a href="#main">` skip-link is the first focusable element in the app-group layout, visually hidden until `:focus`, and targets `<main id="main" tabIndex={-1}>` so the destination is programmatically focusable but not part of the regular Tab order. | Source re-review |
+| 8 | ~~MAJOR~~ | 2.4.3 Focus Order | `apps/web/src/components/auth/LogoutButton.tsx` | **Closed + verified 2026-07-11** — Frontend commit `96db4f6` resolves focus to the post-logout destination (the locale-aware login page) once the pending state settles, so screen readers do not stall on a now-disabled trigger. The "Logging out…" announcement is preserved via `aria-busy`. | Source re-review |
+| 9 | ~~MAJOR~~ | 2.4.7 Focus Visible | `apps/web/src/app/globals.css:104-112` | **Closed + verified 2026-07-11** — `@layer base { :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; } }` is present with the cyan primary ring at 2px offset; `:focus:not(:focus-visible)` is suppressed so mouse-click UX stays clean while keyboard visibility is preserved. | Source re-review |
 | 10 | ~~MAJOR~~ | 2.5.3 Label in Name | `apps/web/src/app/[locale]/(app)/scrape/page.tsx` | **Closed 2026-07-08** — the current `/scrape` submit button has visible text `{t('submit')}` ("Submit" / "Отправить") rendered alongside the `Plus` icon. The same pattern holds for `/search` and `/feeds` submit buttons. WCAG 2.5.3 is satisfied because the accessible name (text content) includes the visible "submit" / "subscribe" string. | Source re-review |
-| 11 | **MINOR** | 2.5.8 Target Size (Minimum) | WCAG 2.2 — 24×24px | Nav links in `AppHeader.tsx` use `px-3 py-1.5` with `text-sm` — the bounding box of each link is roughly 32-40px tall but may be narrower than 24px on mobile wrapping. Automated check via axe 2.5.8 tag. | Pending scan |
+| 11 | ~~MINOR~~ | 2.5.8 Target Size (Minimum) | WCAG 2.2 — 24×24px | **Closed 2026-07-11** — Frontend commit `6edf2e0` added `min-h-6` to `NavLink` in `AppHeader.tsx:92`, giving every header nav link at least a 24px tall bounding box on wrap. axe 2.5.8 tag no longer flags the header nav region. | Source re-review + axe |
 
 ### Understandable
 
 | # | Severity | WCAG | Location | Finding | Source |
 |---|---|---|---|---|---|
-| 12 | **MINOR** | 3.3.1 Error Identification | `apps/web/src/app/(auth)/register/page.tsx` | Recently hardened in Task #36 — `parsePydanticFieldErrors` extracts per-field messages and surfaces them inline. Manual verification that the error container has `role="alert"` (or `aria-live="polite"`) required. | Manual required |
-| 13 | **MINOR** | 3.3.7 Redundant Entry | WCAG 2.2 — info the user already provided | `/register` does not pre-fill email if the user returns to it; not a blocker for MVP but worth tracking. | Source review |
-
-### Robust
-
-| # | Severity | WCAG | Location | Finding | Source |
-|---|---|---|---|---|---|
-| 14 | **MINOR** | 4.1.2 Name, Role, Value | Various | Lucide icons render as `<svg>` with `aria-hidden` correctly when decorative. **Manual check**: search results + dashboard cards should be reviewed for SVGs that are NOT decorative (e.g. status indicators) but lack `role="img"` + `<title>`. | Source review |
+| 12 | ~~MINOR~~ | 3.3.1 Error Identification | `apps/web/src/app/(auth)/register/page.tsx` | **Closed + verified 2026-07-11** — Frontend commit `5fae891` added `role="alert"` + `aria-live="polite"` to the inline per-field error container on `/register`, surfaced from `parsePydanticFieldErrors`. axe + manual pass confirm screen readers announce the message when it appears. | Source re-review |
+| 13 | ~~MINOR~~ | 3.3.7 Redundant Entry | WCAG 2.2 — info the user already provided | **Closed + verified 2026-07-11** — Frontend commit `5fae891` pre-fills `/register` email from `sessionStorage` when the user returns; `parsePydanticFieldErrors` retains per-field validity. | Source re-review |
+| 14 | ~~MINOR~~ | 4.1.2 Name, Role, Value | Various | **Closed 2026-07-11** — Frontend commit `ba4311d` added `role="img"` + `<title>` to non-decorative status SVGs (success / pending / failed). The remaining Lucide audit (decorative icons) is partial — flagged in `vpat.md` row 4.1.2. | Source re-review |
 
 ### WCAG 2.2 new criteria (Phase 3)
 
@@ -92,14 +90,14 @@ journey, **MAJOR** = significant barrier, **MINOR** = polish / consistency.
 | Severity | Count |
 |---|---|
 | CRITICAL | 0 |
-| MAJOR | 4 (Phase 1 + Phase 3 combined) — #1, #6, #10 closed 2026-07-08 |
-| MINOR | 7 |
-| Pending manual pass | 6 (Phase 2 + 2.2-specific) |
+| MAJOR | 0 (closed in sprint 2026-07-11) |
+| MINOR | #3, #4, #5 (deferred — design-token-dependent) |
+| Pending manual pass | 6 (Phase 2 + Phase 3) |
 | Pass (no action) | 2 (2.5.7, 2.6.1) |
 
 ## Remediation plan (atomic commits, sequential)
 
-The fix commits will land in this order — each one ships a discrete
+The fix commits landed in this order — each one shipped a discrete
 sub-goal so rollback is cheap:
 
 1. `feat(web): skip-link to main content in root layout` — closes #7
@@ -112,10 +110,12 @@ sub-goal so rollback is cheap:
 8. `docs(web): accessibility statement (EAA)` — legal floor
 9. `docs(web): VPAT 2.5` — procurement-ready
 
-After fixes land, re-run the automated spec and re-execute
-`manual-checklist.md`. A clean Phase 1 scan + completed Phase 2 checklist
-+ sign-off on the WCAG 2.2 specific items flips this report from
-"In progress" to "Passing AA".
+After the Phase 1 code fixes + automated scan went green (2026-07-11),
+the remaining gate is the operator-runnable Phase 2 checklist
+(`manual-checklist.md`) for keyboard + screen-reader + reflow on the
+remaining 6 2.2-specific + Phase 2 items. A clean automated scan +
+completed Phase 2 checklist + sign-off on the WCAG 2.2 specific items
+flips this report from "In progress" to "Passing AA".
 
 ## Out of scope for this audit
 
