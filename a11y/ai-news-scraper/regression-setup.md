@@ -14,7 +14,7 @@ silent a11y rot AND new violations at PR time.
 
 ### Layer 1 — Automated CI gate (the build-time floor)
 
-`.github/workflows/a11y.yml` runs `@axe-core/playwright` against
+`.github/workflows/a11y.yml` runs `@axe-core/playwright` against 13
 representative templates on every PR. Severity-gated:
 
 - **`serious` + `critical` violations** = build fails.
@@ -22,16 +22,26 @@ representative templates on every PR. Severity-gated:
   operator triages on the next manual pass.
 
 The spec lives at `apps/web/e2e/a11y.spec.ts` and covers these
-representative templates:
+representative templates (all locale-prefixed per `next-intl`
+`localePrefix: 'as-needed'`; the bare paths shown in earlier
+revisions of this table resolve to the same templates via the
+middleware rewrite):
 
 | Route | Why representative |
 |---|---|
-| `/` | Server-rendered dashboard, fetches data, has hero section + stat cards. |
-| `/login` | Form + 429 cooldown timer (Task #36 UX). |
-| `/register` | Form + 422 mass-assignment error surfacing (Task #36 UX). |
-| `/articles` | List view + filter toolbar. |
-| `/unsubscribe` | One-click unsubscribe (RFC 8058) — public-facing. |
-| `/scrape` | URL paste + result — authenticated flow. |
+| `/en/login` | Public auth form + 429 cooldown timer. |
+| `/en/register` | Public registration form + 422 mass-assignment surfacing. |
+| `/en/unsubscribe` | One-click unsubscribe (RFC 8058) — public-facing. |
+| `/en` | Home page (top-pick + recent articles, AppHeader + skip-link). |
+| `/en/dashboard` | Tiered dashboard (must-read hero + recommended / worth-a-look). |
+| `/en/articles` | List view + filter toolbar. |
+| `/en/articles/123` | Article detail — dynamic segment, exercises the route shell. |
+| `/en/search` | Search results + filter state. |
+| `/en/scrape` | URL paste + result — authenticated flow. |
+| `/en/dashboard/brief` | Authenticated digest list. |
+| `/en/dashboard/brief/2026-01-15` | Digest detail — dynamic date segment. |
+| `/en/feeds` | Authenticated RSS subscriptions view. |
+| `/en/settings` | Authenticated user settings. |
 
 Each spec runs `AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa',
 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze()` and asserts zero
