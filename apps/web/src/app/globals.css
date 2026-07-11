@@ -109,4 +109,15 @@ body {
   :focus:not(:focus-visible) {
     outline: none;
   }
+  /* WCAG 1.4.12 Text Spacing (Task #27 #5). Spec:
+     a11y/ai-news-scraper/spec-text-spacing.md (2026-07-11).
+     :where() zeros specificity so user stylesheets override cleanly.
+     Excluded: input/select/button/textarea (breaks icon-button centering),
+     h1–h6 (display type uses tighter leading). */
+  :where(html, body, p, li, dd, td, blockquote, pre) {
+    line-height: 1.5;
+  }
+  :where(p, li, dd) {
+    margin-block-end: 2em;
+  }
 }
