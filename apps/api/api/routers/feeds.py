@@ -5,13 +5,23 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db.database import get_db
 from api.deps import get_current_user_id
 from api.models.feed import Feed
 from api.models.feed_item import FeedItem
-from api.schemas.feed import FeedCreate, FeedItemOut, FeedListResponse, FeedOut
+from api.schemas.feed import (
+    BulkImportFailure,
+    BulkImportRequest,
+    BulkImportResult,
+    FeedCreate,
+    FeedItemOut,
+    FeedListResponse,
+    FeedOut,
+    OpmlFeedRef,
+)
 from api.services.feed_parser import FeedParser
 
 logger = logging.getLogger(__name__)
@@ -96,6 +106,99 @@ async def delete_feed(
         raise HTTPException(status_code=404, detail="Feed not found")
     await db.delete(feed)
     await db.commit()
+
+
+@router.post("/bulk", response_model=BulkImportResult)
+async def bulk_import_feeds(
+    payload: BulkImportRequest,
+    user_id: UUID = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> BulkImportResult:
+    """Bulk-import RSS feeds.
+
+    Per Task #35 / ADR-024. Partial-success semantics: HTTP 200 with
+    ``{created, skipped_duplicates, failed[]}``. Per-item failures do
+    NOT fail the batch — invalid feeds land in ``failed`` with a
+    reason, duplicates in the request body bump
+    ``skipped_duplicates``, and races against another writer are
+    caught via the existing ``(user_id, feed_url)`` UNIQUE constraint.
+    """
+    urls = [str(f.xml_url) for f in payload.feeds]
+
+    # 1. Pre-fetch existing URLs in one query so we can skip them
+    #    without round-tripping per item.
+    existing_rows = await db.execute(
+        select(Feed.feed_url).where(
+            Feed.user_id == user_id,
+            Feed.feed_url.in_(urls),
+        )
+    )
+    existing = {row[0] for row in existing_rows.all()}
+
+    # 2. Partition request into dup / new / intra-request-dup.
+    seen_in_request: dict[str, None] = {}
+    to_create: list[OpmlFeedRef] = []
+    skipped_duplicates = 0
+    failed: list[BulkImportFailure] = []
+
+    for ref in payload.feeds:
+        url_str = str(ref.xml_url)
+        if url_str in existing:
+            skipped_duplicates += 1
+            continue
+        if url_str in seen_in_request:
+            failed.append(
+                BulkImportFailure(
+                    url=url_str, reason="Duplicate URL in same request"
+                )
+            )
+            continue
+        seen_in_request[url_str] = None
+        to_create.append(ref)
+
+    # 3. Parse + persist each new URL. Per-item failures (parse error,
+    #    network error, race) never fail the batch.
+    parser = FeedParser()
+    created_count = 0
+
+    for ref in to_create:
+        url_str = str(ref.xml_url)
+        try:
+            parsed = parser.parse(url_str)
+        except Exception:
+            failed.append(
+                BulkImportFailure(url=url_str, reason="Could not parse feed")
+            )
+            continue
+        if parsed is None:
+            failed.append(
+                BulkImportFailure(url=url_str, reason="Could not parse feed")
+            )
+            continue
+        feed = Feed(
+            user_id=user_id,
+            feed_url=url_str,
+            title=parsed.title,
+            description=parsed.description,
+        )
+        try:
+            db.add(feed)
+            await db.flush()
+            created_count += 1
+        except IntegrityError:
+            # Race: another request inserted the same URL between our
+            # SELECT and INSERT. Roll back this row only — keep the
+            # outer transaction alive for the rest of the batch.
+            await db.rollback()
+            skipped_duplicates += 1
+
+    await db.commit()
+
+    return BulkImportResult(
+        created=created_count,
+        skipped_duplicates=skipped_duplicates,
+        failed=failed,
+    )
 
 
 @router.post("/{feed_id}/poll", response_model=list[FeedItemOut])

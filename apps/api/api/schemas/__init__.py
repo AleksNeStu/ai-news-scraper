@@ -12,7 +12,16 @@ from api.schemas.search import (
     SearchResponse,
     SearchFilters,
 )
-from api.schemas.feed import FeedOut, FeedCreate, FeedListResponse, FeedItemOut
+from api.schemas.feed import (
+    FeedOut,
+    FeedCreate,
+    FeedListResponse,
+    FeedItemOut,
+    OpmlFeedRef,
+    BulkImportRequest,
+    BulkImportFailure,
+    BulkImportResult,
+)
 from api.schemas.auth import UserCreate, UserLogin, UserOut, AuthResponse
 from api.schemas.share import (
     ShareCreateRequest,
@@ -41,6 +50,10 @@ __all__ = [
     "FeedCreate",
     "FeedListResponse",
     "FeedItemOut",
+    "OpmlFeedRef",
+    "BulkImportRequest",
+    "BulkImportFailure",
+    "BulkImportResult",
     "UserCreate",
     "UserLogin",
     "UserOut",
