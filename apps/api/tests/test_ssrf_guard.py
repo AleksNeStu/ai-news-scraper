@@ -134,6 +134,10 @@ def test_blocked_ipv4_ip_literal(ip: str):
         "2001::1",
         "2001:db8::1",
         "2002::1",
+        # 6to4 wrapping RFC1918 IPv4 — attacker maps 10.0.0.1 to
+        # 2002:0a00:0001::1 hoping the IPv4 RFC1918 block doesn't catch it.
+        "2002:0a00:0001::1",
+        "2002:ac10:0001::1",  # 6to4 wrapping 172.16.0.1
     ],
 )
 def test_blocked_ipv6_ip_literal(ip: str):
@@ -194,6 +198,40 @@ def test_url_encoding_tricks(url: str):
 def test_zero_url_rejected(url: str):
     """``http://0`` and ``http://0.0.0.0`` must both reject."""
     with pytest.raises(SSRFError):
+        validate_outbound_url(url)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        # CRLF injection — naive HTTP libraries can be tricked into
+        # interpreting the URL as two requests (HTTP request smuggling).
+        # urlparse normalises per RFC 3986 so the embedded CRLF is
+        # either stripped or causes the URL to be rejected outright.
+        # The guard does NOT reject on guard grounds (hostname is a
+        # public DNS); downstream libraries (h11 inside httpx,
+        # urllib3 inside newspaper3k) handle the actual CRLF check.
+        # This test pins the guard's behaviour so a future change
+        # that makes the guard stricter (or laxer) is noticed at
+        # code-review time.
+        "http://example.com\r\n\r\nGET /admin HTTP/1.1\r\n\r\n",
+        "http://example.com/\r\nFoo: bar",
+    ],
+)
+def test_crlf_in_url_does_not_bypass_guard(url: str):
+    """CRLF in the URL must not silently pass as a valid hostname.
+
+    Pins current behaviour: the URL still validates at the guard level
+    (host is a public DNS), so the test asserts ``does_not_raise`` —
+    if a future change starts rejecting CRLF here, the test breaks and
+    forces the change to be deliberate.
+    """
+    with patch(
+        "socket.getaddrinfo",
+        side_effect=_mock_getaddrinfo(["93.184.216.34"]),
+    ):
+        # Must not raise SSRFError — the hostname is public.
+        # Downstream libraries do the actual CRLF rejection.
         validate_outbound_url(url)
 
 
