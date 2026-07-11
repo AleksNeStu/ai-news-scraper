@@ -34,6 +34,7 @@
  *     only fires on browser-side action transport failures (network).
  */
 
+import type { MouseEvent } from 'react'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { LogOut } from 'lucide-react'
@@ -45,9 +46,11 @@ export function LogoutButton() {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function onClick() {
+  async function onClick(event: MouseEvent<HTMLButtonElement>) {
+    const button = event.currentTarget
     setError(null)
     setPending(true)
+    button.blur()
     try {
       // ``logoutAction`` returns ``never`` on success (it calls
       // ``redirect('/login')``), or a discriminated error object

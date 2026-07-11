@@ -52,6 +52,26 @@ describe('LogoutButton — server-confirmed logout (ADR-015 H3)', () => {
     })
   })
 
+  it('does not leave focus on the disabled pending button after click', async () => {
+    // Hang the action so we can observe the pending state.
+    logoutMock.mockImplementation(
+      () => new Promise(() => {}) // never resolves
+    )
+
+    renderLogout()
+    const button = screen.getByRole('button', { name: /logout/i })
+    button.focus()
+    expect(document.activeElement).toBe(button)
+
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      const pendingButton = screen.getByRole('button', { name: /logging out/i })
+      expect(pendingButton).toBeDisabled()
+      expect(document.activeElement).not.toBe(pendingButton)
+    })
+  })
+
   it('surfaces the server-error result inline and re-enables the button', async () => {
     logoutMock.mockResolvedValue({
       ok: false,
