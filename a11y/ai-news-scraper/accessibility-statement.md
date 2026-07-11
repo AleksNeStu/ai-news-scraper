@@ -1,6 +1,6 @@
 # Accessibility statement — ai-news-scraper
 
-**Effective date:** 2026-07-07
+**Effective date:** 2026-07-11
 **Operator:** AleksNeStu (private operator; repo at
 `github.com/AleksNeStu/ai-news-scraper`).
 **Conformance target:** WCAG 2.1 AA (legal floor under EN 301 549
@@ -33,16 +33,16 @@ error shapes are documented separately in the API's
 ## Conformance status
 
 **Partial — actively working toward full AA conformance.** As of
-2026-07-07:
+2026-07-11:
 
 | Area | Status | Notes |
 |---|---|---|
 | Semantic HTML structure | Pass | `<html lang>`, `<header>`, `<nav>`, `<main>`, `<section>`, `<h1>`–`<h6>` used per template. |
 | Form labels | Pass | Every input has a programmatic label. |
 | Keyboard navigation | Partial | Phase 2 manual pass in progress; see `manual-checklist.md`. |
-| Focus indicators | In progress | Defaults are weak on dark theme; explicit `:focus-visible` rule pending. |
-| Skip-link | Pending | WCAG 2.4.1 (finding #7 in `audit-report.md`). |
-| Color contrast | Pending | Depends on final design tokens in `globals.css`. |
+| Focus indicators | Pass | `:focus-visible` rule confirmed in `globals.css` (2px primary ring, 2px offset). |
+| Skip-link | Pass | `<a href="#main">` ships as first focusable in the app-group layout. |
+| Color contrast | Pending — design tokens | Depends on final design tokens in `globals.css` (finding #3). |
 | Screen-reader announcement of state changes | Pass | Login cooldown timer + scrape status use `aria-live`. |
 | Accessible authentication | Pass (AA) | No CAPTCHA / cognitive function tests (WCAG 3.3.8). Passkeys are a future-work item. |
 | Text spacing (1.4.12) | Pending | Manual reflow check required. |
@@ -54,22 +54,29 @@ The current build has these accessibility gaps, listed in priority
 order. Full remediation plan and per-finding repro steps are in
 `audit-report.md`.
 
-1. **No skip-link in the root layout** (WCAG 2.4.1) — affects every
-   authenticated page. Fix commit pending.
+1. **No skip-link in the root layout** (WCAG 2.4.1) — **Pass**.
+   `<a href="#main">` ships as the first focusable element in
+   `apps/web/src/app/[locale]/(app)/layout.tsx`, targeting
+   `<main id="main" tabIndex={-1}>` (Frontend commit landed 2026-07-08).
 2. **Default `:focus-visible` indicator is faint on the dark theme**
-   (WCAG 2.4.7, 2.4.11, 2.4.13) — affects every interactive element.
-   Fix commit pending.
+   (WCAG 2.4.7, 2.4.11, 2.4.13) — **Pass**. Explicit `:focus-visible`
+   rule shipped in `apps/web/src/app/globals.css` using the cyan
+   primary token at 2px outline + 2px offset (Frontend commit landed
+   2026-07-08).
 3. **NotificationBell uses a non-button toggle** (WCAG 4.1.2,
-   finding #6) — affects all users, not just screen-reader users
-   (no keyboard equivalent). Fix commit pending.
+   finding #6) — **Pass (closed 2026-07-08)**. The trigger is now a
+   native `<button type="button" aria-haspopup="menu">` with
+   `aria-expanded` + `aria-controls` linking it to `id="notif-popover"`.
 4. **Some icon-only buttons may not satisfy Label in Name** (WCAG
-   2.5.3, finding #10) — voice-control users may not be able to
-   activate them. Source review flagged candidates; manual + automated
-   re-check pending.
-5. **Color contrast under audit** (WCAG 1.4.3, finding #3) — depends
-   on the final design tokens. The dark theme uses
-   `text-muted-foreground` against `bg-canvas`; the ratio is not yet
-   measured against the final token values.
+   2.5.3, finding #10) — **Pass (closed 2026-07-08)**. The audit's
+   candidate cases (`/scrape`, `/search`, `/feeds` submit buttons)
+   all render visible text alongside the icon; the accessible name
+   matches the visible string.
+5. **Color contrast under audit** (WCAG 1.4.3, finding #3) —
+   **Pending — depends on final design tokens** (deferred to next
+   sprint). The dark theme uses `text-muted-foreground` against
+   `bg-canvas`; the ratio is not yet measured against the final token
+   values.
 
 ## How we test
 
@@ -119,3 +126,4 @@ will:
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-07 | Initial statement; conformance is partial, automated floor + manual checklist in place. |
+| 0.2 | 2026-07-11 | Code-fixable findings closed (skip-link, focus indicators, NotificationBell keyboard parity, Label in Name candidates); conformance status table + Known limitations updated to reflect sprint 2026-07-11. |
