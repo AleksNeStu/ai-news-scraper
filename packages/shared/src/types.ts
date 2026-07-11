@@ -519,3 +519,55 @@ export interface SimilarityResponse {
    * the implementation computes it cheaply; `null` if absent. */
   euclidean?: number | null;
 }
+
+// ============================================================================
+// OPML bulk import (Task #35, ADR-024)
+// ============================================================================
+//
+// User uploads an OPML file; the web client parses it via DOMParser, then POSTs
+// the extracted feed references to `POST /feeds/bulk`. Backend dedupes against
+// existing feeds, validates each URL via `FeedParser`, creates the survivors
+// in one statement, and returns a partial-success summary. See ADR-024 for
+// dedup strategy, partial-success semantics, parse-failure policy, OPML
+// parsing location (browser), and scheduler integration.
+
+/** Single feed reference parsed from OPML by the web client.
+ * Mirrors the Pydantic `OpmlFeedRef` in `apps/api/api/schemas/feed.py`. */
+export interface OpmlFeedRef {
+  /** RSS/Atom feed URL. Required; validated server-side as `HttpUrl`. */
+  xmlUrl: string;
+  /** Display title from the OPML `<outline>` `title`/`text` attr; optional. */
+  title?: string;
+  /** OPML outline folder (e.g. "Tech > AI"). Discarded by the v1 backend;
+   * plumbed through for forward-compat with v2 category grouping. */
+  category?: string;
+}
+
+/** Body of `POST /feeds/bulk`. The server caps `feeds.length` at 500 and
+ * rejects empty arrays with 422. Mirrors the Pydantic `BulkImportRequest`
+ * in `apps/api/api/schemas/feed.py`. */
+export interface BulkImportRequest {
+  feeds: OpmlFeedRef[];
+}
+
+/** One feed in the bulk import that could not be created (parse failure,
+ * network error, or DB error). Mirrors the Pydantic `BulkImportFailure`
+ * in `apps/api/api/schemas/feed.py`. */
+export interface BulkImportFailure {
+  url: string;
+  /** Backend-provided, generic — does not leak internal exception text. */
+  reason: string;
+}
+
+/** Response body for `POST /feeds/bulk`. Always HTTP 200 on shape-valid
+ * input; per-item failures land in `failed` rather than failing the batch
+ * (ADR-024 §24.2). Mirrors the Pydantic `BulkImportResult` in
+ * `apps/api/api/schemas/feed.py`. */
+export interface BulkImportResult {
+  /** Number of new `Feed` rows created in this call. */
+  created: number;
+  /** URLs in the request that already existed for this user; no-op for them. */
+  skipped_duplicates: number;
+  /** Per-URL failures (parse error, network error, DB error). */
+  failed: BulkImportFailure[];
+}
