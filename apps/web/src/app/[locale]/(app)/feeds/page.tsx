@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Rss, Plus, Trash2, Loader2, RefreshCw } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { api, ApiError } from '@/lib/api'
 import type { FeedListResponse, FeedItemOut, FeedOut } from '@ai-news-scraper/shared'
 import { useRouter } from 'next/navigation'
@@ -100,6 +101,15 @@ export default function FeedsPage() {
         </div>
         {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
       </form>
+
+      <div className="mt-3 flex justify-end">
+        <Link
+          href="/feeds/import"
+          className="text-sm text-muted-foreground underline hover:text-primary"
+        >
+          {t('importFromFeedsPage')}
+        </Link>
+      </div>
 
       {pollResult && (
         <p className="mt-4 text-sm text-muted-foreground">
