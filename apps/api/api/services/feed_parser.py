@@ -8,6 +8,8 @@ from dataclasses import dataclass
 import feedparser
 
 from api.config import get_settings
+from api.exceptions import SSRFError
+from api.services.ssrf_guard import validate_outbound_url
 
 logger = logging.getLogger(__name__)
 _settings = get_settings()
@@ -38,6 +40,16 @@ class FeedParser:
 
     def parse(self, feed_url: str) -> ParsedFeed | None:
         """Return a ParsedFeed or None on error."""
+        # SSRF guard runs first (per ADR-025). A blocked URL is
+        # treated as a "soft" failure here — returning ``None``
+        # preserves the partial-success contract used by the bulk
+        # route, which surfaces per-URL failures in its ``failed``
+        # list rather than failing the whole batch.
+        try:
+            validate_outbound_url(feed_url)
+        except SSRFError as exc:
+            logger.warning("SSRF guard blocked feed URL %s: %s", feed_url, exc.detail)
+            return None
         try:
             parsed = feedparser.parse(feed_url, agent=self.user_agent)
         except Exception as e:

@@ -83,6 +83,28 @@ class ValidationError(AppException):
     title = "Validation error"
 
 
+class SSRFError(ValidationError):
+    """Outbound URL targets a private/loopback/link-local address.
+
+    Per ADR-025 (``.agent/adr/025-ssrf-guard.md``) and Task #69. Raised
+    by :func:`api.services.ssrf_guard.validate_outbound_url` when the
+    URL is malformed, uses a non-HTTP(S) scheme, or resolves to an
+    address in the block list (RFC1918, loopback, link-local, cloud
+    metadata, IPv6 ULA, etc.).
+
+    Subclasses ``ValidationError`` (400, not 403) because the request
+    is shape-acceptable from the client's perspective; the block is a
+    domain policy, not an auth decision. ``error_code = "ssrf_blocked"``
+    is the machine-readable discriminator. ``detail`` is generic and
+    never echoes the IP / CIDR — keeps the error from being an oracle
+    for the block list.
+    """
+
+    status_code = 400
+    error_code = "ssrf_blocked"
+    title = "Outbound URL blocked by SSRF policy"
+
+
 class AuthenticationError(AppException):
     """Caller is not authenticated (missing / invalid / expired token)."""
 
@@ -174,6 +196,7 @@ __all__ = [
     "AppException",
     "NotFoundError",
     "ValidationError",
+    "SSRFError",
     "AuthenticationError",
     "AuthorizationError",
     "UpstreamError",
