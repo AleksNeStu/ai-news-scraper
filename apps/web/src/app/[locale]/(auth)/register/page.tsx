@@ -23,7 +23,7 @@
  * locale is passed into `registerAction` as the third arg.
  */
 
-import { useActionState, useEffect, useRef } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Newspaper } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
@@ -35,10 +35,24 @@ export default function RegisterPage() {
   const t = useTranslations('Auth.Register')
   const locale = useLocale()
   const [state, action, pending] = useActionState(
-    async (prev: RegisterState, formData: FormData) => registerAction(prev, formData, locale),
+    async (prev: RegisterState, formData: FormData) => {
+      const result = await registerAction(prev, formData, locale)
+      if (result.ok && typeof window !== 'undefined') {
+        const email = String(formData.get('email') ?? '').trim()
+        if (email) {
+          sessionStorage.setItem('last_registered_email', email)
+        }
+      }
+      return result
+    },
     initialState
   )
+  const [emailDefaultValue, setEmailDefaultValue] = useState('')
   const errorRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    setEmailDefaultValue(sessionStorage.getItem('last_registered_email') ?? '')
+  }, [])
 
   // Move focus to the first error on render so screen-reader users hit it
   // immediately and keyboard users can correct without re-tabbing. Same
@@ -73,11 +87,15 @@ export default function RegisterPage() {
               type="email"
               required
               autoComplete="email"
+              key={emailDefaultValue}
+              defaultValue={emailDefaultValue}
               aria-invalid={hasFieldErrors && !!state.fieldErrors?.email ? true : undefined}
               className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none aria-invalid:border-destructive"
             />
             {hasFieldErrors && state.fieldErrors?.email && (
-              <p className="mt-1 text-xs text-destructive">{state.fieldErrors.email}</p>
+              <p role="alert" aria-live="polite" className="mt-1 text-xs text-destructive">
+                {state.fieldErrors.email}
+              </p>
             )}
           </div>
           <div>
@@ -95,7 +113,9 @@ export default function RegisterPage() {
               className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none aria-invalid:border-destructive"
             />
             {hasFieldErrors && state.fieldErrors?.password && (
-              <p className="mt-1 text-xs text-destructive">{state.fieldErrors.password}</p>
+              <p role="alert" aria-live="polite" className="mt-1 text-xs text-destructive">
+                {state.fieldErrors.password}
+              </p>
             )}
           </div>
           {(state.error || hasFieldErrors) && (
