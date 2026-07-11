@@ -1,7 +1,7 @@
 /**
  * Automated WCAG 2.1 AA + 2.2 AA gate for ai-news-scraper.
  *
- * Drives a headless Chromium against representative templates via
+ * Drives a headless Chromium against 13 representative templates via
  * Playwright + @axe-core/playwright. Severity-gated by CI: this spec
  * fails on `serious` + `critical` violations; `moderate` + `minor`
  * violations are logged via `console.warn` for triage.
@@ -69,6 +69,14 @@ function summarise(label: string, items: ReadonlyArray<AxeViolation>): string {
  * it's a template-level change) or document why it's covered by
  * another spec.
  *
+ * Scope matches the 13-route surface audited in
+ * ``a11y/ai-news-scraper/audit-report.md``:
+ *   - Public:   login, register, unsubscribe
+ *   - List/detail: dashboard, articles, articles/[id], search,
+ *     feeds, scrape
+ *   - Auth-only settings/digest: settings, dashboard/brief,
+ *     dashboard/brief/[date]
+ *
  * NOTE on locale prefix: the production app uses next-intl with
  * `localePrefix: 'as-needed'`. The bare paths (`/articles`, `/login`,
  * etc.) ALSO resolve via the middleware rewrite to `/en/...`, but the
@@ -78,15 +86,31 @@ function summarise(label: string, items: ReadonlyArray<AxeViolation>): string {
  * hit directly. Hitting the locale-prefixed URL renders the
  * [locale]/layout.tsx wrapper which sets `<html lang="en">` properly,
  * which is what the axe-core a11y gate requires.
+ *
+ * NOTE on dynamic segments: `/articles/[id]` and
+ * `/dashboard/brief/[date]` use sample values that exercise the route
+ * shell. With ``E2E_AUTH_COOKIE`` unset (the default in CI), the auth-
+ * required routes redirect to ``/en/login`` — the spec audits whatever
+ * the page lands on, so this is intentional coverage of both the
+ * redirect chain and the destination template.
  */
 const ROUTES: ReadonlyArray<{ path: string; name: string; requiresAuth: boolean }> = [
-  { path: '/en', name: 'dashboard', requiresAuth: true },
-  { path: '/en/articles', name: 'articles-list', requiresAuth: true },
-  { path: '/en/scrape', name: 'scrape-form', requiresAuth: true },
-  { path: '/en/search', name: 'search', requiresAuth: true },
+  // Public — no session needed.
   { path: '/en/login', name: 'login', requiresAuth: false },
   { path: '/en/register', name: 'register', requiresAuth: false },
   { path: '/en/unsubscribe', name: 'unsubscribe', requiresAuth: false },
+  // Authenticated — gate on E2E_AUTH_COOKIE in CI; redirects to
+  // /en/login otherwise, which the spec audits anyway.
+  { path: '/en', name: 'home', requiresAuth: true },
+  { path: '/en/dashboard', name: 'dashboard', requiresAuth: true },
+  { path: '/en/articles', name: 'articles-list', requiresAuth: true },
+  { path: '/en/articles/123', name: 'articles-detail', requiresAuth: true },
+  { path: '/en/search', name: 'search', requiresAuth: true },
+  { path: '/en/scrape', name: 'scrape-form', requiresAuth: true },
+  { path: '/en/dashboard/brief', name: 'brief-list', requiresAuth: true },
+  { path: '/en/dashboard/brief/2026-01-15', name: 'brief-detail', requiresAuth: true },
+  { path: '/en/feeds', name: 'feeds', requiresAuth: true },
+  { path: '/en/settings', name: 'settings', requiresAuth: true },
 ]
 
 for (const route of ROUTES) {
