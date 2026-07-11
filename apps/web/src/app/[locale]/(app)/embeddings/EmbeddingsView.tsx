@@ -246,6 +246,7 @@ export function EmbeddingsView() {
                     )}
                   </span>
                   <span
+                    aria-label={badge.label}
                     className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${badge.className}`}
                     data-testid={`provider-${p.id}-badge`}
                   >

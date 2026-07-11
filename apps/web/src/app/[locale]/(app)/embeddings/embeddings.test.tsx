@@ -103,6 +103,8 @@ describe('<EmbeddingsView /> — provider picker (Task #34)', () => {
       expect(row).toBeInTheDocument()
       const expectedSelectable = p.supports_embed && p.key_configured
       expect(row.getAttribute('data-selectable')).toBe(expectedSelectable ? 'true' : 'false')
+      const badge = screen.getByTestId(`provider-${p.id}-badge`)
+      expect(badge).toHaveAttribute('aria-label', badge.textContent ?? '')
       if (expectedSelectable) {
         expect(row.hasAttribute('disabled')).toBe(false)
         expect(row.getAttribute('aria-disabled')).toBe('false')
