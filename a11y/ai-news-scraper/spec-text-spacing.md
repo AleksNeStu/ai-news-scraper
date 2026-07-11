@@ -35,9 +35,17 @@ non-text contrast) are token-gated — #5 is pure CSS.
 - **`<input>` and `<button>`** — **excluded** from `line-height`. Forcing
   line-height on form controls breaks the vertical centering of icon-only
   buttons and single-line inputs.
-- **`<h1>`–`<h6>`** — **excluded** from `line-height`. Headings use a
-  tighter typographic scale (the `text-balance` and `text-pretty` defaults
-  assume tighter leading for display type).
+- **`<h1>`–`<h6>`** — **excluded** from `line-height`. The exclusion is
+  safe under WCAG 1.4.12 regardless (the criterion only requires that
+  paragraph spacing survive overrides). The rationale for the exclusion
+  in our codebase is **visual**: display type wants tighter leading than
+  body. In practice, headings in this codebase lack an explicit
+  `leading-*` Tailwind utility (e.g. `headline-serif text-3xl` on
+  `apps/web/src/app/[locale]/(app)/articles/[id]/page.tsx:113`) and
+  inherit the body's `1.5` from `html`. That inherited `1.5` is still
+  WCAG-conformant — if a tighter display is desired later, add
+  `leading-tight` to the `headline-serif` utility class globally so the
+  rule stays in one place.
 - **`article` and sectioning roots** — not targeted; spacing is inherited
   via the paragraph rule.
 

@@ -51,7 +51,7 @@ Operator pass required for flip to Passing AA.
 | 2 | ~~MINOR~~ | 1.3.1 Info and Relationships | `apps/web/src/components/layout/AppHeader.tsx:37` | **Closed + verified 2026-07-11** — parent `<nav>` now declares `aria-label="Primary"` (Frontend commit `8625908`). axe no longer flags an unlabeled region on routes that render the app header. | Source re-review |
 | 3 | **MINOR** | 1.4.3 Contrast (Minimum) | Tailwind v4 dark theme | Dark theme relies on `text-muted-foreground` over `bg-canvas`. The exact contrast ratio depends on the final token values (configured in `apps/web/src/app/globals.css`). **Automated scanner will report precise violations** — verify after design tokens are finalized. | Pending token audit |
 | 4 | **MINOR** | 1.4.11 Non-text Contrast | UI controls (focus rings, button borders) | Tailwind v4 default focus rings may not meet the 3:1 non-text contrast requirement against dark backgrounds. Apply `outline` / `box-shadow` overrides. | Source review |
-| 5 | **MINOR** | 1.4.12 Text Spacing | Global | See `a11y/ai-news-scraper/spec-text-spacing.md` (2026-07-11). Spec defines `:where()`-scoped `line-height: 1.5` on `html, body, p, li, dd, td, blockquote, pre` and `margin-block-end: 2em` on `p, li, dd`, both inside `@layer base` in `apps/web/src/app/globals.css`. The `:where()` selector zeros specificity so user stylesheets override cleanly. Form controls and headings are excluded per spec §5. Closing this row once the Frontend commits the CSS; manual operator Phase 2.C sign-off references the new values. | Source review + spec |
+| 5 | ~~MINOR~~ | 1.4.12 Text Spacing | Global | **Closed + verified 2026-07-11** — Frontend commit `5cc04b8` adds `:where()`-scoped `line-height: 1.5` on `html, body, p, li, dd, td, blockquote, pre` and `margin-block-end: 2em` on `p, li, dd`, both inside `@layer base` in `apps/web/src/app/globals.css`. The `:where()` selector zeros specificity so user stylesheets override cleanly. Form controls and headings are excluded per spec §5. Phase 2.C operator sign-off still required to record the manual override-survival proof on `a11y/manual-checklist.md` line 186. | Source review + spec |
 
 ### Operable
 
@@ -91,7 +91,7 @@ Operator pass required for flip to Passing AA.
 |---|---|
 | CRITICAL | 0 |
 | MAJOR | 0 (closed in sprint 2026-07-11) |
-| MINOR | #3, #4, #5 (deferred — design-token-dependent) |
+| MINOR | #3, #4 (deferred — design-token-dependent) |
 | Pending manual pass | 6 (Phase 2 + Phase 3) |
 | Pass (no action) | 2 (2.5.7, 2.6.1) |
 

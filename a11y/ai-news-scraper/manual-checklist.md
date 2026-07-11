@@ -161,9 +161,11 @@ Computed panel):**
 
 - [ ] Open any article page (e.g. `/articles/[id]`). Inspect any
       `<p>` element.
-- [ ] Confirm computed `line-height` is `1.5` × font-size. For
-      example, if `font-size: 24px`, computed `line-height` should
-      read `36px` (= 24 × 1.5).
+- [ ] Confirm computed `line-height` is `1.5` × font-size. The
+      example values below assume the operator has bumped browser
+      font size to **24px** in step 9 above (`text-base` 16px in
+      Chrome dev tools, tailwind's default). With that font size,
+      computed `line-height` should read `36px` (= 24 × 1.5).
 - [ ] Confirm computed `margin-block-end` on the same `<p>` is
       `2em`. With `font-size: 24px`, the computed value should read
       `48px` (= 24 × 2).
@@ -184,6 +186,13 @@ Computed panel):**
       `textarea`.
 
 **User stylesheet override survival (WCAG 1.4.12 strongest signal):**
+
+> Note: `!important` is needed in the test override specifically to
+> defeat Tailwind Preflight's unlayered `html { line-height: 1.5 }`
+> (`node_modules/tailwindcss/preflight.css:28-30`). The new rule at
+> `@layer base` has zero specificity via `:where()` and would lose
+> to a user stylesheet's `(0,0,1)` selector even without `!important`,
+> so the `!important` here is purely to neutralize Preflight.
 
 - [ ] Chrome dev tools → Sources panel → left sidebar →
       **Overrides** tab → enable Local Overrides → create a new

@@ -117,6 +117,12 @@ body {
   :where(html, body, p, li, dd, td, blockquote, pre) {
     line-height: 1.5;
   }
+  /* The `html` selector above is technically redundant with Tailwind
+     Preflight's `html, :host { line-height: 1.5 }`, but kept here for
+     symmetry with the `p, li, dd, ...` rule and so a future maintainer
+     removing Tailwind still gets the WCAG 1.4.12 baseline. The
+     `p, li, dd, td, blockquote, pre` portion IS load-bearing — Preflight
+     does not set line-height on these elements specifically. */
   :where(p, li, dd) {
     margin-block-end: 2em;
   }
