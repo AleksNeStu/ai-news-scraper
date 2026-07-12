@@ -296,14 +296,16 @@ Each item below is a concrete symptom a deployer is likely to hit on first boot,
 - **Content Managers** — RSS auto-import, curation, light analytics.
 - **Developers / Data Scientists** — REST API, embedding playground, integration-friendly.
 
-## 📸 Demo (legacy Streamlit UI)
+## 📸 Demo
 
-The screenshots below are from the previous Streamlit UI (now removed). The new Next.js UI is at `localhost:3807` after `docker compose up`.
+The Next.js 15 web UI runs at `http://localhost:3807` after `docker compose up`.
 
-<div align="center">
-  <img src="demo/1.png" alt="Application Home Screen" width="80%" />
-  <p><em>Home screen</em></p>
-</div>
+After the stack is up, register an account and explore the four primary surfaces:
+
+- **Home** (`/en`) — dark-first overview with three stat cards (total articles, active feeds, indexed today) and the five most recent articles.
+- **Search** (`/en/search`) — semantic search across the ChromaDB vector store with filter facets (source, date, topic).
+- **Articles** (`/en/articles/:id`) — full article view with embedding similarity links.
+- **Feeds** (`/en/feeds`, `/en/feeds/import`) — RSS subscription management and OPML bulk import.
 
 ## 🤝 Contributing
 

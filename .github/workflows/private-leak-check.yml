@@ -31,10 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     # 10 minutes — the scan pipes every text tracked file through a bash
     # read-loop + grep. With the previous 5-minute budget the scan timed
-    # out once the repo crossed the ~18MB `demo/demo.gif` + 1.3MB of
-    # lockfile mass. Even with the binary/lockfile excludes below, leave
-    # headroom for the line-wrap pair-scan buffer (O(n) lines + O(n-1)
-    # pairs all loaded into bash memory).
+    # out once the repo crossed ~1.3MB of lockfile mass. Even with the
+    # lockfile excludes below, leave headroom for the line-wrap pair-scan
+    # buffer (O(n) lines + O(n-1) pairs all loaded into bash memory).
     timeout-minutes: 10
     steps:
       - name: checkout (full history)
@@ -50,18 +49,12 @@ jobs:
           # The script is reviewed manually; CI enforces the rule on
           # everything ELSE in the tracked tree.
           #
-          # Exclude the demo gif and PNGs (binary — bash read-loop is
-          # O(n) per byte and there's no regex match possible against
-          # binary noise; they push the previous scan past 5 minutes).
-          #
           # Exclude the lockfiles (`poetry.lock`, `pnpm-lock.yaml`) and
           # generated nested copies under `apps/api/poetry.lock` — these
           # are machine-generated and would never contain human-written
           # identifiers, so a regex scan is wasted work.
           git ls-files -z -- \
               ':!scripts/private-leak-check.sh' \
-              ':!demo/demo.gif' \
-              ':!demo/*.png' \
               ':!poetry.lock' \
               ':!pnpm-lock.yaml' \
               ':!apps/api/poetry.lock' \
