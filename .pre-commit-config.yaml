@@ -16,8 +16,7 @@ exclude: |
     \.taskmaster/.*|
     \.claude/.*|
     docs/research/.*|
-    tasks/.*|
-    legacy/streamlit/.*
+    tasks/.*
   )$
 
 repos:

@@ -125,7 +125,6 @@ Hooks are skipped on agent state and internal docs — these are never meant to 
 - `.agent/`, `.taskmaster/`, `.claude/`
 - `docs/research/`
 - `tasks/`
-- `legacy/streamlit/`
 
 ### Bypassing (rare)
 

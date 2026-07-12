@@ -24,7 +24,6 @@ altair = ">=5.0.0"  # For data visualization in UI
 pandas = ">=2.0.0"  # For data manipulation
 matplotlib = ">=3.5.0"  # For visualization
 pyyaml = ">=6.0.0"  # For configuration management
-streamlit = "^1.45.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.0.0"

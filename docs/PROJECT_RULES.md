@@ -28,7 +28,6 @@ Secondary (acceptable but not central): GitHub Sponsors, Polar.sh tip jar.
 | `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `LICENSE` | Public top-level docs |
 | `.github/CODE_OF_CONDUCT.md`, `.github/pull_request_template.md`, `.github/FUNDING.yml`, `.github/CODEOWNERS`, `.github/workflows/`, `.github/dependabot.yml` | GitHub-side configuration |
 | `docker-compose.yml`, `.env.example`, `pyproject.toml` (root workspace), `pnpm-workspace.yaml` | Repo config |
-| `legacy/streamlit/**` | Frozen Streamlit UI (historical reference) |
 
 ---
 
@@ -130,7 +129,6 @@ Things an agent will do wrong if it doesn't read this file:
 - ❌ **DO NOT** add `Co-Authored-By: Claude ...` (or any AI) to commit messages.
 - ❌ **DO NOT** push directly to `main`.
 - ❌ **DO NOT** force-push to `main` — history is append-only.
-- ❌ **DO NOT** modify `legacy/streamlit/` — frozen for historical reference.
 - ❌ **DO NOT** skip the public/private boundary check in the PR template.
 
 ---
