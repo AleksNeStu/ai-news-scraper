@@ -153,7 +153,7 @@ export default function RegisterPage() {
         </form>
         <p className="mt-4 text-center text-sm text-muted-foreground">
           {t('haveAccount')}{' '}
-          <Link href="/login" className="text-primary hover:underline">
+          <Link href="/login" className="text-primary underline underline-offset-4">
             {t('signIn')}
           </Link>
         </p>

@@ -81,6 +81,11 @@ next-env.d.ts
 out/
 .turbo/
 .vercel/
+# Playwright output directories — produced by `pnpm exec playwright test`.
+# Never commit; reproduce from spec files (apps/web/e2e/*.spec.ts).
+test-results/
+playwright-report/
+playwright/.cache/
 
 # ---------- Environment & secrets ----------
 .env

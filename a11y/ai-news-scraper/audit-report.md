@@ -95,6 +95,12 @@ Operator pass required for flip to Passing AA.
 | Pending manual pass | 6 (Phase 2 + Phase 3) |
 | Pass (no action) | 2 (2.5.7, 2.6.1) |
 
+## Late-discovered finding #16 (closed 2026-07-12)
+
+| # | Severity | WCAG | Location | Finding | Source |
+|---|---|---|---|---|---|
+| 16 | ~~MAJOR~~ | 1.4.1 Use of Color | `apps/web/src/app/[locale]/(auth)/{login,register}/page.tsx` | **Closed 2026-07-12** — local axe-core run during the verification polish phase surfaced 1 serious `link-in-text-block` violation on every route. Root cause: `<Link className="text-primary hover:underline">` patterns on inline links inside `<p>` text blocks (`<p>No account? <a>Register</a></p>` on `/en/login` and `<p>Already have an account? <a>Sign in</a></p>` on `/en/register`). `hover:underline` only underlines on hover, so in the non-hover state the link was distinguishable from surrounding `text-muted-foreground` text **only by color**, violating WCAG 1.4.1. Eleven of the thirteen audited routes inherited the violation via the auth-redirect chain (unauthenticated requests to `/en/dashboard` etc. land on `/en/login`). Fix: add always-on `underline underline-offset-4` to those two `<Link>` classNames. Re-run of `apps/web/e2e/a11y.spec.ts` after the fix: 14/14 passed (13 audit-report routes + Task #35 `/en/feeds/import`). Original source review missed it because the GH Actions a11y gate was paused per user policy 2026-07-09. | Local axe-core (Playwright) |
+
 ## Remediation plan (atomic commits, sequential)
 
 The fix commits landed in this order — each one shipped a discrete

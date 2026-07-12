@@ -44,7 +44,7 @@ steps are in `audit-report.md`.
 | 1.3.3 | Sensory Characteristics | A | Supports | No instructions rely solely on shape / colour / position. |
 | 1.3.4 | Orientation | AA | Supports | Layout works in portrait + landscape; no orientation lock. |
 | 1.3.5 | Identify Input Purpose | AA | Partially Supports | Form fields use `type="email"` / `type="password"`; `autocomplete` attributes pending for the login form. |
-| 1.4.1 | Use of Color | A | Supports | Status indicators use colour + text label or icon. |
+| 1.4.1 | Use of Color | A | Supports | Status indicators use colour + text label or icon; inline links in auth footers use always-on `underline underline-offset-4` so they are distinguishable from surrounding text without relying on colour (finding #16 closed 2026-07-12 via local axe-core run). |
 | 1.4.2 | Audio Control | A | N/A | Product has no audio content. |
 | 1.4.3 | Contrast (Minimum) | AA | **Not Evaluated** | Depends on final design tokens (finding #3); pending token audit. |
 | 1.4.4 | Resize Text | AA | Supports | Text reflows up to 200% zoom without loss. |
@@ -131,3 +131,13 @@ measurement is pending. Contrast (1.4.3) and Non-text Contrast (1.4.11)
 remain `Not Evaluated` — design-token-dependent per `audit-report.md`
 findings #3-#4 (Text Spacing finding #5 is closed and no longer in this
 list).
+
+**v0.3 (2026-07-12)** — Late-discovered finding #16 (1.4.1 Use of
+Color, `link-in-text-block`) closed via local axe-core run during the
+verification polish phase. Inline auth-footer links (`<p>No account?
+<a>Register</a></p>` and the `/register` equivalent) now use always-on
+`underline underline-offset-4` so they are distinguishable from
+surrounding text without relying on colour. Local re-run of
+`apps/web/e2e/a11y.spec.ts`: 14/14 routes pass (13 audit-report + Task
+#35 `/en/feeds/import`). Original source review missed it because the
+GH Actions a11y gate was paused per user policy 2026-07-09.
