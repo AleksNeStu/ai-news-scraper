@@ -8,7 +8,11 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from newspaper import Article as NewspaperArticle
 
-from api.services.ssrf_guard import validate_outbound_url
+from api.services.ssrf_guard import (
+    REDIRECT_CAP_HTTPCLIENT,
+    SSRFGuardTransport,
+    validate_outbound_url_async,
+)
 
 
 @dataclass
@@ -24,20 +28,22 @@ class ScrapedArticle:
 class ArticleScraper:
     """Scrape any URL into a clean article. Two-tier: newspaper3k first, BS4 fallback."""
 
-    def __init__(self, timeout: int = 15, allow_redirects: bool = False):
+    def __init__(self, timeout: int = 15, allow_redirects: bool = True):
         self.timeout = timeout
-        # Per ADR-025 §5: redirects are OFF by default. A user can opt
-        # in per-call, but the caller becomes responsible for any
-        # post-redirect re-validation (httpx follows redirects without
-        # consulting us). The opt-in path is honoured below by passing
-        # ``follow_redirects=allow_redirects`` to the inner AsyncClient.
-        #
-        # TODO: when the opt-in path is actually wired up at the call
-        # site, the per-redirect re-validation needs a custom
-        # ``httpx.AsyncHTTPTransport`` (no native hook exists). Until
-        # then ``allow_redirects=True`` still exposes the redirect
-        # bypass; keep it False unless the caller is happy with that.
+        # Per ADR-025 §5 (Task #70 follow-up): redirects are ON by default
+        # but EVERY hop is re-validated by ``SSRFGuardTransport`` — the
+        # initial URL via ``validate_outbound_url_async`` and every
+        # ``Location:`` target via the same call inside the transport's
+        # ``handle_async_request``. The transport's own redirect counter
+        # caps the chain at ``REDIRECT_CAP_HTTPCLIENT`` (5) hops; httpx's
+        # ``max_redirects`` provides a second-tier cap with a clearer
+        # ``TooManyRedirects`` failure mode.
         self.allow_redirects = allow_redirects
+        # One transport instance per scraper (re-uses httpx's connection
+        # pool via the wrapped ``AsyncHTTPTransport``). The guard is
+        # stateless across requests — the redirect counter is per-instance,
+        # which matches httpx's own per-client counter semantics.
+        self._transport = SSRFGuardTransport()
 
     async def scrape(self, url: str) -> ScrapedArticle:
         """Scrape a single URL. Returns a ScrapedArticle. Raises on fatal failures.
@@ -49,8 +55,9 @@ class ArticleScraper:
                 handler matrix — no per-route handler needed.
         """
         # SSRF guard runs at the service boundary (per ADR-025 §1).
+        # The transport ALSO re-runs this on every redirect hop.
         # Raised error propagates to the router / global handler.
-        validate_outbound_url(url)
+        await validate_outbound_url_async(url)
 
         # Try newspaper3k first
         try:
@@ -74,11 +81,14 @@ class ArticleScraper:
         # BS4 fallback — minimal extraction
         import httpx
 
-        # ``follow_redirects=False`` per ADR-025 §5 default. The
-        # newspaper3k path above uses urllib under the hood and is
-        # similarly non-redirecting for our purposes.
+        # Per Task #70: redirects stay ON by default; the transport
+        # re-validates every hop. ``max_redirects`` is the second-tier
+        # cap (httpx raises ``TooManyRedirects`` past the cap).
         async with httpx.AsyncClient(
-            timeout=self.timeout, follow_redirects=self.allow_redirects
+            timeout=self.timeout,
+            follow_redirects=self.allow_redirects,
+            max_redirects=REDIRECT_CAP_HTTPCLIENT,
+            transport=self._transport,
         ) as client:
             r = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
             r.raise_for_status()
