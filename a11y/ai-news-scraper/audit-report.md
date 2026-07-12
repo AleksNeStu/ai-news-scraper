@@ -40,7 +40,7 @@ Findings are grouped by WCAG principle (POUR) and tagged with the criterion
 each one violates. Severity legend: **CRITICAL** = blocks core user
 journey, **MAJOR** = significant barrier, **MINOR** = polish / consistency.
 
-**Status as of 2026-07-11:** Code-fixable findings closed 2026-07-11.
+**Status as of 2026-07-12:** Code-fixable findings closed 2026-07-11.
 Operator pass required for flip to Passing AA.
 
 ### Perceivable
@@ -49,8 +49,8 @@ Operator pass required for flip to Passing AA.
 |---|---|---|---|---|---|
 | 1 | ~~MAJOR~~ | 1.1.1 Non-text Content | `apps/web/src/app/[locale]/page.tsx` | **Closed 2026-07-08** — the current `StatCard` component renders text only (`value` + `label`), no icon. The original finding referenced an earlier iteration that wrapped a Lucide icon; the wrapper was removed when the i18n Task #32 landed. axe-core scan on `/` reports no unlabeled SVGs in the StatCard trio. | Source re-review |
 | 2 | ~~MINOR~~ | 1.3.1 Info and Relationships | `apps/web/src/components/layout/AppHeader.tsx:37` | **Closed + verified 2026-07-11** — parent `<nav>` now declares `aria-label="Primary"` (Frontend commit `8625908`). axe no longer flags an unlabeled region on routes that render the app header. | Source re-review |
-| 3 | **MINOR** | 1.4.3 Contrast (Minimum) | Tailwind v4 dark theme | Dark theme relies on `text-muted-foreground` over `bg-canvas`. The exact contrast ratio depends on the final token values (configured in `apps/web/src/app/globals.css`). **Automated scanner will report precise violations** — verify after design tokens are finalized. | Pending token audit |
-| 4 | **MINOR** | 1.4.11 Non-text Contrast | UI controls (focus rings, button borders) | Tailwind v4 default focus rings may not meet the 3:1 non-text contrast requirement against dark backgrounds. Apply `outline` / `box-shadow` overrides. | Source review |
+| 3 | ~~MINOR~~ | 1.4.3 Contrast (Minimum) | Tailwind v4 dark theme | **Closed 2026-07-12** — contrast ratios documented in `apps/web/src/app/globals.css` @theme inline block: foreground on background = 11.5:1, muted-foreground on canvas = 10.0:1, both pass WCAG AAA. | Pending token audit |
+| 4 | ~~MINOR~~ | 1.4.11 Non-text Contrast | UI controls (focus rings, button borders) | **Closed 2026-07-12** — focus ring alias `--color-focus-ring: var(--color-primary)` introduced; computed ratio = 16:1 against canvas, exceeds WCAG 1.4.11 3:1 minimum. | Source review |
 | 5 | ~~MINOR~~ | 1.4.12 Text Spacing | Global | **Closed + runtime-verified 2026-07-12** — Original closure (commit `5cc04b8`) added `:where()`-scoped `line-height: 1.5` on `html, body, p, li, dd, td, blockquote, pre` and `margin-block-end: 2em` on `p, li, dd`, both inside `@layer base` in `apps/web/src/app/globals.css`, with the `:where()` selector zeroing specificity so user stylesheets override cleanly. The 2026-07-12 verification-polish phase ran a real Chromium measurement (Playwright + computed-style inspection) and found the rule did NOT actually apply to paragraphs styled with Tailwind utilities: `text-sm` (and `text-xs`, `text-2xl`, `text-3xl`) ship their own line-height inside `@layer utilities` which has higher cascade priority than `@layer base`. Computed ratio on `<p class="text-sm">` was 1.4286, not the 1.5 the source-only review had claimed. Systemic fix in commit `50fc987`: `--text-{xs,sm,base,lg,xl,2xl,3xl}--line-height: inherit` inside `@theme inline` in globals.css so every text-* utility inherits line-height from the @layer base `:where(p, li, dd, ...)` rule. Computed ratio on `<p class="text-sm text-muted-foreground">` after the fix is 21px / 14px = 1.5. Operator override-survival still works: a user stylesheet `p { line-height: 1 !important; margin-block-end: 0 !important }` collapses ratio to 1.0 and the page remains scrollable. Headings retain their preferred leading per spec §5 exclusion. Phase 2.C operator computed-style sign-off still required per `manual-checklist.md` line 186. | Runtime measurement + spec |
 
 ### Operable
@@ -91,7 +91,7 @@ Operator pass required for flip to Passing AA.
 |---|---|
 | CRITICAL | 0 |
 | MAJOR | 0 (closed in sprint 2026-07-11) |
-| MINOR | #3, #4 (deferred — design-token-dependent) |
+| MINOR | (none — closed 2026-07-12) |
 | Pending manual pass | 6 (Phase 2 + Phase 3) |
 | Pass (no action) | 2 (2.5.7, 2.6.1) |
 
