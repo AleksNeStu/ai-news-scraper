@@ -33,13 +33,13 @@ steps are in `audit-report.md`.
 
 | Criterion | Name | Level | Result | Notes |
 |---|---|---|---|---|
-| 1.1.1 | Non-text Content | A | Partially Supports | Icon-only controls have accessible names via `aria-label`; manual review of dashboard cards pending (finding #1). |
+| 1.1.1 | Non-text Content | A | Supports | StatCard trio on `/` is text-only (`value` + `label`); no Lucide icon wrapper. axe-core scan on `/` reports no unlabeled SVGs in the stat region (finding #1 closed 2026-07-08). |
 | 1.2.1 | Audio-only and Video-only (Prerecorded) | A | N/A | Product has no audio/video content. |
 | 1.2.2 | Captions (Prerecorded) | A | N/A | Product has no audio/video content. |
 | 1.2.3 | Audio Description or Media Alternative (Prerecorded) | A | N/A | Product has no audio/video content. |
 | 1.2.4 | Captions (Live) | AA | N/A | Product has no live audio/video content. |
 | 1.2.5 | Audio Description (Prerecorded) | AA | N/A | Product has no audio/video content. |
-| 1.3.1 | Info and Relationships | A | Partially Supports | Semantic HTML used in templates; nav region needs `aria-label` (finding #2). |
+| 1.3.1 | Info and Relationships | A | Supports | Semantic HTML used in templates; parent `<nav>` declares `aria-label="Primary"` in `AppHeader.tsx:37` (Frontend commit `8625908`). axe no longer flags an unlabeled region on routes that render the app header (finding #2 closed 2026-07-11). |
 | 1.3.2 | Meaningful Sequence | A | Supports | DOM order matches visual order; verified by source review. |
 | 1.3.3 | Sensory Characteristics | A | Supports | No instructions rely solely on shape / colour / position. |
 | 1.3.4 | Orientation | AA | Supports | Layout works in portrait + landscape; no orientation lock. |
@@ -51,27 +51,27 @@ steps are in `audit-report.md`.
 | 1.4.5 | Images of Text | AA | Supports | No images of text used in product UI. |
 | 1.4.10 | Reflow | AA | Supports | Page reflows at 320 CSS px width without horizontal scrolling on `<main>`. |
 | 1.4.11 | Non-text Contrast | AA | **Not Evaluated** | UI controls + focus indicators pending token audit (finding #4). |
-| 1.4.12 | Text Spacing | AA | **Not Evaluated** | Pending manual reflow pass (finding #5). |
+| 1.4.12 | Text Spacing | AA | Supports | `:where()`-scoped `line-height: 1.5` on `html, body, p, li, dd, td, blockquote, pre` and `margin-block-end: 2em` on `p, li, dd` shipped in `globals.css` `@layer base` (Frontend commit `5cc04b8`). The `:where()` selector zeros specificity so user stylesheets override cleanly; form controls and headings are excluded per spec §5. Phase 2.C operator sign-off still required to record the manual override-survival proof on `manual-checklist.md` line 186 (finding #5 closed 2026-07-11). |
 | 1.4.13 | Content on Hover or Focus | AA | Supports | No hover-only content used. |
-| 2.1.1 | Keyboard | A | Partially Supports | NotificationBell needs keyboard equivalent (finding #6). |
+| 2.1.1 | Keyboard | A | Supports | NotificationBell trigger is a real `<button type="button" aria-haspopup="menu" aria-expanded={open} aria-controls="notif-popover">` in `NotificationBell.tsx:70`. Enter/Space toggle is inherited from native `<button>` semantics; `Escape` closes via the `useEffect` handler; first item auto-focuses on open. axe no longer flags a non-interactive element with an interactive handler (finding #6 closed 2026-07-08). |
 | 2.1.2 | No Keyboard Trap | A | Supports | No known focus traps. |
 | 2.1.4 | Character Key Shortcuts | A | N/A | Product has no character key shortcuts. |
 | 2.2.1 | Timing Adjustable | A | Supports | Login cooldown timer is user-visible + announced. |
 | 2.2.2 | Pause, Stop, Hide | A | N/A | No auto-updating / moving content. |
 | 2.3.1 | Three Flashes or Below Threshold | A | Supports | No flashing content. |
-| 2.4.1 | Bypass Blocks | A | Partially Supports | Skip-link implemented in app-group layout; minor audit detail pending operator Phase 2 pass (finding #7 closed 2026-07-11). |
+| 2.4.1 | Bypass Blocks | A | Supports | Skip-link `<a href="#main">` is the first focusable element in the app-group layout, visually hidden until `:focus`, and targets `<main id="main" tabIndex={-1}>` so the destination is programmatically focusable but not part of the regular Tab order (finding #7 closed 2026-07-11). |
 | 2.4.2 | Page Titled | A | Supports | `<title>` set per route via `metadata.title`. |
-| 2.4.3 | Focus Order | A | Partially Supports | Source review shows order is logical; manual pass pending (finding #8). |
+| 2.4.3 | Focus Order | A | Supports | LogoutButton resolves focus to the post-logout destination (the locale-aware login page) once the pending state settles, so screen readers do not stall on a now-disabled trigger. The "Logging out…" announcement is preserved via `aria-busy` (Frontend commit `96db4f6`). Skip-link + `<main tabIndex={-1}>` pair is the other focus-ordering touchpoint and is covered by finding #7 (finding #8 closed 2026-07-11). |
 | 2.4.4 | Link Purpose (In Context) | A | Supports | All links have descriptive text or `aria-label`. |
 | 2.4.5 | Multiple Ways | AA | Supports | Header nav + footer links + breadcrumbs across the dashboard. |
-| 2.4.6 | Headings and Labels | AA | Partially Supports | Headings describe sections; some icon-only controls need explicit labels (finding #10). |
+| 2.4.6 | Headings and Labels | AA | Supports | Headings describe sections across all routes; submit buttons on `/scrape`, `/search`, `/feeds` render visible text alongside their icons so the accessible name includes the visible string (finding #10 closed 2026-07-08). |
 | 2.4.7 | Focus Visible | AA | Supports | `:focus-visible` rule confirmed in `globals.css` (2px primary ring, 2px offset) (finding #9 closed 2026-07-11). |
 | 2.4.11 | Focus Not Obscured (Minimum) | AA (2.2) | **Not Evaluated** | Pending manual pass (Phase 3). |
 | 2.4.12 | Focus Not Obscured (Enhanced) | AAA (2.2) | Not Applicable | Build target is AA. |
 | 2.4.13 | Focus Appearance | AA (2.2) | **Not Evaluated** | Pending `:focus-visible` rule + manual measurement (Phase 3). |
 | 2.5.1 | Pointer Gestures | A | Supports | No multi-point or path-based gestures used. |
 | 2.5.2 | Pointer Cancellation | A | Supports | Click handlers fire on `mouseup` (standard browser behavior); no `mousedown` triggers. |
-| 2.5.3 | Label in Name | A | Partially Supports | Manual review of icon-only controls pending (finding #10). |
+| 2.5.3 | Label in Name | A | Supports | Submit buttons on `/scrape`, `/search`, `/feeds` render visible text alongside their icons (`{t('submit')}` / `{t('subscribe')}`); the accessible name (text content) includes the visible "submit" / "subscribe" string and matches it (finding #10 closed 2026-07-08). |
 | 2.5.4 | Motion Actuation | A | N/A | Product does not use motion or device tilt. |
 | 2.5.7 | Dragging Movements | AA (2.2) | N/A | Product does not use drag-and-drop (verified via source review). |
 | 2.5.8 | Target Size (Minimum) | AA (2.2) | Supports | Nav target size bumped via `min-h-6` on `NavLink` (Frontend commit `6edf2e0`); axe 2.5.8 tag clean on header nav region (finding #11 closed 2026-07-11). |
