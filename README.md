@@ -300,7 +300,12 @@ Each item below is a concrete symptom a deployer is likely to hit on first boot,
 
 The Next.js 15 web UI runs at `http://localhost:3807` after `docker compose up`.
 
-After the stack is up, register an account and explore the four primary surfaces:
+<div align="center">
+  <img src="docs/screenshots/web-home.png" alt="AI News Scraper home (Next.js UI)" width="80%" />
+  <p><em>Home — dark-first Next.js UI with the four primary navigation surfaces</em></p>
+</div>
+
+After the stack is up, register an account and explore:
 
 - **Home** (`/en`) — dark-first overview with three stat cards (total articles, active feeds, indexed today) and the five most recent articles.
 - **Search** (`/en/search`) — semantic search across the ChromaDB vector store with filter facets (source, date, topic).
