@@ -252,6 +252,11 @@ Frontend can reproduce against the exact selector list.
 - [ ] **Focus Appearance** (2.4.13): Focus indicator area is at
       least 2 CSS pixels thick, contrast ≥ 3:1 against adjacent
       background. Measure with browser devtools.
+- [ ] **Dragging Movements** (2.5.7): N/A — product does not use
+      drag-and-drop. Confirmed via source review (no `onDragStart`,
+      no `draggable` attribute on interactive elements). Listed
+      explicitly here so the operator ticks it off in the same pass
+      as the other WCAG 2.2 rows.
 - [ ] **Target Size** (2.5.8): Already checked in Phase 2.D.
 - [ ] **Accessible Authentication** (3.3.8): Confirm login/register
       do not rely on cognitive function tests (no CAPTCHA, no
