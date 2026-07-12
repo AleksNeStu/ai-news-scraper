@@ -68,7 +68,7 @@ steps are in `audit-report.md`.
 | 2.4.7 | Focus Visible | AA | Supports | `:focus-visible` rule confirmed in `globals.css` (2px primary ring, 2px offset) (finding #9 closed 2026-07-11). |
 | 2.4.11 | Focus Not Obscured (Minimum) | AA (2.2) | **Not Evaluated** | Pending manual pass (Phase 3). |
 | 2.4.12 | Focus Not Obscured (Enhanced) | AAA (2.2) | Not Applicable | Build target is AA. |
-| 2.4.13 | Focus Appearance | AA (2.2) | **Not Evaluated** | Pending `:focus-visible` rule + manual measurement (Phase 3). |
+| 2.4.13 | Focus Appearance | AA (2.2) | Partially Supports | Automated `:focus-visible` rule confirmed in `globals.css` (2px primary ring, 2px offset) — the indicator boundary + offset are in place. Manual contrast + area measurement against the WCAG 2.4.13 threshold (change-of-colour contrast ≥ 3:1, area ≥ 2 CSS px × 2 CSS px + change of perimeter / area ≥ 1) still pending per Phase 3 operator pass (finding #9 closed 2026-07-11). |
 | 2.5.1 | Pointer Gestures | A | Supports | No multi-point or path-based gestures used. |
 | 2.5.2 | Pointer Cancellation | A | Supports | Click handlers fire on `mouseup` (standard browser behavior); no `mousedown` triggers. |
 | 2.5.3 | Label in Name | A | Supports | Submit buttons on `/scrape`, `/search`, `/feeds` render visible text alongside their icons (`{t('submit')}` / `{t('subscribe')}`); the accessible name (text content) includes the visible "submit" / "subscribe" string and matches it (finding #10 closed 2026-07-08). |
@@ -116,11 +116,18 @@ Operators: update this VPAT after every conformance-relevant change.
 The recommended cadence is quarterly alongside the manual a11y pass
 (see `regression-setup.md`).
 
-**v0.2 (2026-07-11)** — Code-fixable findings closed: 2.4.1 (Bypass Blocks)
--> Partially Supports; 2.4.7 (Focus Visible) -> Supports; 2.5.8
-(Target Size) -> Supports; 3.3.1 (Error Identification) -> Supports;
-3.3.7 (Redundant Entry) -> Partially Supports; 4.1.2 (Name, Role, Value)
-kept at Partially Supports (Lucide decorative-icon audit still partial).
-Contrast (1.4.3), Non-text Contrast (1.4.11), and Text Spacing (1.4.12)
-left as `Not Evaluated` — design-token-dependent per `audit-report.md`
-findings #3-#5.
+**v0.2 (2026-07-11)** — Code-fixable findings closed: 1.1.1 (Non-text
+Content) -> Supports; 1.3.1 (Info and Relationships) -> Supports; 1.4.12
+(Text Spacing) -> Supports; 2.1.1 (Keyboard) -> Supports; 2.4.1 (Bypass
+Blocks) -> Supports; 2.4.3 (Focus Order) -> Supports; 2.4.6 (Headings
+and Labels) -> Supports; 2.4.7 (Focus Visible) -> Supports; 2.5.3
+(Label in Name) -> Supports; 2.5.8 (Target Size) -> Supports; 3.3.1
+(Error Identification) -> Supports; 3.3.7 (Redundant Entry) ->
+Partially Supports; 4.1.2 (Name, Role, Value) kept at Partially
+Supports (Lucide decorative-icon audit still partial). 2.4.13 (Focus
+Appearance) moved from `Not Evaluated` to `Partially Supports` — the
+`:focus-visible` rule is in place; only the manual contrast / area
+measurement is pending. Contrast (1.4.3) and Non-text Contrast (1.4.11)
+remain `Not Evaluated` — design-token-dependent per `audit-report.md`
+findings #3-#4 (Text Spacing finding #5 is closed and no longer in this
+list).
