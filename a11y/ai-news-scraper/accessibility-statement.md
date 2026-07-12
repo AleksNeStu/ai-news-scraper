@@ -45,7 +45,7 @@ error shapes are documented separately in the API's
 | Color contrast | Pending — design tokens | Depends on final design tokens in `globals.css` (finding #3). |
 | Screen-reader announcement of state changes | Pass | Login cooldown timer + scrape status use `aria-live`. |
 | Accessible authentication | Pass (AA) | No CAPTCHA / cognitive function tests (WCAG 3.3.8). Passkeys are a future-work item. |
-| Text spacing (1.4.12) | Pending | Manual reflow check required. |
+| Text spacing (1.4.12) | Pass | `:where()`-scoped `line-height` + `margin-block-end` shipped in `globals.css` (Frontend commit landed 2026-07-11); Phase 2.C manual override-survival sign-off still required. |
 | Consistent Help (2.6.1) | N/A | App does not yet provide help links. |
 
 ## Known limitations
