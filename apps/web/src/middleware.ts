@@ -153,10 +153,14 @@ export function middleware(req: NextRequest) {
   //      - `/foo`        → 307 redirect to `/en/foo` (next-intl handles)
   //      - `/en/foo`     → served as-is (canonical for English)
   //      - `/ru/foo`     → served as-is (canonical for Russian)
-  //    The compose middleware runs only on the post-resolve URL (so a
-  //    bare `/foo` never reaches this function — next-intl has already
-  //    307'd it to `/en/foo`). hreflang Link header is attached by
-  //    next-intl internally.
+  //    The compose middleware receives whatever URL the request arrived
+  //    with — bare (`/foo`) OR prefixed (`/en/foo`). When the URL is
+  //    bare, intlMiddleware returns a 307 redirect to `/en/foo` (so
+  //    this function short-circuits via the intlResponse below). When
+  //    the URL is already prefixed, intlMiddleware returns a
+  //    pass-through response and the downstream logic inspects
+  //    `req.nextUrl.pathname` to determine the active locale. hreflang
+  //    Link header is attached by next-intl internally.
   const intlResponse = intlMiddleware(req)
 
   // Determine the locale the request resolved to. We look at the
@@ -202,7 +206,7 @@ export function middleware(req: NextRequest) {
     // The `next` query must preserve the user's intended destination,
     // including its locale prefix, so the post-login redirect lands
     // them back on e.g. /ru/dashboard.
-    const nextTarget = withLocalePrefix(canonical === '/' ? '/' : canonical, activeLocale)
+    const nextTarget = withLocalePrefix(canonical, activeLocale)
     // Defense-in-depth against open-redirect (Task #67 / ADR-021): even though
     // today's login page hardcodes `/`, validate `next` here so any future
     // consumer (loginAction, share-link flows, dashboard deep-links) can trust
