@@ -14,7 +14,7 @@ packages = [{include = "api"}]
 [tool.poetry.dependencies]
 python = "^3.12"
 fastapi = ">=0.115,<0.140"
-uvicorn = {extras = ["standard"], version = ">=0.32,<0.51"}
+uvicorn = {extras = ["standard"], version = ">=0.32,<0.52"}
 pydantic = "^2.9.0"
 pydantic-settings = "^2.6.0"
 # Required by pydantic for EmailStr fields (api/schemas/auth.py).
@@ -56,7 +56,7 @@ aiosmtplib = "^3.0.0"
 # ``before_send_transaction`` signatures in past SDK releases; ``~2.20``
 # keeps the resolved version on the current 2.20.x line. Bump explicitly
 # when the project needs a newer minor.
-sentry-sdk = {version = "~2.20", optional = true}
+sentry-sdk = {version = ">=2.20,<2.65", optional = true}
 
 [tool.poetry.extras]
 observability = ["sentry-sdk"]
