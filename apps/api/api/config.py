@@ -68,6 +68,13 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     embedding_dimensions: int = 1536
 
+    # Topic extraction cap (ADR-026 §4). Bounds the number of
+    # tags persisted per article from the LLM response. Keeps the
+    # GIN index useful and the scorer prompt compact. Override via
+    # ``EXTRACT_TOPICS_MAX`` env (Pydantic Settings auto-binding,
+    # case-insensitive).
+    extract_topics_max: int = Field(default=7, ge=1, le=20)
+
     # Auth — JWT lifetime shortened from 24h to 15 min as part of
     # ADR-015 (H3) so a stolen access token self-expires quickly.
     # ``jwt_expires_min`` is kept as a back-compat alias for any

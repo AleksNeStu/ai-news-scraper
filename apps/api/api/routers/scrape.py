@@ -15,6 +15,7 @@ from api.schemas.article import ArticleOut, BatchScrapeRequest, ScrapeRequest
 from api.services.embedder import ArticleEmbedder
 from api.services.scraper import ArticleScraper
 from api.services.summarizer import ArticleSummarizer
+from api.services.topic_extractor import ArticleTopicExtractor
 from api.services.vector_store import ChromaVectorStore
 
 logger = logging.getLogger(__name__)
@@ -23,16 +24,24 @@ router = APIRouter(prefix="/scrape", tags=["scrape"])
 # Service singletons (init in lifespan; reuse)
 _scraper = ArticleScraper()
 _summarizer = ArticleSummarizer()
+_topic_extractor = ArticleTopicExtractor()
 _embedder = ArticleEmbedder()
 _vector_store = ChromaVectorStore()
 
 
 async def _process_one(url: str, user_id: UUID | None, db: AsyncSession) -> Article:
-    """Scrape → summarize → embed → persist. Returns the Article row."""
+    """Scrape → summarize → extract topics → embed → persist. Returns the Article row."""
     scraped = await _scraper.scrape(url)
     summary = None
     if scraped.body:
         summary = await _summarizer.summarize(scraped.body)
+    # Topic extraction (ADR-026) runs after summarization so the LLM
+    # sees the condensed article, not the raw body. ``extract`` never
+    # raises — an LLM failure or sanitization rejection leaves
+    # ``topics = []`` and the scrape continues normally.
+    topics = await _topic_extractor.extract(
+        scraped.headline, summary, scraped.body
+    )
     embedding = None
     text_to_embed = (scraped.headline or "") + "\n\n" + (summary or scraped.body or "")
     if text_to_embed.strip():
@@ -45,7 +54,7 @@ async def _process_one(url: str, user_id: UUID | None, db: AsyncSession) -> Arti
         headline=scraped.headline,
         body=scraped.body,
         summary=summary,
-        topics=[],  # TODO: extract via TopicExtractor (P1)
+        topics=topics,
         source_domain=scraped.source_domain,
         publish_date=scraped.publish_date,
     )
@@ -57,7 +66,7 @@ async def _process_one(url: str, user_id: UUID | None, db: AsyncSession) -> Arti
             headline=scraped.headline,
             body=scraped.body,
             summary=summary,
-            topics=[],
+            topics=topics,
             source_domain=scraped.source_domain,
             publish_date=scraped.publish_date,
         )
@@ -67,6 +76,7 @@ async def _process_one(url: str, user_id: UUID | None, db: AsyncSession) -> Arti
                 "headline": scraped.headline,
                 "body": scraped.body,
                 "summary": summary,
+                "topics": topics,
                 "source_domain": scraped.source_domain,
                 "publish_date": scraped.publish_date,
             },
