@@ -571,3 +571,29 @@ export interface BulkImportResult {
   /** Per-URL failures (parse error, network error, DB error). */
   failed: BulkImportFailure[];
 }
+
+// ============================================================================
+// Topic extraction (ADR-026)
+// ============================================================================
+//
+// Wire shape for the `ArticleTopicExtractor` service
+// (`apps/api/api/services/topic_extractor.py`). The service returns
+// `string[]` (sanitized, deduped, byte-stable sorted); these are the raw
+// LLM-call shapes the service validates against before the sanitize pipeline.
+
+/** TopicExtractionResult — wire shape for the TopicExtractor service
+ * (apps/api/api/schemas/topic.py). The service returns `list<string>`
+ * after sanitization; this is the raw LLM-call shape.
+ *
+ * No breaking change to existing types.
+ */
+export interface ExtractedTopic {
+  /** Lowercase-kebab tag, matches ``^[a-z0-9][a-z0-9-]{0,62}$``. */
+  tag: string;
+  /** LLM-reported confidence in [0.0, 1.0]. */
+  confidence: number;
+}
+
+export interface TopicExtractionResult {
+  topics: ExtractedTopic[];
+}
