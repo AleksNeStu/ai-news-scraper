@@ -130,6 +130,9 @@ CLAUDE.md
 .mcp.json
 **/mcp.json
 
+# ---------- GitHub metadata (local-only; not tracked in this repo) ----------
+.github/
+
 # ---------- TaskMaster (fully ignored — workflow runs locally) ----------
 .taskmaster/
 
