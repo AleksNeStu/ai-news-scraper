@@ -89,7 +89,7 @@ export default function RegisterPage() {
               autoComplete="email"
               key={emailDefaultValue}
               defaultValue={emailDefaultValue}
-              aria-invalid={hasFieldErrors && !!state.fieldErrors?.email ? true : undefined}
+              aria-invalid={hasFieldErrors && !!state.fieldErrors?.email ? 'true' : 'false'}
               className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none aria-invalid:border-destructive"
             />
             {hasFieldErrors && state.fieldErrors?.email && (
@@ -109,7 +109,7 @@ export default function RegisterPage() {
               required
               minLength={8}
               autoComplete="new-password"
-              aria-invalid={hasFieldErrors && !!state.fieldErrors?.password ? true : undefined}
+              aria-invalid={hasFieldErrors && !!state.fieldErrors?.password ? 'true' : 'false'}
               className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none aria-invalid:border-destructive"
             />
             {hasFieldErrors && state.fieldErrors?.password && (
@@ -145,7 +145,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={pending}
-            aria-busy={pending}
+            aria-busy={pending ? 'true' : 'false'}
             className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {pending ? t('submitting') : t('submit')}

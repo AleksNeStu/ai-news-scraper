@@ -109,7 +109,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitDisabled}
-            aria-busy={pending}
+            aria-busy={pending ? 'true' : 'false'}
             className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {cooldown > 0 ? t('retryIn', { n: cooldown }) : pending ? t('submitting') : t('submit')}

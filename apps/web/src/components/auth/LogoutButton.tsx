@@ -77,7 +77,7 @@ export function LogoutButton() {
         type="button"
         onClick={onClick}
         disabled={pending}
-        aria-busy={pending}
+        aria-busy={pending ? 'true' : 'false'}
         className={cn(
           'inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:border-primary/40',
           'disabled:cursor-not-allowed disabled:opacity-60'
