@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 import { CommandPalette } from '@/components/CommandPalette'
 import { IntlWrapper } from '@/test-utils/intl-helper'
+import type * as I18nNav from '@/i18n/navigation'
 
 // Mock the i18n router so we can assert the submitted URL without a
 // real next-intl routing context. `push` resolves a promise so the
@@ -11,7 +12,7 @@ const pushSpy = vi.fn()
 const replaceSpy = vi.fn()
 
 vi.mock('@/i18n/navigation', async () => {
-  const actual = await vi.importActual<typeof import('@/i18n/navigation')>('@/i18n/navigation')
+  const actual = await vi.importActual<typeof I18nNav>('@/i18n/navigation')
   return {
     ...actual,
     useRouter: () => ({ push: pushSpy, replace: replaceSpy }),

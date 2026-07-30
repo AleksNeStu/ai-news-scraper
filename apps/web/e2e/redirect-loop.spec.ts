@@ -91,7 +91,7 @@ for (const probe of PROBES) {
     // under both the `Request` and `null` cases (Playwright's
     // `Request.redirectedFrom()` returns `Request | null`).
     type Cursor = { url(): string; redirectedFrom(): Cursor | null }
-    let cursor: Cursor | null = result.request() as unknown as Cursor
+    let cursor: Cursor | null = (result as unknown as { request(): Cursor | null }).request()
     while (cursor) {
       chain.push(cursor.url())
       cursor = cursor.redirectedFrom()
@@ -164,7 +164,7 @@ for (const probe of AUTH_PROBES) {
     })
 
     type Cursor = { url(): string; redirectedFrom(): Cursor | null }
-    let cursor: Cursor | null = result.request() as unknown as Cursor
+    let cursor: Cursor | null = (result as unknown as { request(): Cursor | null }).request()
     while (cursor) {
       chain.push(cursor.url())
       cursor = cursor.redirectedFrom()
