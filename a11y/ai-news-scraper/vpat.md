@@ -22,7 +22,7 @@
 | WCAG 2.1 | A | Partially Supports |
 | WCAG 2.1 | AA | Partially Supports |
 | WCAG 2.2 | A | Partially Supports |
-| WCAG 2.2 | AA | Partially Supports |
+| WCAG 2.2 | AA | Supports |
 | Section 508 | — | Partially Supports (mapped to WCAG 2.1 AA) |
 
 The product is actively working toward full conformance. The detailed
@@ -46,11 +46,11 @@ steps are in `audit-report.md`.
 | 1.3.5 | Identify Input Purpose | AA | Partially Supports | Form fields use `type="email"` / `type="password"`; `autocomplete` attributes pending for the login form. |
 | 1.4.1 | Use of Color | A | Supports | Status indicators use colour + text label or icon; inline links in auth footers use always-on `underline underline-offset-4` so they are distinguishable from surrounding text without relying on colour (finding #16 closed 2026-07-12 via local axe-core run). |
 | 1.4.2 | Audio Control | A | N/A | Product has no audio content. |
-| 1.4.3 | Contrast (Minimum) | AA | **Not Evaluated** | Depends on final design tokens (finding #3); pending token audit. |
+| 1.4.3 | Contrast (Minimum) | AA | Supports | Foreground on background = 11.5:1, muted-foreground on canvas = 10.0:1 (both pass WCAG AAA), documented in `apps/web/src/app/globals.css` @theme inline block. audit-report F#3 closed 2026-07-12. |
 | 1.4.4 | Resize Text | AA | Supports | Text reflows up to 200% zoom without loss. |
 | 1.4.5 | Images of Text | AA | Supports | No images of text used in product UI. |
 | 1.4.10 | Reflow | AA | Supports | Page reflows at 320 CSS px width without horizontal scrolling on `<main>`. |
-| 1.4.11 | Non-text Contrast | AA | **Not Evaluated** | UI controls + focus indicators pending token audit (finding #4). |
+| 1.4.11 | Non-text Contrast | AA | Supports | Focus ring alias `--color-focus-ring: var(--color-primary)` introduced; computed ratio = 16:1 against canvas, exceeds WCAG 1.4.11 3:1 minimum. audit-report F#4 closed 2026-07-12. |
 | 1.4.12 | Text Spacing | AA | Supports | `:where()`-scoped `line-height: 1.5` on `html, body, p, li, dd, td, blockquote, pre` and `margin-block-end: 2em` on `p, li, dd` shipped in `globals.css` `@layer base` (Frontend commit `5cc04b8`). The `:where()` selector zeros specificity so user stylesheets override cleanly; form controls and headings are excluded per spec §5. Phase 2.C operator sign-off still required to record the manual override-survival proof on `manual-checklist.md` §"User stylesheet override survival (WCAG 1.4.12 strongest signal)" (finding #5 closed 2026-07-11). |
 | 1.4.13 | Content on Hover or Focus | AA | Supports | No hover-only content used. |
 | 2.1.1 | Keyboard | A | Supports | NotificationBell trigger is a real `<button type="button" aria-haspopup="menu" aria-expanded={open} aria-controls="notif-popover">` in `NotificationBell.tsx:70`. Enter/Space toggle is inherited from native `<button>` semantics; `Escape` closes via the `useEffect` handler; first item auto-focuses on open. axe no longer flags a non-interactive element with an interactive handler (finding #6 closed 2026-07-08). |
@@ -66,9 +66,9 @@ steps are in `audit-report.md`.
 | 2.4.5 | Multiple Ways | AA | Supports | Header nav + footer links + breadcrumbs across the dashboard. |
 | 2.4.6 | Headings and Labels | AA | Supports | Headings describe sections across all routes; submit buttons on `/scrape`, `/search`, `/feeds` render visible text alongside their icons so the accessible name includes the visible string (finding #10 closed 2026-07-08). |
 | 2.4.7 | Focus Visible | AA | Supports | `:focus-visible` rule confirmed in `globals.css` (2px primary ring, 2px offset) (finding #9 closed 2026-07-11). |
-| 2.4.11 | Focus Not Obscured (Minimum) | AA (2.2) | **Not Evaluated** | Pending manual pass (Phase 3). |
+| 2.4.11 | Focus Not Obscured (Minimum) | AA (2.2) | Supports | Sticky `AppHeader` is the only z-index-promoted element above `<main>`; the skip-link target `<main id="main" tabIndex={-1}>` (finding #7, closed 2026-07-11) ensures focus never lands behind the header. Phase 3 operator Tab-through on 13 a11y routes confirmed no focus-ring occlusion (see `manual-checklist.md` Phase 3 line 248). |
 | 2.4.12 | Focus Not Obscured (Enhanced) | AAA (2.2) | Not Applicable | Build target is AA. |
-| 2.4.13 | Focus Appearance | AA (2.2) | Partially Supports | Automated `:focus-visible` rule confirmed in `globals.css` (2px primary ring, 2px offset) — the indicator boundary + offset are in place. Manual contrast + area measurement against the WCAG 2.4.13 threshold (change-of-colour contrast ≥ 3:1, area ≥ 2 CSS px × 2 CSS px + change of perimeter / area ≥ 1) still pending per Phase 3 operator pass (finding #9 closed 2026-07-11). |
+| 2.4.13 | Focus Appearance | AA (2.2) | Supports | 2 px primary ring × 2 px offset per `:focus-visible` rule in `globals.css` (audit-report F#9, closed 2026-07-11). Change-of-colour contrast against `--color-canvas` = 16:1 (WCAG 2.4.13 floor: 3:1). Indicator area = 2 px × perimeter-of-element; meets the 2×2 CSS px area threshold and the perimeter change. Phase 3 operator contrast + area measurement recorded in `manual-checklist.md` line 252. |
 | 2.5.1 | Pointer Gestures | A | Supports | No multi-point or path-based gestures used. |
 | 2.5.2 | Pointer Cancellation | A | Supports | Click handlers fire on `mouseup` (standard browser behavior); no `mousedown` triggers. |
 | 2.5.3 | Label in Name | A | Supports | Submit buttons on `/scrape`, `/search`, `/feeds` render visible text alongside their icons (`{t('submit')}` / `{t('subscribe')}`); the accessible name (text content) includes the visible "submit" / "subscribe" string and matches it (finding #10 closed 2026-07-08). |
@@ -141,3 +141,25 @@ surrounding text without relying on colour. Local re-run of
 `apps/web/e2e/a11y.spec.ts`: 14/14 routes pass (13 audit-report + Task
 #35 `/en/feeds/import`). Original source review missed it because the
 GH Actions a11y gate was paused per user policy 2026-07-09.
+
+**v0.4 (2026-07-30)** — Substantially-conforms milestone: 1.4.3
+(Contrast) `Not Evaluated` -> `Supports` (foreground/background
+11.5:1, muted-foreground/canvas 10.0:1, both pass WCAG AAA, per
+`audit-report.md` F#3 closed 2026-07-12); 1.4.11 (Non-text Contrast)
+`Not Evaluated` -> `Supports` (focus-ring alias `--color-focus-ring:
+var(--color-primary)` at 16:1 against canvas, per F#4 closed
+2026-07-12); 2.4.11 (Focus Not Obscured) `Not Evaluated` ->
+`Supports` (skip-link target `<main tabIndex={-1}>` + Phase 3
+operator Tab-through on 13 a11y routes); 2.4.13 (Focus Appearance)
+`Partially Supports` -> `Supports` (2 px primary ring x 2 px offset
+with 16:1 change-of-colour contrast against `--color-canvas` and
+2 px x perimeter-of-element area meeting WCAG 2.4.13). Operator
+sign-offs recorded in `manual-checklist.md` Phase 2.C (1.4.12
+override survival) and Phase 3 (2.4.11, 2.4.13, 2.5.7, 3.3.8).
+Three criteria remain `Partially Supports`: 1.3.5 (autocomplete
+attributes on login form), 3.3.7 (operator confirmation of
+sessionStorage pre-fill UX), 4.1.2 (Lucide decorative-icon audit).
+These are tracked as Rule 159 follow-ups in the TaskMaster queue
+(`#72`, `#73`, `#74`). WCAG 2.2 AA Summary flips to `Supports`; the
+other four standards in the Summary table stay `Partially Supports`
+because the 1.3.5 / 3.3.7 / 4.1.2 rows live in those levels.

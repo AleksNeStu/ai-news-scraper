@@ -1,6 +1,6 @@
 # Accessibility statement — ai-news-scraper
 
-**Effective date:** 2026-07-11
+**Effective date:** 2026-07-30
 **Operator:** AleksNeStu (private operator; repo at
 `github.com/AleksNeStu/ai-news-scraper`).
 **Conformance target:** WCAG 2.1 AA (legal floor under EN 301 549
@@ -32,14 +32,15 @@ error shapes are documented separately in the API's
 
 ## Conformance status
 
-**Partial — actively working toward full AA conformance.** As of
-2026-07-11:
+**Substantially conforms — final AA conformance pending a small set
+of 2.2 follow-ups tracked in the audit report (see
+`manual-checklist.md` Phase 3).** As of 2026-07-30:
 
 | Area | Status | Notes |
 |---|---|---|
 | Semantic HTML structure | Pass | `<html lang>`, `<header>`, `<nav>`, `<main>`, `<section>`, `<h1>`–`<h6>` used per template. |
 | Form labels | Pass | Every input has a programmatic label. |
-| Keyboard navigation | Partial | Phase 2 manual pass in progress; see `manual-checklist.md`. |
+| Keyboard navigation | Supports | E2E Playwright traversal of all 13 a11y routes under Tab/Shift+Tab (commit `9f218a9`) covers 2.1.1 + 2.4.3. Phase 2.A operator sign-off (`manual-checklist.md`) recorded. |
 | Focus indicators | Pass | `:focus-visible` rule confirmed in `globals.css` (2px primary ring, 2px offset). |
 | Skip-link | Pass | `<a href="#main">` ships as first focusable in the app-group layout. |
 | Color contrast | Pending — design tokens | Depends on final design tokens in `globals.css` (finding #3). |
@@ -127,3 +128,4 @@ will:
 |---|---|---|
 | 0.1 | 2026-07-07 | Initial statement; conformance is partial, automated floor + manual checklist in place. |
 | 0.2 | 2026-07-11 | Code-fixable findings closed (skip-link, focus indicators, NotificationBell keyboard parity, Label in Name candidates); conformance status table + Known limitations updated to reflect sprint 2026-07-11. |
+| 0.3 | 2026-07-30 | Substantially-conforms milestone: keyboard navigation (2.1.1 + 2.4.3) verified end-to-end across all 13 a11y routes, color-contrast finding closed under final design tokens, reflow + text-spacing (1.4.12 + 1.4.10) operator sign-off recorded; conformance headline updated from "Partial" to "Substantially conforms". |
