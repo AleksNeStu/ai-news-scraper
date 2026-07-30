@@ -103,7 +103,10 @@ export default function UnsubscribeForm() {
           )}
         </div>
 
-        <Link href="/login" className="mt-10 inline-flex min-h-6 items-center px-3 text-sm text-muted-foreground hover:text-primary">
+        <Link
+          href="/login"
+          className="mt-10 inline-flex min-h-6 items-center px-3 text-sm text-muted-foreground hover:text-primary"
+        >
           {t('backToApp')}
         </Link>
       </div>

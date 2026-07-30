@@ -34,11 +34,7 @@ import {
   isProviderUnknown,
   listEmbeddingProviders,
 } from './embeddings'
-import type {
-  EmbeddingProvider,
-  EmbedResponse,
-  SimilarityResponse,
-} from '@ai-news-scraper/shared'
+import type { EmbeddingProvider, EmbedResponse, SimilarityResponse } from '@ai-news-scraper/shared'
 
 vi.mock('../api', async () => {
   const actual = await vi.importActual<typeof ApiModule>('../api')

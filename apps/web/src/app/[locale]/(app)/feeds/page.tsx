@@ -79,7 +79,9 @@ export default function FeedsPage() {
       </div>
 
       <form onSubmit={onAdd} className="rounded-lg border border-border bg-canvas p-5">
-        <label htmlFor="feeds-url" className="mb-2 block text-sm text-muted-foreground">{t('feedUrlLabel')}</label>
+        <label htmlFor="feeds-url" className="mb-2 block text-sm text-muted-foreground">
+          {t('feedUrlLabel')}
+        </label>
         <div className="flex gap-2">
           <input
             id="feeds-url"

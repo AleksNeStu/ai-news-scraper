@@ -66,9 +66,7 @@ const ROUTES: ReadonlyArray<{ path: string; name: string }> = [
 
 // ---------- 1.4.12 Text Spacing — override-survival (Phase 2.C strongest signal) ----------
 
-test('a11y-extra — text-spacing override survives on /en/login', async ({
-  page,
-}) => {
+test('a11y-extra — text-spacing override survives on /en/login', async ({ page }) => {
   // We use the login page rather than /en/articles/123 because the
   // article-detail route requires an auth cookie (middleware
   // redirects to /en/login otherwise). The login page has a
@@ -332,9 +330,7 @@ async function walkKeyboard(
   }
 }
 
-test('a11y-extra — keyboard navigation across all 13 routes (2.1.1 + 2.4.3)', async ({
-  page,
-}) => {
+test('a11y-extra — keyboard navigation across all 13 routes (2.1.1 + 2.4.3)', async ({ page }) => {
   const results: KeyboardRouteResult[] = []
 
   for (const route of ROUTES) {
@@ -364,8 +360,7 @@ test('a11y-extra — keyboard navigation across all 13 routes (2.1.1 + 2.4.3)', 
       const walk = await walkKeyboard(page)
       result = {
         route: route.path,
-        ok:
-          walk.consecutiveBodyTabs < 2 && walk.finalActiveTag !== 'body',
+        ok: walk.consecutiveBodyTabs < 2 && walk.finalActiveTag !== 'body',
         focusReachedMain: walk.focusReachedMain,
         finalActiveTag: walk.finalActiveTag,
         consecutiveBodyTabs: walk.consecutiveBodyTabs,
@@ -390,12 +385,8 @@ test('a11y-extra — keyboard navigation across all 13 routes (2.1.1 + 2.4.3)', 
     r.reason === 'redirected to /en/login (auth-required)'
 
   const failures = results.filter((r) => !r.ok && !isRedirect(r))
-  const lostFocus = results.filter(
-    (r) => r.finalActiveTag === 'body' && !isRedirect(r)
-  )
-  const noMainReach = results.filter(
-    (r) => !r.focusReachedMain && !isRedirect(r)
-  )
+  const lostFocus = results.filter((r) => r.finalActiveTag === 'body' && !isRedirect(r))
+  const noMainReach = results.filter((r) => !r.focusReachedMain && !isRedirect(r))
 
   if (failures.length > 0) {
     const lines: string[] = []
@@ -406,18 +397,10 @@ test('a11y-extra — keyboard navigation across all 13 routes (2.1.1 + 2.4.3)', 
       )
     }
     if (lostFocus.length > 0) {
-      lines.push(
-        `\nLost focus at end of loop on: ${lostFocus
-          .map((r) => r.route)
-          .join(', ')}`
-      )
+      lines.push(`\nLost focus at end of loop on: ${lostFocus.map((r) => r.route).join(', ')}`)
     }
     if (noMainReach.length > 0) {
-      lines.push(
-        `\nFocus never reached <main> on: ${noMainReach
-          .map((r) => r.route)
-          .join(', ')}`
-      )
+      lines.push(`\nFocus never reached <main> on: ${noMainReach.map((r) => r.route).join(', ')}`)
     }
     throw new Error(lines.join('\n'))
   }

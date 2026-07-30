@@ -77,9 +77,7 @@ export async function embedText(req: EmbedRequest): Promise<EmbedResponse> {
  *   - 422 `provider_key_missing`.
  *   - 422 validation — either text over the 8000-char cap.
  */
-export async function computeSimilarity(
-  req: SimilarityRequest
-): Promise<SimilarityResponse> {
+export async function computeSimilarity(req: SimilarityRequest): Promise<SimilarityResponse> {
   return api.post<SimilarityResponse>('/embeddings/similarity', req)
 }
 

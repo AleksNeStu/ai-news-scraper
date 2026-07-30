@@ -102,8 +102,7 @@ function makeFileList(file: File): FileList {
   // versions. Build a minimal FileList-shaped object that satisfies the
   // page's `e.target.files?.[0]` read.
   const list = [file] as unknown as FileList
-  ;(list as unknown as { item: (i: number) => File | null }).item = (i: number) =>
-    list[i] ?? null
+  ;(list as unknown as { item: (i: number) => File | null }).item = (i: number) => list[i] ?? null
   return list
 }
 

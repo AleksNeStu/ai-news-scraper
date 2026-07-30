@@ -38,12 +38,7 @@ import { useRouter } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 import { Search } from 'lucide-react'
 import { DialogTitle } from '@/components/ui/dialog'
-import {
-  CommandDialog,
-  CommandEmpty,
-  CommandInput,
-  CommandList,
-} from '@/components/ui/command'
+import { CommandDialog, CommandEmpty, CommandInput, CommandList } from '@/components/ui/command'
 
 export function CommandPalette() {
   const t = useTranslations('Header.palette')
