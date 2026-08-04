@@ -754,6 +754,25 @@ class SSRFGuardTransport(httpx.AsyncBaseTransport):
                 # what to do with the over-the-cap response.
                 return response
 
+            # Per ADR-025 §5: every redirect hop must re-validate the
+            # ``Location:`` target. ``httpx`` does NOT re-enter this
+            # transport on each hop (it follows redirects internally
+            # within ``AsyncClient._send_single_request``), so the
+            # synchronous pre-redirect check below is the only thing
+            # that protects a user-submitted URL from being silently
+            # followed to ``http://127.0.0.1/`` via a 302. Without
+            # this, the guard's URL allowlist is trivially bypassed by
+            # any 30x response pointing at a private address.
+            location = response.headers.get("location") if response.headers else None
+            if location:
+                try:
+                    await validate_outbound_url_async(str(location))
+                except Exception:
+                    # Per ADR-025 §5: deny the chain. Raising here
+                    # propagates to the caller (httpx cancels the
+                    # redirect walk and surfaces the error).
+                    raise
+
         return response
 
     async def aclose(self) -> None:
