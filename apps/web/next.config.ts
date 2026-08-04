@@ -66,6 +66,10 @@ export default withSentryConfig(withIntl(nextConfig), {
   // holds — a local dev build without `SENTRY_UPLOAD=true` is a
   // no-op for Sentry.
   widenClientFileUpload: true,
-  hideSourceMaps: true,
+  // Sentry 10 renamed `hideSourceMaps` → `sourcemaps: { disable: true }`.
+  // The legacy boolean option was removed from SentryBuildOptions; pass
+  // the object shape to keep the same behaviour (source maps generated
+  // locally but not bundled into the client output).
+  sourcemaps: { disable: true },
   disableLogger: true,
 })

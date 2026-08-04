@@ -10,7 +10,7 @@
 
 **Reference spec:** `docs/superpowers/specs/2026-08-04-address-open-prs-design.md`
 
-**Execution location:** Run from `E:/repo/repo-alex/ai-news-scraper` checkout (dev branch, commit `d85141f` or later). No worktree needed — `gh pr -R owner/repo` does not require local checkouts for the other repos.
+**Execution location:** Run from the project's main checkout (dev branch, commit `d85141f` or later). No worktree needed — `gh pr -R owner/repo` does not require local checkouts for the other repos.
 
 ---
 
