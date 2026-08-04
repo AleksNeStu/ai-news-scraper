@@ -59,7 +59,18 @@ class _FakeEmbeddings:
 
     async def embed(self, texts, *, model=None):
         self.calls.append((list(texts), {"model": model}))
-        return list(self.vectors)
+        # Real OpenAI-compatible providers take a list of N texts and
+        # return a list of N vectors. The service calls us with a
+        # single-text list and reads vectors[0]. Pop the head of the
+        # canned list per call so each subsequent call gets the next
+        # vector (not the same one). When the canned list is exhausted
+        # we fall back to repeating the last vector so the service's
+        # ``vectors[0]`` read is always safe.
+        if not self.vectors:
+            return [list(self.last)] if hasattr(self, "last") else []
+        head = self.vectors.pop(0)
+        self.last = head
+        return [list(head)]
 
 
 def _patch_provider(
