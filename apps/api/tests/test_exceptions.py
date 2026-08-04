@@ -32,7 +32,6 @@ from api.exceptions import (
 )
 from api.routers import health as health_module
 
-
 # ---------------------------------------------------------------------------
 # Helpers — register throw-away routes that raise each exception type.
 # ---------------------------------------------------------------------------

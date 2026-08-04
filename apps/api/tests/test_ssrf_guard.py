@@ -44,7 +44,6 @@ from api.services.ssrf_guard import (
     validate_outbound_url_async,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -72,7 +71,7 @@ def _mock_getaddrinfo(ips: list[str]):
     IP-literal fast path.
     """
 
-    def _stub(host, *args, **kwargs):  # noqa: ARG001
+    def _stub(host, *args, **kwargs):
         result = []
         for ip in ips:
             sockaddr = (ip, 0)
@@ -195,9 +194,8 @@ def test_url_encoding_tricks(url: str):
     with patch(
         "socket.getaddrinfo",
         side_effect=_mock_getaddrinfo(["127.0.0.1"]),
-    ):
-        with pytest.raises(SSRFError):
-            validate_outbound_url(url)
+    ), pytest.raises(SSRFError):
+        validate_outbound_url(url)
 
 
 @pytest.mark.parametrize(
@@ -280,9 +278,8 @@ def test_dns_rebinding_returns_private_among_public():
     with patch(
         "socket.getaddrinfo",
         side_effect=_mock_getaddrinfo(["93.184.216.34", "127.0.0.1"]),
-    ):
-        with pytest.raises(SSRFError):
-            validate_outbound_url("http://attacker.example/")
+    ), pytest.raises(SSRFError):
+        validate_outbound_url("http://attacker.example/")
 
 
 def test_dns_rebinding_returns_private_among_public_reverse_order():
@@ -290,15 +287,14 @@ def test_dns_rebinding_returns_private_among_public_reverse_order():
     with patch(
         "socket.getaddrinfo",
         side_effect=_mock_getaddrinfo(["169.254.169.254", "1.1.1.1"]),
-    ):
-        with pytest.raises(SSRFError):
-            validate_outbound_url("http://attacker.example/")
+    ), pytest.raises(SSRFError):
+        validate_outbound_url("http://attacker.example/")
 
 
 def test_dns_failure_rejected():
     """DNS failure must surface as SSRFError, not as a generic socket error."""
 
-    def _raise_gaierror(host, *args, **kwargs):  # noqa: ARG001
+    def _raise_gaierror(host, *args, **kwargs):
         raise socket.gaierror(-2, "Name or service not known")
 
     with patch("socket.getaddrinfo", side_effect=_raise_gaierror):
@@ -357,7 +353,7 @@ def test_bulk_path_cache_hit_on_duplicate_hostnames():
 
     call_counter = {"count": 0}
 
-    def _counting_stub(host, *args, **kwargs):  # noqa: ARG001
+    def _counting_stub(host, *args, **kwargs):
         call_counter["count"] += 1
         return _mock_getaddrinfo(["93.184.216.34"])(host, *args, **kwargs)
 
@@ -1007,7 +1003,7 @@ def test_dns_timeout_raises_ssrf_error_on_slow_resolver():
     set_dns_timeout_for_tests(0.1)
     try:
 
-        def _slow_resolver(host, *args, **kwargs):  # noqa: ARG001
+        def _slow_resolver(host, *args, **kwargs):
             import time as _t
 
             _t.sleep(5.0)
@@ -1066,7 +1062,7 @@ def test_dns_timeout_envelope_for_5x_slow_resolver():
     set_dns_timeout_for_tests(0.2)
     try:
 
-        def _slow(host, *args, **kwargs):  # noqa: ARG001
+        def _slow(host, *args, **kwargs):
             _time.sleep(5.0)
             return [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", 0))]
 

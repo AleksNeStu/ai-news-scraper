@@ -1,7 +1,6 @@
 """Feed / RSS schemas."""
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
@@ -14,9 +13,9 @@ class FeedCreate(BaseModel):
 class FeedOut(BaseModel):
     id: UUID
     feed_url: str
-    title: Optional[str] = None
-    description: Optional[str] = None
-    last_polled: Optional[datetime] = None
+    title: str | None = None
+    description: str | None = None
+    last_polled: datetime | None = None
     active: bool
     item_count: int = 0
     created_at: datetime
@@ -30,10 +29,10 @@ class FeedListResponse(BaseModel):
 class FeedItemOut(BaseModel):
     id: UUID
     feed_id: UUID
-    article_id: Optional[UUID] = None
+    article_id: UUID | None = None
     guid: str
-    title: Optional[str] = None
-    url: Optional[str] = None
+    title: str | None = None
+    url: str | None = None
     fetched_at: datetime
 
 
@@ -54,8 +53,8 @@ class OpmlFeedRef(BaseModel):
     xml_url: HttpUrl = Field(
         ..., alias="xmlUrl", description="RSS/Atom feed URL"
     )
-    title: Optional[str] = Field(default=None, description="OPML outline title/text")
-    category: Optional[str] = Field(
+    title: str | None = Field(default=None, description="OPML outline title/text")
+    category: str | None = Field(
         default=None,
         description=(
             "OPML outline folder (e.g. 'Tech > AI'). Discarded by the v1 "

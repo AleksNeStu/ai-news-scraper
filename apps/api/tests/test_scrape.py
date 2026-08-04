@@ -28,7 +28,6 @@ from api.deps import get_current_user_id
 from api.main import app
 from api.models.article import Article
 
-
 _TEST_USER_ID = uuid4()
 _TEST_HEADLINE = "Sample headline"
 _TEST_URL = "https://example.com/sample-article"

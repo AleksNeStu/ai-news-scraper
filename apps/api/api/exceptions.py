@@ -194,11 +194,11 @@ def problem_json_response(
 
 __all__ = [
     "AppException",
-    "NotFoundError",
-    "ValidationError",
-    "SSRFError",
     "AuthenticationError",
     "AuthorizationError",
+    "NotFoundError",
+    "SSRFError",
     "UpstreamError",
+    "ValidationError",
     "problem_json_response",
 ]

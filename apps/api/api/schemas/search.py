@@ -1,7 +1,6 @@
 """Search schemas."""
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
 from pydantic_core import PydanticCustomError
@@ -10,10 +9,10 @@ from api.schemas.article import ArticleOut
 
 
 class SearchFilters(BaseModel):
-    source: Optional[str] = None
-    topics: Optional[list[str]] = None
-    date_from: Optional[datetime] = None
-    date_to: Optional[datetime] = None
+    source: str | None = None
+    topics: list[str] | None = None
+    date_from: datetime | None = None
+    date_to: datetime | None = None
 
     @model_validator(mode="after")
     def _date_to_not_before_date_from(self) -> "SearchFilters":
@@ -52,10 +51,10 @@ class SearchRequest(BaseModel):
     """
 
     query: str = Field(..., min_length=1, max_length=2000)
-    top_k: Optional[int] = Field(default=None, ge=1, le=100)
+    top_k: int | None = Field(default=None, ge=1, le=100)
     page: int = Field(default=1, ge=1, le=10_000)
     page_size: int = Field(default=10, ge=1, le=100)
-    filters: Optional[SearchFilters] = None
+    filters: SearchFilters | None = None
 
     @model_validator(mode="after")
     def _no_both_top_k_and_page_size(self) -> "SearchRequest":
@@ -121,8 +120,8 @@ class FacetDateRange(BaseModel):
     "empty library" placeholder when both bounds are null.
     """
 
-    min: Optional[datetime] = None
-    max: Optional[datetime] = None
+    min: datetime | None = None
+    max: datetime | None = None
 
 
 class FacetsResponse(BaseModel):

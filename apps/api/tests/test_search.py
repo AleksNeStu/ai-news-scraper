@@ -33,7 +33,6 @@ from api.routers.search import over_fetch_count
 from api.services.embedder import ArticleEmbedder
 from api.services.vector_store import ChromaVectorStore
 
-
 # Stub Article template used by the auto-seed below. ``indexed_at`` is
 # fixed so ``ArticleOut.model_validate`` produces a deterministic payload
 # for snapshot tests; only the columns touched by the search hydration

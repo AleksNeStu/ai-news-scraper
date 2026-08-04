@@ -121,4 +121,4 @@ async def consume_unsubscribe(session: AsyncSession, token: str) -> UnsubscribeR
     return UnsubscribeResponse(unsubscribed=True, at=now)
 
 
-__all__ = ["mint_unsubscribe_token", "consume_unsubscribe"]
+__all__ = ["consume_unsubscribe", "mint_unsubscribe_token"]

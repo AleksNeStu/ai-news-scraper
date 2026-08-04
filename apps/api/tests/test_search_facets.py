@@ -47,7 +47,6 @@ from api.main import app
 from api.models.article import Article
 from api.services import facet_aggregator, facet_cache
 
-
 # ---------------------------------------------------------------------------
 # In-memory Redis fake (test-env safe)
 # ---------------------------------------------------------------------------
@@ -855,7 +854,7 @@ async def test_T9_per_dim_exception_returns_200_with_degraded_dimensions(
         missing vs empty).
     """
 
-    async def _boom(db, uid):  # noqa: ARG001 — signature mirror
+    async def _boom(db, uid):
         raise RuntimeError("simulated topics aggregation failure")
 
     monkeypatch.setattr(facet_aggregator, "_aggregate_topics", _boom)

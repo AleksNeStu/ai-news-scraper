@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Optional
 
 from pydantic import ValidationError
 
@@ -47,7 +46,7 @@ tries to inject LLM instructions back into the scorer prompt
 (``apps/api/api/services/scorer.py:160``)."""
 
 
-def _sanitize(raw: str) -> Optional[str]:
+def _sanitize(raw: str) -> str | None:
     """Normalize one raw tag, returning None for invalid or hostile values."""
     if not raw or not isinstance(raw, str):
         return None
@@ -66,7 +65,7 @@ class ArticleTopicExtractor:
         self._llm = None
 
     async def _call_llm(
-        self, headline: Optional[str], summary: Optional[str], body: Optional[str]
+        self, headline: str | None, summary: str | None, body: str | None
     ) -> TopicExtractionResult:
         """Call the configured provider and validate its JSON response."""
         if self._llm is None:
@@ -94,7 +93,7 @@ class ArticleTopicExtractor:
         return TopicExtractionResult.model_validate(raw)
 
     async def extract(
-        self, headline: Optional[str], summary: Optional[str], body: Optional[str]
+        self, headline: str | None, summary: str | None, body: str | None
     ) -> list[str]:
         """Return sanitized, deduplicated, sorted tags; never raises."""
         if not any([headline, summary, body]):

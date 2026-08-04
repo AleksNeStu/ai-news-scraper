@@ -267,7 +267,7 @@ async def test_login_eleventh_call_is_429(
         )
     assert last is not None
     assert last.status_code == 429, last.text
-    assert "retry-after" in {k.lower() for k in last.headers.keys()}
+    assert "retry-after" in {k.lower() for k in last.headers}
 
 
 @pytest.mark.asyncio

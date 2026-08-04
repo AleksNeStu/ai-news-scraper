@@ -1,15 +1,15 @@
 """SQLAlchemy async database engine and session factory."""
 
-from collections.abc import AsyncGenerator
 import os
+from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from api.config import get_settings
 

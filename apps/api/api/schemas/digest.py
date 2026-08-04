@@ -9,11 +9,10 @@ way ``ArticleOut`` / ``UserOut`` do (see commit b1bb3b7).
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal, Optional
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 # ---------------------------------------------------------------------------
 # Digest
@@ -42,14 +41,14 @@ class DigestOut(BaseModel):
     sections: list[DigestSectionOut] = Field(default_factory=list)
     generated_at: datetime
     delivery_status: Literal["pending", "notified", "emailed", "failed"] = "pending"
-    email_message_id: Optional[str] = None
+    email_message_id: str | None = None
 
 
 class DigestListResponse(BaseModel):
     """Cursor-paginated digest list (mirrors TS ``DigestListResponse``)."""
 
     digests: list[DigestOut]
-    next_cursor: Optional[str] = None
+    next_cursor: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -67,11 +66,11 @@ class NotificationOut(BaseModel):
     kind: Literal["brief_ready", "brief_failed", "system"]
     title: str
     preview: str
-    href: Optional[str] = None
-    digest_id: Optional[UUID] = None
+    href: str | None = None
+    digest_id: UUID | None = None
     read: bool
     created_at: datetime
-    read_at: Optional[datetime] = None
+    read_at: datetime | None = None
 
 
 class NotificationListResponse(BaseModel):

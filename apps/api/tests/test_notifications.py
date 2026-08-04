@@ -20,7 +20,6 @@ from api.models.user import User
 from api.services.auth import hash_password
 from api.services.notifications import list_notifications, mark_read
 
-
 # ---------------------------------------------------------------------------
 # Helpers — local fixture-like builders (don't rely on conftest's
 # `client`/`auth_user` because those commit; we want everything inside

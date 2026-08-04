@@ -28,7 +28,7 @@ def _reset_cache():
 
 
 def _mock_getaddrinfo(ips: list[str]):
-    def _stub(host, *args, **kwargs):  # noqa: ARG001
+    def _stub(host, *args, **kwargs):
         import socket
 
         return [(socket.AF_INET, socket.SOCK_STREAM, 0, "", (ip, 0)) for ip in ips]
@@ -52,9 +52,8 @@ async def test_scrape_metadata_url_raises_ssrf_error():
     with patch(
         "socket.getaddrinfo",
         side_effect=_mock_getaddrinfo(["169.254.169.254"]),
-    ):
-        with pytest.raises(SSRFError):
-            await scraper.scrape("http://metadata.aws.example/")
+    ), pytest.raises(SSRFError):
+        await scraper.scrape("http://metadata.aws.example/")
 
 
 @pytest.mark.asyncio
@@ -80,9 +79,8 @@ async def test_scrape_rfc1918_raises_ssrf_error():
     with patch(
         "socket.getaddrinfo",
         side_effect=_mock_getaddrinfo(["10.0.0.1"]),
-    ):
-        with pytest.raises(SSRFError):
-            await scraper.scrape("http://internal.example/")
+    ), pytest.raises(SSRFError):
+        await scraper.scrape("http://internal.example/")
 
 
 @pytest.mark.asyncio

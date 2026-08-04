@@ -733,7 +733,7 @@ class SSRFGuardTransport(httpx.AsyncBaseTransport):
         # ``REDIRECT_CAP_HTTPCLIENT``.
         self._redirect_count = 0
 
-    async def handle_async_request(self, request) -> "object":
+    async def handle_async_request(self, request) -> object:
         # ``request.url`` is ``httpx.URL`` (a str-coercible). We coerce
         # to a plain string so shape-checks (length, scheme) match the
         # non-Transport public surface byte-for-byte.

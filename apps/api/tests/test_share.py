@@ -39,7 +39,6 @@ from api.db.database import AsyncSessionLocal
 from api.models.article import Article
 from api.models.shared_link import SharedLink
 
-
 # ---------------------------------------------------------------------------
 # Helpers — register a real user via the API + create an Article through
 # the production session so the API can see the row.

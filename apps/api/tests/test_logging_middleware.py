@@ -37,7 +37,6 @@ from api.middleware.logging import (
 )
 from api.routers import health as health_module
 
-
 # ---------------------------------------------------------------------------
 # JSONFormatter — §9.1
 # ---------------------------------------------------------------------------
@@ -122,7 +121,7 @@ def test_json_formatter_omits_stdlib_logrecord_internals() -> None:
     formatter = JSONFormatter()
     record = _make_record(msg="x")
     parsed = json.loads(formatter.format(record))
-    for reserved in {
+    for reserved in (
         "pathname",
         "lineno",
         "process",
@@ -132,7 +131,7 @@ def test_json_formatter_omits_stdlib_logrecord_internals() -> None:
         "msg",
         "levelno",
         "funcName",
-    }:
+    ):
         assert reserved not in parsed, f"unexpected stdlib field leaked: {reserved}"
 
 

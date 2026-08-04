@@ -23,7 +23,6 @@ from uuid import uuid4
 from api.middleware.logging import get_request_id
 from api.scheduler.brief import BriefScheduler
 
-
 _CRON_RID = re.compile(r"^cron-[0-9a-f]{12}$")
 
 

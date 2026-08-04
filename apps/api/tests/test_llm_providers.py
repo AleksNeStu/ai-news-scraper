@@ -32,7 +32,6 @@ from api.services.llm.deepseek import DeepSeekProvider
 from api.services.llm.gemini import GeminiProvider
 from api.services.llm.openrouter import OpenRouterProvider
 
-
 # ---------------------------------------------------------------------------
 # §11.9.1 — Factory selection
 # ---------------------------------------------------------------------------

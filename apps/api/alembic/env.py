@@ -20,8 +20,8 @@ from alembic import context
 # --- App imports (models + Base) ---------------------------------------
 # Importing the models registers them on Base.metadata, which is what
 # autogenerate walks to produce migrations. Keep this list exhaustive.
-from api.db.database import Base  # noqa: E402
-from api.models import (  # noqa: E402,F401
+from api.db.database import Base
+from api.models import (  # noqa: F401
     Article,
     Digest,
     DigestUnsubscribeLog,

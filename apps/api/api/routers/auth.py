@@ -193,7 +193,6 @@ async def logout(
         await revoke_refresh_token(db, auth_refresh)
         await db.commit()
     _clear_auth_cookies(response)
-    return
 
 
 @router.get("/me", response_model=UserOut)

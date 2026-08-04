@@ -16,12 +16,11 @@ Facets (ADR-020 / Task #53):
 import logging
 import time
 from datetime import timedelta
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db.database import get_db
 from api.deps import get_current_user_id
@@ -82,7 +81,7 @@ def over_fetch_count(page: int, page_size: int) -> int:
     return min(max(page * page_size * 2, page * page_size + 50), 1000)
 
 
-def _build_hydration_clauses(filters: Optional[SearchFilters]) -> list:
+def _build_hydration_clauses(filters: SearchFilters | None) -> list:
     """Extra WHERE clauses for the PG hydration step.
 
     Implements ADR-019 §19.7:

@@ -63,7 +63,7 @@ async def _check_postgres() -> tuple[str, str | None]:
             if value == 1:
                 return ("ok", None)
             return ("error", f"unexpected scalar: {value!r}"[:_MAX_ERROR_LEN])
-    except Exception as e:  # noqa: BLE001 — probe must catch everything
+    except Exception as e:
         logger.warning("health check failed: postgres", exc_info=True)
         return ("error", _format_error(e))
 
@@ -89,7 +89,7 @@ async def _check_chroma() -> tuple[str, str | None]:
                 timeout=_CHECK_TIMEOUT_S,
             )
             return ("ok", None)
-        except Exception as e:  # noqa: BLE001 — probe must catch everything
+        except Exception as e:
             logger.warning("health check failed: chroma http", exc_info=True)
             return ("error", _format_error(e))
     # Embedded path: PersistentClient points at the on-disk index.
@@ -100,7 +100,7 @@ async def _check_chroma() -> tuple[str, str | None]:
             timeout=_CHECK_TIMEOUT_S,
         )
         return ("ok", None)
-    except Exception as e:  # noqa: BLE001 — probe must catch everything
+    except Exception as e:
         logger.warning("health check failed: chroma embedded", exc_info=True)
         return ("error", _format_error(e))
 
@@ -123,8 +123,8 @@ async def health() -> JSONResponse:
         _check_postgres(),
         _check_chroma(),
     )
-    pg_status_str, pg_err_str = pg_result
-    ch_status_str, ch_err_str = ch_result
+    _pg_status_str, pg_err_str = pg_result
+    _ch_status_str, ch_err_str = ch_result
 
     overall_ok = pg_err_str is None and ch_err_str is None
     body = {

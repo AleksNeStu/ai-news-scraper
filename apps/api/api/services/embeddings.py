@@ -27,8 +27,9 @@ Design constraints (re-checked against ADR-022):
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Callable, Sequence
+from typing import Any
 
 from api.config import Settings, get_settings
 from api.schemas.embeddings import EmbeddingProvider
@@ -36,7 +37,6 @@ from api.services.llm.base import LLMProvider
 from api.services.llm.deepseek import DeepSeekProvider
 from api.services.llm.gemini import GeminiProvider
 from api.services.llm.openrouter import OpenRouterProvider
-
 
 # --- AppException subclasses (mapped to HTTP 422 in the router) ---------
 
@@ -324,9 +324,9 @@ __all__ = [
     "ProviderDoesNotSupportEmbedding",
     "ProviderKeyMissing",
     "ProviderUnknown",
-    "list_providers",
-    "embed_text",
     "cosine_similarity",
     "dot_product",
+    "embed_text",
     "euclidean",
+    "list_providers",
 ]

@@ -31,7 +31,6 @@ from pathlib import Path
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-
 # This script lives at apps/api/api/scripts/seed.py — go up three levels to
 # apps/api/, then into scripts/seed.sql.
 SEED_PATH = Path(__file__).resolve().parents[2] / "scripts" / "seed.sql"

@@ -48,16 +48,17 @@ column-for-column.
 # -------------------------------------------------------------
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "4c5d6e7f8a9b"
-down_revision: Union[str, Sequence[str], None] = "3b4f2a8d9c10"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = "3b4f2a8d9c10"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

@@ -39,7 +39,6 @@ from api.services.embeddings import (
     list_providers,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures — local module-level monkeypatching helpers
 # ---------------------------------------------------------------------------

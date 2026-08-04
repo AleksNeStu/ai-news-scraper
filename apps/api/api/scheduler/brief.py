@@ -153,7 +153,7 @@ class BriefScheduler:
                 },
             )
             return row
-        except Exception:  # noqa: BLE001 — per-user failure isolation
+        except Exception:
             logger.exception(
                 "digest job failed",
                 extra={"job_id": job_id},

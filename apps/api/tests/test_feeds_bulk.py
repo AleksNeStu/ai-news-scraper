@@ -44,7 +44,6 @@ from api.db.database import AsyncSessionLocal
 from api.models.feed import Feed
 from api.services.feed_parser import ParsedFeed, ParsedFeedItem
 
-
 # ---------------------------------------------------------------------------
 # Autouse — neutralise the per-IP register rate limit so 8+ tests
 # don't trip the 5/3600 bucket on a Redis-backed ``make test-api``

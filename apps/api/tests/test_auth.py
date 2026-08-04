@@ -307,7 +307,7 @@ async def test_me_with_tampered_jwt_returns_401(auth_client: AsyncClient) -> Non
     # Flip the last char of the signature segment.
     head, payload, sig = token.split(".")
     flipped = sig[:-1] + ("A" if sig[-1] != "A" else "B")
-    tampered = ".".join([head, payload, flipped])
+    tampered = f"{head}.{payload}.{flipped}"
 
     resp = await auth_client.get(
         "/auth/me",
@@ -498,7 +498,7 @@ async def test_me_rejects_expired_jwt(
     ``decode_token`` catches and converts to ``None`` →
     ``get_current_user_id`` raises 401.
     """
-    head_b64, payload_b64, _sig = auth_user["token"].split(".")
+    _head_b64, payload_b64, _sig = auth_user["token"].split(".")
     payload = _decode_b64url(payload_b64)
     payload["exp"] = _now_exp(-60)  # expired 1 minute ago
     # Re-sign: PyJWT computes the HMAC over the byte string it
@@ -572,7 +572,7 @@ async def test_me_rejects_jwt_missing_subject_claim(
     a signing key leak being usable for tokens without an
     identity.
     """
-    head_b64, payload_b64, _sig = auth_user["token"].split(".")
+    _head_b64, payload_b64, _sig = auth_user["token"].split(".")
     payload = _decode_b64url(payload_b64)
     del payload["sub"]
     no_sub_token = jwt.encode(payload, _settings.jwt_secret, algorithm="HS256")

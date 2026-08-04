@@ -163,7 +163,7 @@ async def get_shared_article(
     # the page; visit accounting is auxiliary).
     try:
         await record_visit(db, resolved.shared_link_id)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning(
             "visit audit failed for shared_link_id=%s (non-blocking)",
             resolved.shared_link_id,
@@ -176,4 +176,4 @@ async def get_shared_article(
     )
 
 
-__all__ = ["router", "ShareNotFoundError", "ShareGoneError"]
+__all__ = ["ShareGoneError", "ShareNotFoundError", "router"]

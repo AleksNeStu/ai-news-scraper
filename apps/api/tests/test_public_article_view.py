@@ -30,7 +30,7 @@ from sqlalchemy import select, text
 
 from api.db.database import AsyncSessionLocal
 from api.models.shared_link import SharedLink
-from api.services.shared_links import _hash_token  # noqa: F401 — used by other tests
+from api.services.shared_links import _hash_token
 
 from .test_share import _make_article, _register_user
 

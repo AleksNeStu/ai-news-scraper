@@ -42,9 +42,9 @@ from api.deps import get_current_user_id
 from api.exceptions import AppException
 from api.middleware.rate_limit import rate_limit_user
 from api.schemas.embeddings import (
+    EmbeddingProvidersResponse,
     EmbedRequest,
     EmbedResponse,
-    EmbeddingProvidersResponse,
     SimilarityRequest,
     SimilarityResponse,
 )
@@ -52,10 +52,18 @@ from api.services.embeddings import (
     ProviderDoesNotSupportEmbedding,
     ProviderKeyMissing,
     ProviderUnknown,
-    cosine_similarity as _cosine_similarity,
-    dot_product as _dot_product,
     embed_text,
+)
+from api.services.embeddings import (
+    cosine_similarity as _cosine_similarity,
+)
+from api.services.embeddings import (
+    dot_product as _dot_product,
+)
+from api.services.embeddings import (
     euclidean as _euclidean,
+)
+from api.services.embeddings import (
     list_providers as _list_providers,
 )
 
@@ -193,7 +201,7 @@ async def similarity(
         model_a, dims_a, vec_a = await embed_text(
             payload.provider_id, payload.text_a, model=payload.model
         )
-        model_b, dims_b, vec_b = await embed_text(
+        _model_b, dims_b, vec_b = await embed_text(
             payload.provider_id, payload.text_b, model=payload.model
         )
     except ProviderUnknown as exc:
@@ -231,8 +239,8 @@ async def similarity(
 
 
 __all__ = [
-    "router",
     "ProviderDoesNotSupportEmbeddingError",
     "ProviderKeyMissingError",
     "ProviderUnknownError",
+    "router",
 ]

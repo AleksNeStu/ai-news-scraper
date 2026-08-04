@@ -220,9 +220,9 @@ __all__ = [
     "MintedShare",
     "ResolvedShare",
     "ShareError",
-    "ShareNotFound",
     "ShareExpired",
+    "ShareNotFound",
     "mint_share",
-    "resolve_share",
     "record_visit",
+    "resolve_share",
 ]

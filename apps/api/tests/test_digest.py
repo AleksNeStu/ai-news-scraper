@@ -35,7 +35,6 @@ from api.services.clustering import (
 )
 from api.services.digest import generate_digest
 
-
 # ---------------------------------------------------------------------------
 # Helpers — local builders that don't touch the lifecycle of the
 # shared `auth_user` fixture (which commits via a different connection).

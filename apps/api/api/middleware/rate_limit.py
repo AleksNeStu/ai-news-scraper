@@ -37,12 +37,11 @@ every call.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
-
-import ipaddress
 
 import redis.asyncio as redis_async
 from fastapi import HTTPException, Request, status

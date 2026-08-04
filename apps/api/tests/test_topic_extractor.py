@@ -22,7 +22,6 @@ from api.services.topic_extractor import (
     _sanitize,
 )
 
-
 # ---------------------------------------------------------------------------
 # _sanitize unit tests (no LLM) — pure string → Optional[str] mapping
 # ---------------------------------------------------------------------------

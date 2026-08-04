@@ -26,8 +26,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
-from typing import Sequence
 
 from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -11,7 +11,6 @@ typecheck / pytest will fail on one side.
 """
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -67,9 +66,9 @@ class SharedArticleView(BaseModel):
 
     article_id: UUID
     title: str
-    summary: Optional[str] = None
+    summary: str | None = None
     topics: list[str] = Field(default_factory=list)
-    source_url: Optional[str] = None
-    published_at: Optional[datetime] = None
+    source_url: str | None = None
+    published_at: datetime | None = None
     shared_at: datetime
     expires_at: datetime

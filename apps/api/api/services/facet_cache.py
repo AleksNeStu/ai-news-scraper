@@ -74,7 +74,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 from uuid import UUID
 
 import redis.asyncio as redis_async
@@ -195,10 +195,10 @@ def reset_for_tests() -> None:  # pragma: no cover — test helper
 
 __all__ = [
     "CACHE_TTL_SECONDS",
-    "get_or_compute",
-    "reset_for_tests",  # exposed for tests (Task #53 Devil L-2: renamed
     # from ``_reset_for_tests`` because the function is in ``__all__``
     # and is part of the public test surface; the leading underscore
     # implied private module state, which was misleading).
     "_cache_key",
+    "get_or_compute",
+    "reset_for_tests",  # exposed for tests (Task #53 Devil L-2: renamed
 ]

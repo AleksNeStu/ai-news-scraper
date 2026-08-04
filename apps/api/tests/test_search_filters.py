@@ -31,7 +31,6 @@ from api.models.article import Article
 from api.services.embedder import ArticleEmbedder
 from api.services.vector_store import ChromaVectorStore
 
-
 # ---------------------------------------------------------------------------
 # Pool helpers
 # ---------------------------------------------------------------------------

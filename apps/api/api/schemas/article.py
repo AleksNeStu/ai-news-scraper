@@ -1,7 +1,7 @@
 """Article / scrape schemas."""
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
@@ -21,20 +21,20 @@ class ArticleOut(BaseModel):
 
     id: UUID
     url: str
-    headline: Optional[str] = None
-    body: Optional[str] = None
-    summary: Optional[str] = None
+    headline: str | None = None
+    body: str | None = None
+    summary: str | None = None
     topics: list[str] = Field(default_factory=list)
-    source_domain: Optional[str] = None
-    publish_date: Optional[datetime] = None
+    source_domain: str | None = None
+    publish_date: datetime | None = None
     indexed_at: datetime
     # Task #9 / ADR-013 §13.4 — tiered curation. All three fields are
     # NULL until the first successful ``score_article`` call; the
     # front-end ScoreRing renders an empty ring when ``score`` is null
     # (ADR-013 §13.3 — never a 0.0 ring that lies).
-    score: Optional[float] = None
-    tier: Optional[TierLiteral] = None
-    scored_at: Optional[datetime] = None
+    score: float | None = None
+    tier: TierLiteral | None = None
+    scored_at: datetime | None = None
 
 
 class ArticleListResponse(BaseModel):

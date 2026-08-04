@@ -167,9 +167,7 @@ def _is_safe_topic(topic: str) -> bool:
     if t[0] in _BAD_TOPIC_CHARS:
         return False
     lower = t.lower()
-    if any(lower.startswith(v) for v in _CONTROL_VERB_PREFIXES):
-        return False
-    return True
+    return not any(lower.startswith(v) for v in _CONTROL_VERB_PREFIXES)
 
 
 @dataclass(frozen=True)

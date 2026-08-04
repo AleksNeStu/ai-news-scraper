@@ -27,8 +27,6 @@ layer; the schemas here only enforce shape):
 
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -47,8 +45,8 @@ class EmbeddingProvider(BaseModel):
     supports_embed: bool
     requires_own_key: bool
     key_configured: bool
-    dimensions: Optional[int] = None
-    default_model: Optional[str] = None
+    dimensions: int | None = None
+    default_model: str | None = None
 
     @field_validator("id", "display_name")
     @classmethod
@@ -61,7 +59,7 @@ class EmbeddingProvider(BaseModel):
 
     @field_validator("dimensions")
     @classmethod
-    def _dimensions_positive_when_set(cls, v: Optional[int]) -> Optional[int]:
+    def _dimensions_positive_when_set(cls, v: int | None) -> int | None:
         if v is not None and v <= 0:
             raise ValueError("dimensions must be positive when set")
         return v
@@ -86,7 +84,7 @@ class EmbedRequest(BaseModel):
 
     provider_id: str = Field(..., min_length=1)
     text: str = Field(..., min_length=1, max_length=8000)
-    model: Optional[str] = None
+    model: str | None = None
 
 
 class EmbedResponse(BaseModel):
@@ -115,7 +113,7 @@ class SimilarityRequest(BaseModel):
     provider_id: str = Field(..., min_length=1)
     text_a: str = Field(..., min_length=1, max_length=8000)
     text_b: str = Field(..., min_length=1, max_length=8000)
-    model: Optional[str] = None
+    model: str | None = None
 
 
 class SimilarityResponse(BaseModel):
@@ -138,15 +136,15 @@ class SimilarityResponse(BaseModel):
     vector_a: list[float]
     vector_b: list[float]
     cosine_similarity: float = Field(..., ge=-1.0, le=1.0)
-    dot_product: Optional[float] = None
-    euclidean: Optional[float] = None
+    dot_product: float | None = None
+    euclidean: float | None = None
 
 
 __all__ = [
-    "EmbeddingProvider",
-    "EmbeddingProvidersResponse",
     "EmbedRequest",
     "EmbedResponse",
+    "EmbeddingProvider",
+    "EmbeddingProvidersResponse",
     "SimilarityRequest",
     "SimilarityResponse",
 ]

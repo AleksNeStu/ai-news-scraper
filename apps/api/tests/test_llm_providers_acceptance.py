@@ -86,7 +86,6 @@ from api.services.embedder import ArticleEmbedder
 from api.services.llm import get_llm_provider
 from api.services.summarizer import ArticleSummarizer
 
-
 # ---------------------------------------------------------------------------
 # Constants — fixture-style data shared across tests
 # ---------------------------------------------------------------------------

@@ -12,8 +12,8 @@ from unittest.mock import patch
 
 import pytest
 
-from api.services.feed_parser import FeedParser
 from api.services import ssrf_guard
+from api.services.feed_parser import FeedParser
 
 
 @pytest.fixture(autouse=True)
@@ -25,7 +25,7 @@ def _reset_cache():
 
 
 def _mock_getaddrinfo(ips: list[str]):
-    def _stub(host, *args, **kwargs):  # noqa: ARG001
+    def _stub(host, *args, **kwargs):
         import socket
 
         return [(socket.AF_INET, socket.SOCK_STREAM, 0, "", (ip, 0)) for ip in ips]
@@ -117,11 +117,10 @@ def test_parse_logs_warning_on_block(monkeypatch, caplog):
     import logging
 
     parser = FeedParser()
-    with caplog.at_level(logging.WARNING, logger="api.services.feed_parser"):
-        with patch(
-            "socket.getaddrinfo",
-            side_effect=_mock_getaddrinfo(["127.0.0.1"]),
-        ):
-            result = parser.parse("http://localhost/")
+    with caplog.at_level(logging.WARNING, logger="api.services.feed_parser"), patch(
+        "socket.getaddrinfo",
+        side_effect=_mock_getaddrinfo(["127.0.0.1"]),
+    ):
+        result = parser.parse("http://localhost/")
     assert result is None
     assert any("SSRF guard blocked" in record.message for record in caplog.records)
