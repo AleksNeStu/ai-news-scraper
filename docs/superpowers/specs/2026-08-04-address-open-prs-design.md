@@ -8,13 +8,13 @@
 
 ## Context
 
-`ai-news-scraper` has **11 open Dependabot PRs** (all dependency bumps, none reviewed since 2026-07-13). Across the RepoALX collection, `gh pr list` surfaces **42 open PRs total**:
+`ai-news-scraper` has **11 open Dependabot PRs** (all dependency bumps, none reviewed since 2026-07-13). Across the project collection, `gh pr list` surfaces **42 open PRs total**:
 
 | Repo | Open PRs | Visibility | Token access |
 |---|---|---|---|
 | `ai-news-scraper` | 11 (all Dependabot) | public | yes |
-| `ai-real-estate-assistant` | 1 (dependabot-auto-merge CI fix) | public | yes |
-| `natively-cluely` | 30 (mix: features, fixes, deps) | private | yes |
+| another public repo (sibling, frozen) | 1 (dependabot-auto-merge CI fix) | public | yes |
+| a private repo (interview state) | 30 (mix: features, fixes, deps) | private | yes |
 | `cv` | unknown (token 404s) | private mirror-only | **no** |
 | `EBiCS_Firmware` | unknown (token 404s) | private mirror-only | **no** |
 
@@ -39,7 +39,7 @@ Per user's clarifications:
 Single in-session agent drives a per-repo loop. No subagents (42 PRs × ~5min each is bounded). `gh` CLI is already authenticated as `AleksNeStu` (active account) — no token switch needed.
 
 ```
-for repo in [ai-news-scraper, ai-real-estate-assistant, natively-cluely]:
+for repo in [ai-news-scraper, another-public-repo, the-private-repo]:
     inventory = gh pr list -R <repo> --state open --json ...
     for pr in inventory:
         if is_Dependabot(pr) and repo == ai-news-scraper:

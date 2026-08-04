@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Review + take action (merge / close / request changes) on every open PR across 3 accessible RepoALX repos. Skip `cv` + `EBiCS_Firmware` (token-inaccessible). Produce an audit log with one row per PR.
+**Goal:** Review + take action (merge / close / request changes) on every open PR across 3 accessible the project collection repos. Skip `cv` + `EBiCS_Firmware` (token-inaccessible). Produce an audit log with one row per PR.
 
-**Architecture:** Single in-session agent drives a per-repo loop using `gh` CLI. No subagents (the 3 repos each get their own task; per-PR decisions are short). Hybrid execution: spot-check + batch the 11 Dependabot PRs in `ai-news-scraper`; individual review for the 30 in `natively-cluely`; individual for the 1 in `ai-real-estate-assistant`. Audit log appended after every action.
+**Architecture:** Single in-session agent drives a per-repo loop using `gh` CLI. No subagents (the 3 repos each get their own task; per-PR decisions are short). Hybrid execution: spot-check + batch the 11 Dependabot PRs in `ai-news-scraper`; individual review for the 30 in `the-private-repo`; individual for the 1 in `another-public-repo`. Audit log appended after every action.
 
 **Tech Stack:** `gh` CLI (v2.x, already authenticated as `AleksNeStu` on this machine), `git`, bash. No code changes — pure operational task.
 
@@ -34,7 +34,7 @@ Expected output includes:
   - Active account: true
 ```
 
-If `dev-scaler` or `nest-ai-dev` is active instead, switch:
+If a private-mirror token is active instead, switch:
 ```bash
 gh auth switch --user AleksNeStu
 ```
@@ -68,7 +68,7 @@ Expected: integer ≥ 11. If 0 or error, STOP and surface token issue.
 cat > docs/operations/pr-triage-2026-08-04.md <<'EOF'
 # PR Triage 2026-08-04
 
-Triage session for the `/goal address all open prs` session. Scope: 3 accessible RepoALX repos (ai-news-scraper, ai-real-estate-assistant, natively-cluely). Skipped: cv, EBiCS_Firmware (token-inaccessible).
+Triage session for the `/goal address all open prs` session. Scope: 3 accessible the project collection repos (ai-news-scraper, another-public-repo, the-private-repo). Skipped: cv, EBiCS_Firmware (token-inaccessible).
 
 | # | Repo | PR | Title | Decision | Rationale | Commit/Close SHA | Timestamp |
 |---|---|---|---|---|---|---|---|
@@ -193,15 +193,15 @@ Expected: `0`. If non-zero, those are the `FAILED` ones — investigate per the 
 
 ---
 
-## Phase 2: ai-real-estate-assistant (1 PR)
+## Phase 2: another-public-repo (1 PR)
 
 ### Task 5: Review + action the 1 PR
 
 - [ ] **Step 1: View the PR**
 
 ```bash
-gh pr view -R AleksNeStu/ai-real-estate-assistant 248 --json number,title,body,files,additions,deletions,mergeable,labels
-gh pr checks -R AleksNeStu/ai-real-estate-assistant 248 --json name,state
+gh pr view -R AleksNeStu/another-public-repo 248 --json number,title,body,files,additions,deletions,mergeable,labels
+gh pr checks -R AleksNeStu/another-public-repo 248 --json name,state
 ```
 
 - [ ] **Step 2: Decide**
@@ -214,35 +214,35 @@ If `mergeable=false` → **CLOSE** with "merge conflict" reason.
 
 ```bash
 # MERGE path:
-gh pr merge -R AleksNeStu/ai-real-estate-assistant 248 --squash --delete-branch \
+gh pr merge -R AleksNeStu/another-public-repo 248 --squash --delete-branch \
   --body "Single PR fixes the dependabot-auto-merge workflow's wait-on-check steps. CI-only change. squash merge."
 
 # CLOSE path:
-gh pr close -R AleksNeStu/ai-real-estate-assistant 248 --comment "Closing: merge conflict detected on this branch. The dependabot-auto-merge workflow fix can be re-submitted from an updated base."
+gh pr close -R AleksNeStu/another-public-repo 248 --comment "Closing: merge conflict detected on this branch. The dependabot-auto-merge workflow fix can be re-submitted from an updated base."
 
 # REQUEST_CHANGES path:
-gh pr review -R AleksNeStu/ai-real-estate-assistant 248 --request-changes \
+gh pr review -R AleksNeStu/another-public-repo 248 --request-changes \
   --body "<specific feedback — explain what needs to change before this can be merged>"
 ```
 
 - [ ] **Step 4: Append to audit log**
 
 ```bash
-echo "| | AleksNeStu/ai-real-estate-assistant | #248 | (PR title) | <DECISION> | <rationale> | <sha or 'n/a'> | 2026-08-04 |" >> docs/operations/pr-triage-2026-08-04.md
+echo "| | AleksNeStu/another-public-repo | #248 | (PR title) | <DECISION> | <rationale> | <sha or 'n/a'> | 2026-08-04 |" >> docs/operations/pr-triage-2026-08-04.md
 ```
 
 ---
 
-## Phase 3: natively-cluely (30 PRs — per-PR review)
+## Phase 3: the-private-repo (30 PRs — per-PR review)
 
 This phase is the bulk of the work. Each PR is reviewed individually.
 
-### Task 6: Inventory + categorize natively-cluely PRs
+### Task 6: Inventory + categorize the-private-repo PRs
 
 - [ ] **Step 1: Capture inventory + category for each PR**
 
 ```bash
-gh pr list -R AleksNeStu/natively-cluely --state open \
+gh pr list -R AleksNeStu/the-private-repo --state open \
   --json number,title,author,createdAt,isDraft,mergeable,labels,additions,deletions \
   --jq '.[] | "#\(.number) | \(.title) | mergeable=\(.mergeable) | draft=\(.isDraft) | +\(.additions)/-\(.deletions)"' \
   > /tmp/ncl_pr_inventory.txt
@@ -268,21 +268,21 @@ Heuristics:
 
 ---
 
-### Task 7: Process Dependabot PRs in natively-cluely (if any)
+### Task 7: Process Dependabot PRs in the-private-repo (if any)
 
 Skip if Task 6 found no Dependabot PRs.
 
-- [ ] **Step 1: Same flow as Task 4 but with the natively-cluely repo**
+- [ ] **Step 1: Same flow as Task 4 but with the the-private-repo repo**
 
 ```bash
 PR_NUMBERS="<list from Task 6>"
 for n in $PR_NUMBERS; do
-  result=$(gh pr merge -R AleksNeStu/natively-cluely $n --squash --delete-branch \
-    --body "Dependabot batch merge for natively-cluely. Dep-only bump. CI paused." 2>&1)
+  result=$(gh pr merge -R AleksNeStu/the-private-repo $n --squash --delete-branch \
+    --body "Dependabot batch merge for the-private-repo. Dep-only bump. CI paused." 2>&1)
   rc=$?
   if [ $rc -eq 0 ]; then
-    sha=$(gh pr view -R AleksNeStu/natively-cluely $n --json mergeCommit --jq '.mergeCommit.oid' 2>/dev/null)
-    echo "| | AleksNeStu/natively-cluely | #$n | (Dependabot) | MERGE | Dependabot batch merge | \`$sha\` | 2026-08-04 |" >> docs/operations/pr-triage-2026-08-04.md
+    sha=$(gh pr view -R AleksNeStu/the-private-repo $n --json mergeCommit --jq '.mergeCommit.oid' 2>/dev/null)
+    echo "| | AleksNeStu/the-private-repo | #$n | (Dependabot) | MERGE | Dependabot batch merge | \`$sha\` | 2026-08-04 |" >> docs/operations/pr-triage-2026-08-04.md
   fi
 done
 ```
@@ -296,8 +296,8 @@ For each non-Dependabot PR identified in Task 6:
 - [ ] **Step 1: View PR + CI + diff (small PRs only)**
 
 ```bash
-gh pr view -R AleksNeStu/natively-cluely $n --json number,title,body,files,additions,deletions,mergeable,labels
-gh pr checks -R AleksNeStu/natively-cluely $n --json name,state
+gh pr view -R AleksNeStu/the-private-repo $n --json number,title,body,files,additions,deletions,mergeable,labels
+gh pr checks -R AleksNeStu/the-private-repo $n --json name,state
 ```
 
 If diff > 1000 lines OR > 50 files, skip the full diff read — go to Step 2 with title/labels/mergeable only.
@@ -315,17 +315,17 @@ Apply the decision matrix from the spec:
 
 ```bash
 # MERGE:
-gh pr merge -R AleksNeStu/natively-cluely $n --squash --delete-branch \
+gh pr merge -R AleksNeStu/the-private-repo $n --squash --delete-branch \
   --body "Reviewed: <one-line summary>. CI paused per repo policy. squash merge keeps dev history linear."
 
 # CLOSE:
-gh pr close -R AleksNeStu/natively-cluely $n --comment "Closing: <reason>"
+gh pr close -R AleksNeStu/the-private-repo $n --comment "Closing: <reason>"
 
 # LEAVE_OPEN:
-gh pr comment -R AleksNeStu/natively-cluely $n --body "<what's needed>"
+gh pr comment -R AleksNeStu/the-private-repo $n --body "<what's needed>"
 
 # REQUEST_CHANGES:
-gh pr review -R AleksNeStu/natively-cluely $n --request-changes \
+gh pr review -R AleksNeStu/the-private-repo $n --request-changes \
   --body "<specific feedback>"
 ```
 
@@ -345,18 +345,18 @@ gh pr list -R AleksNeStu/ai-news-scraper --state open --json number --jq 'length
 
 Expected: `0`.
 
-- [ ] **Step 2: Verify ai-real-estate-assistant is empty (or only LEAVE_OPEN)**
+- [ ] **Step 2: Verify another-public-repo is empty (or only LEAVE_OPEN)**
 
 ```bash
-gh pr list -R AleksNeStu/ai-real-estate-assistant --state open --json number --jq 'length'
+gh pr list -R AleksNeStu/another-public-repo --state open --json number --jq 'length'
 ```
 
 Expected: `0` or matches the `LEAVE_OPEN` count from the audit log.
 
-- [ ] **Step 3: Verify natively-cluely is empty (or only LEAVE_OPEN)**
+- [ ] **Step 3: Verify the-private-repo is empty (or only LEAVE_OPEN)**
 
 ```bash
-gh pr list -R AleksNeStu/natively-cluely --state open --json number --jq 'length'
+gh pr list -R AleksNeStu/the-private-repo --state open --json number --jq 'length'
 ```
 
 Expected: `0` or matches the `LEAVE_OPEN` count from the audit log.
@@ -367,7 +367,7 @@ Expected: `0` or matches the `LEAVE_OPEN` count from the audit log.
 cat docs/operations/pr-triage-2026-08-04.md
 ```
 
-The agent should verify the row count matches: `11 (ai-news-scraper) + 1 (ai-real-estate-assistant) + 30 (natively-cluely) = 42`.
+The agent should verify the row count matches: `11 (ai-news-scraper) + 1 (another-public-repo) + 30 (the-private-repo) = 42`.
 
 ---
 
@@ -378,7 +378,7 @@ The agent should verify the row count matches: `11 (ai-news-scraper) + 1 (ai-rea
 ```bash
 git add docs/operations/pr-triage-2026-08-04.md
 git commit --no-verify -m "docs(operations): PR triage 2026-08-04 audit log" \
-  -m "Records the per-PR decision (merge / close / leave-open) for the 42 open PRs addressed in this session. 3 accessible RepoALX repos (ai-news-scraper, ai-real-estate-assistant, natively-cluely). cv + EBiCS_Firmware skipped (token-inaccessible).
+  -m "Records the per-PR decision (merge / close / leave-open) for the 42 open PRs addressed in this session. 3 accessible the project collection repos (ai-news-scraper, another-public-repo, the-private-repo). cv + EBiCS_Firmware skipped (token-inaccessible).
 
 Refs: /goal address all open prs"
 ```
