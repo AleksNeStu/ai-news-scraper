@@ -213,7 +213,10 @@ async def bulk_import_feeds(
         "bulk_import finished",
         extra={
             "user_id": str(user_id),
-            "created": created_count,
+            # Use a non-reserved name — `created` collides with
+            # LogRecord.created (a float timestamp) in Python's logging
+            # module and raises KeyError when used as an `extra=` key.
+            "feeds_created": created_count,
             "skipped_duplicates": skipped_duplicates,
             "failed_count": len(failed),
         },
