@@ -100,8 +100,11 @@ jobs:
   a11y-staging-nightly:
     name: axe-core (nightly, staging)
     runs-on: ubuntu-latest
-    # Only on scheduled runs OR explicit dispatch. PRs use a11y-pr.
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # Only on scheduled runs. PR scan (a11y-pr) handles dispatch + push.
+    # The staging job requires a real STAGING_URL — running it via
+    # workflow_dispatch in CI would always fail because no staging
+    # deploy exists in the Actions environment.
+    if: github.event_name == 'schedule'
     defaults:
       run:
         working-directory: apps/web
