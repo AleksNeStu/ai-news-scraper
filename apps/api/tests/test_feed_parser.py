@@ -79,8 +79,9 @@ def test_parse_public_url_still_calls_feedparser(monkeypatch):
     import feedparser
 
     class _EmptyFeed:
-        entries: list = []
-        feed: dict = {}
+        def __init__(self) -> None:
+            self.entries: list = []
+            self.feed: dict = {}
 
     monkeypatch.setattr(feedparser, "parse", lambda url, **kw: _EmptyFeed())
 

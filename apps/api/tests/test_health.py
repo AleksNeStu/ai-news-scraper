@@ -46,9 +46,11 @@ async def health_client(
     )
 
     transport = ASGITransport(app=app)
-    async with app.router.lifespan_context(app):
-        async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            yield ac
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=transport, base_url="http://test") as ac,
+    ):
+        yield ac
 
 
 @pytest.mark.asyncio

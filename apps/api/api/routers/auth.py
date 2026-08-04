@@ -15,6 +15,7 @@ Per ADR-015:
 """
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from sqlalchemy import select

@@ -30,12 +30,15 @@ class SearchFilters(BaseModel):
         # client-facing message is the same; the type code is
         # ``value_error`` so it matches the convention used by the rest
         # of the API's 422 responses.
-        if self.date_from is not None and self.date_to is not None:
-            if self.date_to < self.date_from:
-                raise PydanticCustomError(
-                    "value_error",
-                    "date_to must be greater than or equal to date_from",
-                )
+        if (
+            self.date_from is not None
+            and self.date_to is not None
+            and self.date_to < self.date_from
+        ):
+            raise PydanticCustomError(
+                "value_error",
+                "date_to must be greater than or equal to date_from",
+            )
         return self
 
 

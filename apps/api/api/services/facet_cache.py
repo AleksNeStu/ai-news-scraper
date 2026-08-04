@@ -135,8 +135,8 @@ async def _try_get_cached(user_id: UUID) -> FacetsResponse | None:
         logger.warning("facet cache had non-JSON value, dropping: user_id=%s", user_id)
         try:
             await client.delete(_cache_key(user_id))
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("facet cache delete failed: user_id=%s err=%s", user_id, exc)
         return None
     return FacetsResponse.model_validate(data)
 

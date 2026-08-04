@@ -16,6 +16,7 @@ Facets (ADR-020 / Task #53):
 import logging
 import time
 from datetime import timedelta
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response

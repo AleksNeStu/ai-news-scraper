@@ -1,6 +1,7 @@
 """Scrape router — submit URL(s) for processing."""
 
 import logging
+from typing import Annotated
 from uuid import UUID
 
 import chromadb

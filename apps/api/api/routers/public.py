@@ -17,7 +17,7 @@ shared caches never hold it and compliant crawlers do not index it.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse

@@ -109,9 +109,11 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     Production behaviour is unchanged — see starlette/middleware/errors.py.
     """
     transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with app.router.lifespan_context(app):
-        async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            yield ac
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=transport, base_url="http://test") as ac,
+    ):
+        yield ac
 
 
 @pytest_asyncio.fixture(scope="function", loop_scope="function")

@@ -122,12 +122,14 @@ async def test_scrape_public_url_passes_guard(monkeypatch):
     monkeypatch.setattr("api.services.scraper.NewspaperArticle", _FailingArticle)
 
     scraper = ArticleScraper()
-    with patch(
-        "socket.getaddrinfo",
-        side_effect=_mock_getaddrinfo(["93.184.216.34"]),
-    ):
+    with (
+        patch(
+            "socket.getaddrinfo",
+            side_effect=_mock_getaddrinfo(["93.184.216.34"]),
+        ),
         # Must NOT raise SSRFError. Whether it raises something else
         # (RuntimeError from the failing Article) is out of scope; we
         # only care that the guard let the URL through.
-        with pytest.raises(RuntimeError, match="nope"):
-            await scraper.scrape("http://example.com/article")
+        pytest.raises(RuntimeError, match="nope"),
+    ):
+        await scraper.scrape("http://example.com/article")

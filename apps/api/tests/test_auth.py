@@ -687,9 +687,11 @@ async def rl_429_client(
     monkeypatch.setattr(rate_limit_module, "_enforce", _always_429)
 
     transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with app.router.lifespan_context(app):
-        async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            yield ac
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=transport, base_url="http://test") as ac,
+    ):
+        yield ac
 
 
 @pytest.mark.asyncio

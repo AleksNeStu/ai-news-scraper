@@ -134,10 +134,12 @@ class TestScoreArticleFailSoft:
         article = _article(None, None)
         mock_client = AsyncMock()
         mock_client.chat.completions.create.side_effect = RuntimeError("boom")
-        with patch("api.services.scorer._openai_client", return_value=mock_client):
-            with patch("api.services.scorer._settings") as ms:
-                ms.openai_api_key = "sk-real-key"
-                score, tier = await score_article(None, article, None)
+        with (
+            patch("api.services.scorer._openai_client", return_value=mock_client),
+            patch("api.services.scorer._settings") as ms,
+        ):
+            ms.openai_api_key = "sk-real-key"
+            score, tier = await score_article(None, article, None)
         assert score == DEFAULT_SCORE
         assert tier == "worth_a_look"
 
@@ -146,10 +148,12 @@ class TestScoreArticleFailSoft:
         article = _article(None, None)
         mock_client = AsyncMock()
         mock_client.chat.completions.create.return_value = _resp("this is not a number")
-        with patch("api.services.scorer._openai_client", return_value=mock_client):
-            with patch("api.services.scorer._settings") as ms:
-                ms.openai_api_key = "sk-real-key"
-                score, tier = await score_article(None, article, None)
+        with (
+            patch("api.services.scorer._openai_client", return_value=mock_client),
+            patch("api.services.scorer._settings") as ms,
+        ):
+            ms.openai_api_key = "sk-real-key"
+            score, tier = await score_article(None, article, None)
         assert score == DEFAULT_SCORE
         assert tier == "worth_a_look"
 
@@ -158,9 +162,11 @@ class TestScoreArticleFailSoft:
         article = _article(None, None)
         mock_client = AsyncMock()
         mock_client.chat.completions.create.return_value = _resp("0.92")
-        with patch("api.services.scorer._openai_client", return_value=mock_client):
-            with patch("api.services.scorer._settings") as ms:
-                ms.openai_api_key = "sk-real-key"
-                score, tier = await score_article(None, article, None)
+        with (
+            patch("api.services.scorer._openai_client", return_value=mock_client),
+            patch("api.services.scorer._settings") as ms,
+        ):
+            ms.openai_api_key = "sk-real-key"
+            score, tier = await score_article(None, article, None)
         assert score == 0.92
         assert tier == "must_read"

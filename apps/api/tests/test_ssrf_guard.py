@@ -297,9 +297,11 @@ def test_dns_failure_rejected():
     def _raise_gaierror(host, *args, **kwargs):
         raise socket.gaierror(-2, "Name or service not known")
 
-    with patch("socket.getaddrinfo", side_effect=_raise_gaierror):
-        with pytest.raises(SSRFError):
-            validate_outbound_url("http://no-such-host.invalid/")
+    with (
+        patch("socket.getaddrinfo", side_effect=_raise_gaierror),
+        pytest.raises(SSRFError),
+    ):
+        validate_outbound_url("http://no-such-host.invalid/")
 
 
 # ---------------------------------------------------------------------------
@@ -662,9 +664,11 @@ def test_dns_timeout_raises_ssrf_error():
             time.sleep(5)
             return []
 
-        with patch("socket.getaddrinfo", side_effect=_slow_resolver):
-            with pytest.raises(SSRFError):
-                asyncio.run(resolve_and_check_async("example.com"))
+        with (
+            patch("socket.getaddrinfo", side_effect=_slow_resolver),
+            pytest.raises(SSRFError),
+        ):
+            asyncio.run(resolve_and_check_async("example.com"))
     finally:
         # Restore the production default so other tests are unaffected.
         set_dns_timeout_for_tests(DNS_TIMEOUT_SECONDS)
@@ -685,9 +689,11 @@ def test_dns_timeout_message_does_not_leak_host():
             return []
 
         secret_host = "tenant-42-corp-internal.example.com"
-        with patch("socket.getaddrinfo", side_effect=_slow_resolver):
-            with pytest.raises(SSRFError) as exc_info:
-                asyncio.run(resolve_and_check_async(secret_host))
+        with (
+            patch("socket.getaddrinfo", side_effect=_slow_resolver),
+            pytest.raises(SSRFError) as exc_info,
+        ):
+            asyncio.run(resolve_and_check_async(secret_host))
 
         msg = str(exc_info.value).lower()
         assert secret_host.lower() not in msg
@@ -946,10 +952,10 @@ def test_per_redirect_cross_protocol_https_to_http_public():
             else "https://93.184.216.34/",
         )
 
-        async def run():
+        async def run(_t=transport, _r=request, _u=target_url):
             return await _run_transport_chain(
-                transport,
-                [request, httpx.Request("GET", target_url)],
+                _t,
+                [_r, httpx.Request("GET", _u)],
             )
 
         # Public IP literal in the target — must not raise.

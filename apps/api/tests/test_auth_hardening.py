@@ -223,9 +223,11 @@ async def login_rate_limit_client(
     monkeypatch.setattr(rate_limit_module, "_enforce", _stub_enforce)
 
     transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with app.router.lifespan_context(app):
-        async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            yield ac
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=transport, base_url="http://test") as ac,
+    ):
+        yield ac
     # Reset for any future fixture usage in the same test.
     state["calls"] = 0
 
@@ -293,8 +295,9 @@ async def test_login_rate_limit_ignores_xff_when_peer_untrusted(
         host = "203.0.113.7"  # the immediate peer (RFC 5737 documentation range)
 
     class _FakeRequest:
-        headers = {"x-forwarded-for": "198.51.100.42, 10.0.0.1"}
-        client = _FakeClient()
+        def __init__(self) -> None:
+            self.headers = {"x-forwarded-for": "198.51.100.42, 10.0.0.1"}
+            self.client = _FakeClient()
 
     resolved = _client_ip(_FakeRequest())  # type: ignore[arg-type]
     assert resolved == "203.0.113.7", (
@@ -331,8 +334,9 @@ async def test_login_rate_limit_honors_xff_when_peer_trusted(
         host = "10.0.0.5"  # inside 10.0.0.0/8
 
     class _FakeRequest:
-        headers = {"x-forwarded-for": "198.51.100.42, 10.0.0.1"}
-        client = _FakeClient()
+        def __init__(self) -> None:
+            self.headers = {"x-forwarded-for": "198.51.100.42, 10.0.0.1"}
+            self.client = _FakeClient()
 
     resolved = _client_ip(_FakeRequest())  # type: ignore[arg-type]
     assert resolved == "198.51.100.42", (
