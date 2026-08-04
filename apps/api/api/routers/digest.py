@@ -113,8 +113,8 @@ async def get_today_digest(
 
 @router.get("", response_model=DigestListResponse)
 async def list_digests(
-    cursor: Annotated[datetime | None, Query(default=None)],
-    limit: Annotated[int, Query(default=30, ge=1, le=100)],
+    cursor: Annotated[datetime | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 30,
     user_id: Annotated[UUID, Depends(get_current_user_id)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DigestListResponse:

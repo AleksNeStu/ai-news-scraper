@@ -20,8 +20,8 @@ router = APIRouter(prefix="/articles", tags=["articles"])
 async def list_articles(
     user_id: Annotated[UUID, Depends(get_current_user_id)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    page: Annotated[int, Query(1, ge=1)],
-    page_size: Annotated[int, Query(20, ge=1, le=100)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
     source: str | None = None,
     topic: str | None = None,
     # Task #9 / ADR-013 §13.2 — tier filter + group-by-tier ordering.

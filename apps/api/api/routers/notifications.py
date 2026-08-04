@@ -34,9 +34,9 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 async def list_user_notifications(
     user_id: Annotated[UUID, Depends(get_current_user_id)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    unread_only: Annotated[bool, Query(default=False)],
-    limit: Annotated[int, Query(default=50, ge=1, le=200)],
-    cursor: Annotated[datetime | None, Query(default=None)],
+    unread_only: Annotated[bool, Query()] = False,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    cursor: Annotated[datetime | None, Query()] = None,
 ) -> NotificationListResponse:
     """List the caller's notifications, newest-first."""
     items = await list_notifications(
