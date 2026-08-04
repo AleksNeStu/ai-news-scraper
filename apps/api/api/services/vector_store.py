@@ -54,7 +54,12 @@ class ChromaVectorStore(BaseVectorStore):
             self._client = chromadb.HttpClient(host=self.host, port=self.port)
             self._client.heartbeat()
             self._mode = "http"
-        except (httpx.HTTPError, chromadb.errors.ChromaError, OSError):
+        except (httpx.HTTPError, chromadb.errors.ChromaError, OSError, ValueError):
+            # ``ValueError`` is what chromadb's ``get_user_identity`` raises
+            # when the HTTP server is unreachable from the runner
+            # (CI runs the conftest import before any healthcheck is
+            # satisfied). Catch it so the fallback to persistent mode
+            # is always reachable.
             self._client = chromadb.PersistentClient(path=self.persist_dir)
             self._mode = "persistent"
             logger.info("ChromaDB running in persistent mode at %s", self.persist_dir)
