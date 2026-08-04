@@ -12,12 +12,13 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
+from httpx import AsyncClient
+
 from api.exceptions import NotFoundError
 from api.models.digest import Notification
 from api.models.user import User
 from api.services.auth import hash_password
 from api.services.notifications import list_notifications, mark_read
-from httpx import AsyncClient
 
 # ---------------------------------------------------------------------------
 # Helpers — local fixture-like builders (don't rely on conftest's

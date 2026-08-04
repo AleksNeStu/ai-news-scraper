@@ -37,11 +37,12 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from httpx import AsyncClient
+from sqlalchemy import select
+
 from api.db.database import AsyncSessionLocal
 from api.models.feed import Feed
 from api.services.feed_parser import ParsedFeed, ParsedFeedItem
-from httpx import AsyncClient
-from sqlalchemy import select
 
 # ---------------------------------------------------------------------------
 # Autouse — neutralise the per-IP register rate limit so 8+ tests

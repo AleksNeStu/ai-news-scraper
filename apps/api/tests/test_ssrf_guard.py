@@ -28,6 +28,7 @@ from unittest.mock import patch
 
 import httpx
 import pytest
+
 from api.exceptions import SSRFError
 from api.services import ssrf_guard
 from api.services.ssrf_guard import (

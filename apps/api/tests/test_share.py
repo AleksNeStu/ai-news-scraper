@@ -31,12 +31,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
-from api.db.database import AsyncSessionLocal
-from api.models.article import Article
-from api.models.shared_link import SharedLink
 from fastapi import HTTPException, status
 from httpx import AsyncClient
 from sqlalchemy import select
+
+from api.db.database import AsyncSessionLocal
+from api.models.article import Article
+from api.models.shared_link import SharedLink
 
 # ---------------------------------------------------------------------------
 # Helpers — register a real user via the API + create an Article through

@@ -19,6 +19,9 @@ from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
+from fastapi import HTTPException
+from httpx import AsyncClient
+
 from api.exceptions import (
     AppException,
     AuthenticationError,
@@ -28,8 +31,6 @@ from api.exceptions import (
     ValidationError,
 )
 from api.routers import health as health_module
-from fastapi import HTTPException
-from httpx import AsyncClient
 
 # ---------------------------------------------------------------------------
 # Helpers — register throw-away routes that raise each exception type.

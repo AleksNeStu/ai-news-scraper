@@ -25,8 +25,10 @@ from __future__ import annotations
 
 from typing import Any
 
-import api.services.embeddings as svc
 import pytest
+from httpx import AsyncClient
+
+import api.services.embeddings as svc
 from api.services.embeddings import (
     ProviderKeyMissing,
     ProviderUnknown,
@@ -36,7 +38,6 @@ from api.services.embeddings import (
     euclidean,
     list_providers,
 )
-from httpx import AsyncClient
 
 # ---------------------------------------------------------------------------
 # Fixtures — local module-level monkeypatching helpers

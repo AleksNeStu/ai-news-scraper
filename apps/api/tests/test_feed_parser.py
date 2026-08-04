@@ -11,6 +11,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
+
 from api.services import ssrf_guard
 from api.services.feed_parser import FeedParser
 

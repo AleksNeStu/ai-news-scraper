@@ -24,6 +24,8 @@ from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
+from httpx import AsyncClient
+
 from api.middleware import logging as logging_module
 from api.middleware.logging import (
     JSONFormatter,
@@ -34,7 +36,6 @@ from api.middleware.logging import (
     reset_logging_for_tests,
 )
 from api.routers import health as health_module
-from httpx import AsyncClient
 
 # ---------------------------------------------------------------------------
 # JSONFormatter — §9.1

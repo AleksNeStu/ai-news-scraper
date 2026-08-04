@@ -27,6 +27,8 @@ from uuid import uuid4
 
 import jwt
 import pytest
+from sqlalchemy import select
+
 from api.config import get_settings
 from api.exceptions import ValidationError
 from api.models.digest import Digest, DigestUnsubscribeLog
@@ -36,7 +38,6 @@ from api.services.unsubscribe import (
     consume_unsubscribe,
     mint_unsubscribe_token,
 )
-from sqlalchemy import select
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -23,6 +23,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from api.models.article import Article
 from api.services.scorer import (
     DEFAULT_SCORE,

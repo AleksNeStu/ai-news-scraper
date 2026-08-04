@@ -38,10 +38,6 @@ from typing import Any
 
 import pytest
 import pytest_asyncio
-from api.config import get_settings
-from api.main import app
-from api.models.user import User
-from api.services.auth import create_token, hash_password
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -49,6 +45,11 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.pool import NullPool
+
+from api.config import get_settings
+from api.main import app
+from api.models.user import User
+from api.services.auth import create_token, hash_password
 
 _settings = get_settings()
 

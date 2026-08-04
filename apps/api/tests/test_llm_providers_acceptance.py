@@ -77,6 +77,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+
 from api import config as config_module
 from api.config import Settings
 from api.services import embedder as embedder_module

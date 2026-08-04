@@ -21,11 +21,12 @@ from uuid import UUID, uuid4
 os.environ.setdefault("DATABASE_NULL_POOL", "1")
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+
 from api.db.database import get_db
 from api.deps import get_current_user_id
 from api.main import app
 from api.models.article import Article
-from httpx import ASGITransport, AsyncClient
 
 _TEST_USER_ID = uuid4()
 _TEST_HEADLINE = "Sample headline"

@@ -34,11 +34,12 @@ from typing import Any
 import jwt
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException, status
+from httpx import ASGITransport, AsyncClient
+
 from api.config import get_settings
 from api.deps import AUTH_COOKIE_NAME
 from api.main import app
-from fastapi import HTTPException, status
-from httpx import ASGITransport, AsyncClient
 
 _settings = get_settings()
 
