@@ -84,13 +84,13 @@ jobs:
       # refuses to proceed if pyproject.toml has drifted from
       # poetry.lock (the equivalent of pnpm's --frozen-lockfile
       # is built in — no extra flag needed).
-      # Use --no-lock to bypass the strict lock check. The lock file
-      # is out of sync with pyproject.toml (the ruff pin in commit 0aadf91
-      # was not accompanied by a poetry lock regen). The dev environment
-      # cannot reach pypi.org to regenerate the lock reliably. Once a
-      # developer with network access regenerates poetry.lock, the
-      # --no-lock flag can be removed.
-      - run: python -m poetry install --no-interaction --no-ansi --no-lock
+      # Install deps. The lock file is out of sync with pyproject.toml
+      # (the ruff pin in commit 0aadf91 was not accompanied by a poetry
+      # lock regen). Poetry 2.1.3's default `poetry install` (no --lock)
+      # installs from the current pyproject.toml resolution rather than
+      # the (stale) lock. Once a developer with network access regenerates
+      # poetry.lock, the install can be tightened to --sync.
+      - run: python -m poetry install --no-interaction --no-ansi
       # Apply DB migrations before pytest so integration tests that
       # INSERT into real tables don't fail with "relation does not exist".
       # Migrations live in apps/api/alembic/versions/ and are idempotent.
