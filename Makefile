@@ -4,25 +4,39 @@
 #
 # Run the same gates CI runs (apps/api/poetry install + pytest with
 # postgres/redis services, apps/web/pnpm install + build + typecheck
-# + lint) without round-tripping to GitHub Actions.
+# + lint, private-leak-check on tracked files) without round-tripping
+# to GitHub Actions. Run `make ci-local` before pushing.
 #
 # Targets
-#   make check      Fast gates only — no Docker. Runs in <30s.
-#                   ruff, eslint, prettier, AST parse, gitleaks,
-#                   pre-commit-style hooks. Run this before commit.
+#   make check         Fast gates only — no Docker, no DB. <60s.
+#                      ruff, eslint, prettier, tsc, AST parse,
+#                      private-leak-check. Run this before commit.
 #
-#   make test-api   Python tests with real DBs via docker-compose.
-#                   ~2 min first run (image pulls), ~30s after.
-#                   Mapped to apps/api's CI 'API — test' job.
+#   make test-api      Python tests with real DBs (postgres + redis).
+#                      Brings up Docker services, runs alembic upgrade
+#                      head, runs pytest via host venv.
+#                      ~2 min first run (image pulls), ~30s after.
+#                      Mapped to apps/api's CI 'API — test' job.
 #
-#   make test-web  Next.js build + typecheck + lint via pnpm.
-#                   ~1 min. Mapped to apps/web's CI 'Web — build' job.
+#   make test-web      pnpm install (frozen) + build + typecheck + lint.
+#                      ~1 min. Mapped to apps/web's CI 'Web — build' job.
 #
-#   make ci-local  Full CI parity: check + test-api + test-web.
-#                   Run before pushing.
+#   make leak-check    private-leak-check.sh on all tracked files +
+#                      staged commit messages. Catches forbidden
+#                      identifiers that would block CI.
 #
-#   make pre-push  Alias for ci-local. Use as a git pre-push hook
-#                   target: ln -sf ../../Makefile .git/hooks/pre-push
+#   make test-a11y     Playwright + axe-core scan. Optional, requires
+#                      `pnpm exec playwright install --with-deps chromium`.
+#                      Not in `ci-local` by default; opt in with
+#                      `make ci-local-a11y`.
+#
+#   make ci-local      Full CI parity: check + leak-check + test-api
+#                      + test-web. Run before pushing.
+#
+#   make ci-local-a11y Adds a11y to ci-local (requires chromium).
+#
+#   make pre-push      Alias for ci-local. Use as a git pre-push hook
+#                      target: ln -sf ../../Makefile .git/hooks/pre-push
 #
 # Variables
 #   PY            python interpreter (default: python)
@@ -31,7 +45,7 @@
 #   SKIP_DOCKER=1 skips docker-compose targets if Docker is unavailable
 # =====================================================
 
-.PHONY: help check test-api test-web ci-local pre-push clean-deps gen-prod-env render-validate smoke-e2e
+.PHONY: help check test-api test-web leak-check test-a11y ci-local ci-local-a11y pre-push clean-deps gen-prod-env render-validate smoke-e2e
 
 PY     ?= python
 PNPM   ?= pnpm
@@ -40,16 +54,19 @@ POETRY ?= poetry
 help:
 	@echo "AI News Scraper — local verification targets"
 	@echo ""
-	@echo "  make check      Fast gates (no Docker): ruff, eslint, prettier, AST"
-	@echo "  make test-api   Python tests with postgres+redis (Docker)"
-	@echo "  make test-web  Next.js build + typecheck + lint (pnpm)"
-	@echo "  make ci-local  Full CI parity: check + test-api + test-web"
-	@echo "  make pre-push  Alias for ci-local"
+	@echo "  make check           Fast gates: ruff, eslint, prettier, tsc, AST, leak-check"
+	@echo "  make leak-check      private-leak-check.sh on all tracked files"
+	@echo "  make test-api        Python tests with postgres+redis (Docker + host venv)"
+	@echo "  make test-web        pnpm install (frozen) + build + typecheck + lint"
+	@echo "  make test-a11y       Playwright + axe-core scan (requires chromium)"
+	@echo "  make ci-local        Full CI parity (excludes a11y): run before pushing"
+	@echo "  make ci-local-a11y   ci-local + a11y"
+	@echo "  make pre-push        Alias for ci-local"
 	@echo ""
 
 # ----- Fast local gates (no Docker) ----------------------------------------
 
-check: check-py check-web
+check: check-py check-web leak-check
 	@echo ""
 	@echo "✓ Local gates passed (no Docker required)."
 
@@ -81,14 +98,66 @@ web-ast-parse:
 	@echo "→ Running tsc --noEmit (full type-check; matches CI 'Web — build' typecheck step)..."
 	@cd apps/web && $(PNPM) exec tsc --noEmit --pretty false 2>&1 || (echo "✗ tsc failed" && exit 1)
 
-# ----- Docker-based: API tests with real DBs --------------------------------
+# ----- Private-leak-check (matches CI 'private-leak-check' workflow) --------
 
+# Mirrors what `.github/workflows/private-leak-check.yml` runs on CI:
+# scans every tracked file + the staged commit messages for forbidden
+# identifiers (canonical pattern list in scripts/private-leak-check.sh).
+# Catches the case where a commit adds private-infra references in
+# code or commit body that would block CI.
+leak-check: leak-check-files leak-check-msg
+	@echo "✓ private-leak-check passed."
+
+leak-check-files:
+	@echo "→ Scanning tracked files for forbidden identifiers (private-leak-check.sh)..."
+	@# Pipeline note: `xargs -0 cat` may print "environment is too large for
+	@# exec" to STDERR on Windows for very large repos, but cat still
+	@# completes. We swallow that noise via 2>/dev/null; the actual content
+	@# is on STDOUT, which `bash scripts/private-leak-check.sh` consumes.
+	@git ls-files -z -- \
+		':!scripts/private-leak-check.sh' \
+		':!poetry.lock' \
+		':!pnpm-lock.yaml' \
+		':!apps/api/poetry.lock' \
+		| xargs -0 cat 2>/dev/null \
+		| bash scripts/private-leak-check.sh \
+		|| (echo "✗ private-leak-check failed on tracked files" && exit 1)
+
+# Stage-aware: only scans when there are staged changes (i.e. the user
+# is about to commit). If working tree is clean, skip.
+leak-check-msg:
+	@if git diff --cached --quiet 2>/dev/null; then \
+		echo "→ No staged changes — skipping commit-message scan."; \
+	else \
+		echo "→ Scanning staged commit message for forbidden identifiers..."; \
+		git diff --cached --format=%B | bash scripts/private-leak-check.sh --message /dev/stdin \
+			|| (echo "✗ private-leak-check failed on staged commit message" && exit 1); \
+	fi
+
+# ----- API tests with real DBs (Docker) ------------------------------------
+
+# Uses host venv (poetry install + run pytest) inside the repo, with
+# postgres + redis brought up via docker-compose. The API Dockerfile
+# only installs --only main (no pytest, no dev deps) so we deliberately
+# do NOT use `docker compose run --rm api pytest` (would fail with
+# "ModuleNotFoundError: pytest"). The host venv path is the CI-parity
+# way: Poetry 2.x install + alembic + pytest, matching `.github/workflows/ci.yml`.
 test-api:
 ifndef SKIP_DOCKER
 	@echo "→ Bringing up postgres + redis via docker-compose..."
-	@docker compose up -d db redis
-	@echo "→ Running pytest inside the api container (matches CI 'API — test')..."
-	@docker compose run --rm api poetry run pytest -v --tb=short
+	@docker compose up -d db redis chromadb migrate 2>&1 | tail -10 || (echo "✗ docker compose up failed" && exit 1)
+	@echo "→ Waiting for postgres + redis to be healthy..."
+	@for i in $$(seq 1 30); do \
+		healthy=$$(docker compose ps --format '{{.Service}}:{{.Health}}' 2>/dev/null | grep -cE ":(healthy)$"); \
+		if [ "$$healthy" -ge 2 ]; then echo "  services healthy after $${i}s"; break; fi; \
+		sleep 1; \
+	done
+	@echo "→ Poetry install (host venv)..."
+	@cd apps/api && $(POETRY) install --no-interaction 2>&1 | tail -5 || (echo "✗ poetry install failed" && exit 1)
+	@echo "→ Running alembic upgrade head..."
+	@cd apps/api && $(POETRY) run alembic upgrade head || (echo "✗ alembic upgrade failed" && exit 1)
+	@echo "→ Running pytest (matches CI 'API — test')..."
+	@cd apps/api && $(POETRY) run pytest -v --tb=short || (echo "✗ pytest failed" && exit 1)
 	@echo "→ Tearing down test services..."
 	@docker compose down
 else
@@ -98,22 +167,49 @@ endif
 
 # ----- Web build + typecheck + lint (no Docker needed) ---------------------
 
+# Uses --frozen-lockfile (matches CI) so any drift between package.json
+# and pnpm-lock.yaml fails locally before the push. Drift here would
+# also fail CI, so catching it locally saves a round-trip.
 test-web:
-	@echo "→ Running pnpm install (matches CI 'Web — build')..."
-	@cd apps/web && $(PNPM) install --no-frozen-lockfile
+	@echo "→ Running pnpm install --frozen-lockfile (matches CI 'Web — build')..."
+	@cd apps/web && $(PNPM) install --frozen-lockfile || (echo "✗ pnpm install --frozen-lockfile failed — run 'pnpm install --lockfile-only' to update" && exit 1)
 	@echo "→ pnpm build..."
-	@cd apps/web && $(PNPM) build 2>&1 | tail -30
+	@cd apps/web && $(PNPM) build 2>&1 | tail -30 || (echo "✗ pnpm build failed" && exit 1)
 	@echo "→ pnpm typecheck..."
-	@cd apps/web && $(PNPM) typecheck 2>&1 | tail -20
+	@cd apps/web && $(PNPM) typecheck 2>&1 | tail -20 || (echo "✗ pnpm typecheck failed" && exit 1)
 	@echo "→ pnpm lint..."
-	@cd apps/web && $(PNPM) lint 2>&1 | tail -20
+	@cd apps/web && $(PNPM) lint 2>&1 | tail -20 || (echo "✗ pnpm lint failed" && exit 1)
 	@echo "✓ Web build + typecheck + lint passed."
+
+# ----- a11y (Playwright + axe-core scan) — optional, opt-in ---------------
+
+# Requires: `pnpm exec playwright install --with-deps chromium` (one-time
+# setup). Not in `ci-local` by default because chromium is ~200MB and
+# most commits don't touch web/e2e. Run with `make test-a11y` before
+# merging a web change, or use `make ci-local-a11y` for the full set.
+test-a11y:
+	@echo "→ Installing chromium browser (one-time)..."
+	@cd apps/web && $(PNPM) exec playwright install --with-deps chromium 2>&1 | tail -5 || (echo "✗ playwright install failed" && exit 1)
+	@echo "→ Building web bundle (needed for preview server)..."
+	@cd apps/web && $(PNPM) build 2>&1 | tail -5 || (echo "✗ pnpm build failed" && exit 1)
+	@echo "→ Starting preview server + running axe-core scan..."
+	@cd apps/web && (HOSTNAME=127.0.0.1 PORT=4173 node .next/standalone/apps/web/server.js &) ; echo $$! > .next/standalone/.next-server.pid
+	@cd apps/web && BASE_URL=http://127.0.0.1:4173 $(PNPM) exec playwright test e2e/a11y.spec.ts --reporter=list 2>&1 | tail -20 || (echo "✗ a11y scan failed" && exit 1)
+	@cd apps/web && [ -f .next/standalone/.next-server.pid ] && kill "$$(cat .next/standalone/.next-server.pid)" 2>/dev/null || true
+	@echo "✓ a11y scan passed."
 
 # ----- Full CI parity ------------------------------------------------------
 
+# Mirrors what GitHub Actions runs (excluding a11y — see test-a11y).
+# Run before pushing to avoid round-trips on CI failures.
 ci-local: check test-api test-web
 	@echo ""
 	@echo "✓✓✓ CI parity check passed. Safe to push."
+
+# Full CI parity including a11y. Use this before merging a web change.
+ci-local-a11y: ci-local test-a11y
+	@echo ""
+	@echo "✓✓✓ CI parity (with a11y) check passed. Safe to push."
 
 pre-push: ci-local
 
