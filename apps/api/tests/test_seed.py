@@ -106,14 +106,22 @@ async def _drop_schema() -> None:
 async def _run_seed_sql() -> None:
     """Execute ``seed.sql`` once via the async engine.
 
-    Reads the file as raw SQL and runs it through the connection.
-    The seed file starts with ``BEGIN;`` and ends with ``COMMIT;``,
-    so the whole file runs as one transaction — matching the
+    asyncpg refuses multi-statement prepared statements (raises
+    "cannot insert multiple commands into a prepared statement"),
+    so we split the file into individual statements via the
+    production ``_split_statements`` helper in
+    ``apps/api/api/scripts/seed.py``. Each statement is executed
+    individually; the surrounding ``async with engine.begin()``
+    block makes the whole sequence one transaction — matching the
     behaviour of ``psql -f`` exactly.
     """
+    from api.scripts.seed import _split_statements
+
     sql = SEED_SQL_PATH.read_text(encoding="utf-8")
+    statements = _split_statements(sql)
     async with test_engine.begin() as conn:
-        await conn.execute(text(sql))
+        for stmt in statements:
+            await conn.execute(text(stmt))
 
 
 @pytest_asyncio.fixture(scope="function", loop_scope="function")
