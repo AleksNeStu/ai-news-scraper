@@ -9,13 +9,13 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from newspaper import Article as NewspaperArticle
 
-logger = logging.getLogger(__name__)
-
 from api.services.ssrf_guard import (
     REDIRECT_CAP_HTTPCLIENT,
     SSRFGuardTransport,
     validate_outbound_url_async,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

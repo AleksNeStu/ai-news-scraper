@@ -21,7 +21,6 @@ from datetime import date
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from api.config import get_settings
 from api.exceptions import NotFoundError
 from api.schemas.digest import EmailDigestPayload

@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from api.schemas.topic import ExtractedTopic, TopicExtractionResult
 from api.services.topic_extractor import (
     ArticleTopicExtractor,

@@ -27,11 +27,11 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
+from api.db.database import Base
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.db.database import Base
 from tests.conftest import TestAsyncSessionLocal, test_engine
 
 # Path to the seed file relative to repo root. Tests run from the

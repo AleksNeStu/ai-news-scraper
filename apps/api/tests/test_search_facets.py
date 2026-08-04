@@ -40,7 +40,6 @@ from uuid import UUID, uuid4
 os.environ.setdefault("DATABASE_NULL_POOL", "1")
 
 import pytest
-
 from api.db.database import get_db
 from api.deps import get_current_user_id
 from api.main import app

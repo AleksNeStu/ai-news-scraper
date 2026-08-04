@@ -23,7 +23,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 import respx
-
 from api.config import get_settings
 from api.services import embedder as embedder_module
 from api.services import summarizer as summarizer_module

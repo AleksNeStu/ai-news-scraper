@@ -24,13 +24,12 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from fastapi import HTTPException, status
-from httpx import AsyncClient
-from sqlalchemy import select, text
-
 from api.db.database import AsyncSessionLocal
 from api.models.shared_link import SharedLink
 from api.services.shared_links import _hash_token
+from fastapi import HTTPException, status
+from httpx import AsyncClient
+from sqlalchemy import select, text
 
 from .test_share import _make_article, _register_user
 

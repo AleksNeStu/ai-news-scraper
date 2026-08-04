@@ -56,9 +56,8 @@ Mirrors the SQLAlchemy models in apps/api/api/models/:
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
-
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "1890892bda24"

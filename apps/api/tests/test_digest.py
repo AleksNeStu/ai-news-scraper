@@ -22,8 +22,6 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
-
 from api.models.article import Article
 from api.models.digest import Digest, Notification
 from api.models.user import User
@@ -34,6 +32,7 @@ from api.services.clustering import (
     cluster_user_articles,
 )
 from api.services.digest import generate_digest
+from sqlalchemy import select
 
 # ---------------------------------------------------------------------------
 # Helpers — local builders that don't touch the lifecycle of the

@@ -16,10 +16,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-
 from api.main import app
 from api.routers import health as health_module
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest_asyncio.fixture

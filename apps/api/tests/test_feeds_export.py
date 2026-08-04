@@ -26,10 +26,10 @@ from __future__ import annotations
 from xml.etree.ElementTree import fromstring
 
 import pytest
-from httpx import AsyncClient
-
 from api.db.database import AsyncSessionLocal
 from api.models.feed import Feed
+from httpx import AsyncClient
+
 from tests.conftest import register_user_and_login
 
 # OPML 2.0 namespace — exported XML sets ``xmlns="http://opml.org/spec2/opml-2.0.xml"``

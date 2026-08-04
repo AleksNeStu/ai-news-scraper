@@ -27,16 +27,15 @@ from typing import Any
 
 import pytest
 import pytest_asyncio
-from fastapi import HTTPException, status
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete, select
-
 from api.config import get_settings
 from api.db.database import AsyncSessionLocal
 from api.deps import AUTH_COOKIE_NAME, AUTH_REFRESH_COOKIE_NAME
 from api.main import app
 from api.models.refresh_token import RefreshToken
 from api.models.user import User
+from fastapi import HTTPException, status
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import delete, select
 
 _settings = get_settings()
 

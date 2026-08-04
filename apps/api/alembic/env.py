@@ -11,10 +11,6 @@ import asyncio
 import os
 from logging.config import fileConfig
 
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
-
 from alembic import context
 
 # --- App imports (models + Base) ---------------------------------------
@@ -31,6 +27,9 @@ from api.models import (  # noqa: F401
     RefreshToken,
     User,
 )
+from sqlalchemy import pool
+from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import async_engine_from_config
 
 # --- Alembic config ---------------------------------------------------
 config = context.config
