@@ -14,6 +14,8 @@ Per ADR-015:
       new pair.
 """
 
+from typing import Annotated
+
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -97,7 +99,7 @@ def _clear_auth_cookies(response: Response) -> None:
     dependencies=[Depends(rate_limit_ip("register", limit=5, window_s=3600))],
 )
 async def register(
-    payload: UserCreate, response: Response, db: AsyncSession = Depends(get_db)
+    payload: UserCreate, response: Response, db: Annotated[AsyncSession, Depends(get_db)]
 ):
     # Check uniqueness
     existing = await db.execute(select(User).where(User.email == payload.email))
@@ -125,7 +127,7 @@ async def register(
     dependencies=[Depends(rate_limit_ip("login", limit=10, window_s=60))],
 )
 async def login(
-    payload: UserLogin, response: Response, db: AsyncSession = Depends(get_db)
+    payload: UserLogin, response: Response, db: Annotated[AsyncSession, Depends(get_db)]
 ):
     res = await db.execute(select(User).where(User.email == payload.email))
     user = res.scalar_one_or_none()
@@ -144,8 +146,8 @@ async def login(
 @router.post("/refresh", response_model=AuthResponse)
 async def refresh(
     response: Response,
-    auth_refresh: str | None = Cookie(default=None),
-    db: AsyncSession = Depends(get_db),
+    auth_refresh: Annotated[str | None, Cookie(default=None)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Rotate the refresh-token cookie into a fresh access + refresh pair.
 
@@ -181,8 +183,8 @@ async def refresh(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     response: Response,
-    auth_refresh: str | None = Cookie(default=None),
-    db: AsyncSession = Depends(get_db),
+    auth_refresh: Annotated[str | None, Cookie(default=None)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Revoke the refresh row + clear both cookies.
 
@@ -196,7 +198,10 @@ async def logout(
 
 
 @router.get("/me", response_model=UserOut)
-async def me(user_id=Depends(get_current_user_id), db: AsyncSession = Depends(get_db)):
+async def me(
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     res = await db.execute(select(User).where(User.id == user_id))
     user = res.scalar_one_or_none()
     if user is None:
