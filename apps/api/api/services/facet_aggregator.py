@@ -39,7 +39,7 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-from sqlalchemy import distinct, func, select
+from sqlalchemy import distinct, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.article import Article
@@ -110,11 +110,10 @@ async def _aggregate_topics(db: AsyncSession, user_id: UUID) -> list[FacetCount]
         # row with ``topics == NULL`` or an explicit NULL element does
         # not appear as the literal string "None" in the response.
         # Without this guard, ``str(row[0])`` happily coerces None to
-        # ``"None"`` and a topic named "None" would be created. The
-        # ``isnot(None)`` predicate is applied on the unnested column
-        # itself so the per-element check rides on the same
-        # ``CROSS JOIN LATERAL`` PG materialises for ``UNNEST``.
-        .where(topic_col.isnot(None))
+        # ``"None"`` and a topic named "None" would be created. Uses
+        # raw SQL ``topic IS NOT NULL`` because TableValuedAlias
+        # doesn't expose ``.isnot()`` in this SA version.
+        .where(text("topic IS NOT NULL"))
         .group_by(topic_col)
         .order_by(func.count(distinct(Article.id)).desc())
     )
