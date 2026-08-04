@@ -34,6 +34,7 @@ mistakes):
 from __future__ import annotations
 
 import logging
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -116,7 +117,7 @@ class ProviderUnknownError(AppException):
     },
 )
 async def list_providers(
-    user_id: UUID = Depends(get_current_user_id),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
 ) -> EmbeddingProvidersResponse:
     """Enumerate every provider the LLM factory knows about.
 
@@ -143,7 +144,7 @@ async def list_providers(
 )
 async def embed(
     payload: EmbedRequest,
-    user_id: UUID = Depends(get_current_user_id),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
 ) -> EmbedResponse:
     """Embed ``payload.text`` against ``payload.provider_id``.
 
@@ -185,7 +186,7 @@ async def embed(
 )
 async def similarity(
     payload: SimilarityRequest,
-    user_id: UUID = Depends(get_current_user_id),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
 ) -> SimilarityResponse:
     """Embed ``text_a`` and ``text_b`` against the same provider, then compare.
 

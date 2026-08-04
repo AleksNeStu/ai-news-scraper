@@ -38,8 +38,8 @@ router = APIRouter(tags=["share"])
 async def create_share(
     payload: ShareCreateRequest,
     request: Request,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ShareResponse:
     """Mint a fresh share token and return a server-built URL.
 

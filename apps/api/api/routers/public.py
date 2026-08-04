@@ -117,8 +117,8 @@ async def get_shared_article(
     # bucket exists to back-pressure brute-force scan attempts on
     # the public surface (Task #65 — Devil F2 follow-up from
     # Task #33). IP-based because the route is unauthenticated.
-    _rl: None = Depends(rate_limit_ip("share_public", limit=30, window_s=60)),
-    db: AsyncSession = Depends(get_db),
+    _rl: Annotated[None, Depends(rate_limit_ip("share_public", limit=30, window_s=60))],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> JSONResponse:
     """Resolve a token to the public article projection.
 

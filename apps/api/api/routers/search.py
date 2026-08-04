@@ -114,8 +114,8 @@ def _build_hydration_clauses(filters: SearchFilters | None) -> list:
 @router.post("", response_model=SearchResponse)
 async def search(
     payload: SearchRequest,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     start = time.time()
     page = payload.page
@@ -197,8 +197,8 @@ async def search(
 @router.get("/facets", response_model=FacetsResponse)
 async def facets(
     response: Response,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Aggregate the current user's library along the three filter axes.
 

@@ -115,8 +115,8 @@ async def _process_one(url: str, user_id: UUID | None, db: AsyncSession) -> Arti
 @router.post("", response_model=ArticleOut, status_code=status.HTTP_201_CREATED)
 async def scrape(
     payload: ScrapeRequest,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     await rate_limit_user("scrape", user_id, limit=30, window_s=3600)
     article = await _process_one(str(payload.url), user_id, db)
@@ -126,8 +126,8 @@ async def scrape(
 @router.post("/batch", response_model=list[ArticleOut])
 async def scrape_batch(
     payload: BatchScrapeRequest,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     await rate_limit_user("scrape", user_id, limit=30, window_s=3600)
     out: list[ArticleOut] = []

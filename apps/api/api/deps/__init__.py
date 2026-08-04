@@ -13,6 +13,7 @@ Kept thin on purpose: routers call these, but anything heavy lives in
 
 from __future__ import annotations
 
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
@@ -29,7 +30,7 @@ _bearer = HTTPBearer(auto_error=False)
 
 def _extract_token(
     request: Request,
-    bearer: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
 ) -> str:
     """Pull the JWT from the Authorization header or the auth cookie."""
     if bearer is not None and bearer.scheme.lower() == "bearer":

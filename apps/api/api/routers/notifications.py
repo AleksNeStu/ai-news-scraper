@@ -12,6 +12,7 @@ existence across tenants.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -31,11 +32,11 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 @router.get("", response_model=NotificationListResponse)
 async def list_user_notifications(
-    unread_only: bool = Query(default=False),
-    limit: int = Query(default=50, ge=1, le=200),
-    cursor: datetime | None = Query(default=None),
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    unread_only: Annotated[bool, Query(default=False)],
+    limit: Annotated[int, Query(default=50, ge=1, le=200)],
+    cursor: Annotated[datetime | None, Query(default=None)],
 ) -> NotificationListResponse:
     """List the caller's notifications, newest-first."""
     items = await list_notifications(
@@ -55,8 +56,8 @@ async def list_user_notifications(
 @router.post("/{notification_id}/read", response_model=NotificationOut)
 async def mark_notification_read(
     notification_id: UUID,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> NotificationOut:
     """Mark one notification read; 404 if it isn't the caller's."""
     row = await mark_read(db, user_id, notification_id)
