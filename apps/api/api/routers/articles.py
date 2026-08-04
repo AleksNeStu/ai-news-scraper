@@ -1,5 +1,6 @@
 """Articles router — list + detail."""
 
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -17,8 +18,10 @@ router = APIRouter(prefix="/articles", tags=["articles"])
 
 @router.get("", response_model=ArticleListResponse)
 async def list_articles(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    page: Annotated[int, Query(1, ge=1)],
+    page_size: Annotated[int, Query(20, ge=1, le=100)],
     source: str | None = None,
     topic: str | None = None,
     # Task #9 / ADR-013 §13.2 — tier filter + group-by-tier ordering.
@@ -27,8 +30,6 @@ async def list_articles(
     # front-end can render four sections from one fetch.
     tier: TierLiteral | None = None,
     group_by_tier: bool = False,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Article).where(Article.user_id == user_id)
     count_stmt = select(func.count(Article.id)).where(Article.user_id == user_id)
@@ -77,8 +78,8 @@ async def list_articles(
 @router.get("/{article_id}", response_model=ArticleOut)
 async def get_article(
     article_id: UUID,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     res = await db.execute(
         select(Article).where(Article.id == article_id, Article.user_id == user_id)
@@ -97,8 +98,8 @@ async def get_article(
 @router.delete("/{article_id}", status_code=204)
 async def delete_article(
     article_id: UUID,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     res = await db.execute(
         select(Article).where(Article.id == article_id, Article.user_id == user_id)
