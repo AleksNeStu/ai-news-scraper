@@ -147,8 +147,8 @@ async def login(
 @router.post("/refresh", response_model=AuthResponse)
 async def refresh(
     response: Response,
-    auth_refresh: Annotated[str | None, Cookie()] = None,
     db: Annotated[AsyncSession, Depends(get_db)],
+    auth_refresh: Annotated[str | None, Cookie()] = None,
 ):
     """Rotate the refresh-token cookie into a fresh access + refresh pair.
 
@@ -184,8 +184,8 @@ async def refresh(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     response: Response,
-    auth_refresh: Annotated[str | None, Cookie()] = None,
     db: Annotated[AsyncSession, Depends(get_db)],
+    auth_refresh: Annotated[str | None, Cookie()] = None,
 ):
     """Revoke the refresh row + clear both cookies.
 
