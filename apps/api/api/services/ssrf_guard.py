@@ -765,13 +765,10 @@ class SSRFGuardTransport(httpx.AsyncBaseTransport):
             # any 30x response pointing at a private address.
             location = response.headers.get("location") if response.headers else None
             if location:
-                try:
-                    await validate_outbound_url_async(str(location))
-                except Exception:
-                    # Per ADR-025 §5: deny the chain. Raising here
-                    # propagates to the caller (httpx cancels the
-                    # redirect walk and surfaces the error).
-                    raise
+                # Per ADR-025 §5: deny the chain. The exception
+                # propagates to the caller (httpx cancels the
+                # redirect walk and surfaces the error).
+                await validate_outbound_url_async(str(location))
 
         return response
 
