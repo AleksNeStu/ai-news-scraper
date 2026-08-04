@@ -5,38 +5,36 @@
 # Run the same gates CI runs (apps/api/poetry install + pytest with
 # postgres/redis services, apps/web/pnpm install + build + typecheck
 # + lint, private-leak-check on tracked files) without round-tripping
-# to GitHub Actions. Run `make ci-local` before pushing.
+# to GitHub Actions. Run `make pre-push` before pushing.
 #
 # Targets
-#   make check         Fast gates only — no Docker, no DB. <60s.
-#                      ruff, eslint, prettier, tsc, AST parse,
-#                      private-leak-check. Run this before commit.
-#
-#   make test-api      Python tests with real DBs (postgres + redis).
-#                      Brings up Docker services, runs alembic upgrade
-#                      head, runs pytest via host venv.
-#                      ~2 min first run (image pulls), ~30s after.
-#                      Mapped to apps/api's CI 'API — test' job.
-#
-#   make test-web      pnpm install (frozen) + build + typecheck + lint.
-#                      ~1 min. Mapped to apps/web's CI 'Web — build' job.
-#
-#   make leak-check    private-leak-check.sh on all tracked files +
-#                      staged commit messages. Catches forbidden
-#                      identifiers that would block CI.
-#
-#   make test-a11y     Playwright + axe-core scan. Optional, requires
-#                      `pnpm exec playwright install --with-deps chromium`.
-#                      Not in `ci-local` by default; opt in with
-#                      `make ci-local-a11y`.
-#
-#   make ci-local      Full CI parity: check + leak-check + test-api
-#                      + test-web. Run before pushing.
-#
-#   make ci-local-a11y Adds a11y to ci-local (requires chromium).
-#
-#   make pre-push      Alias for ci-local. Use as a git pre-push hook
-#                      target: ln -sf ../../Makefile .git/hooks/pre-push
+#   make pre-push          Full CI parity (5/5): leak-check + ruff +
+#                          pytest + pnpm build + axe-core. The canonical
+#                          pre-push gate. ~5-10 min first run (downloads
+#                          chromium), ~30-60s after.
+#   make pre-push-fast     4/5 parity (no a11y). ~30-60s. For quick
+#                          pre-commit feedback when you haven't touched
+#                          apps/web/e2e/**.
+#   make ci-local          Alias for pre-push-fast.
+#   make ci-local-a11y     Alias for pre-push.
+#   make install-pre-push-hook   Install .git/hooks/pre-push so every
+#                          `git push` runs `make pre-push` automatically.
+#                          Bypass with `git push --no-verify`.
+#   make check             Fast gates only (no Docker, no DB): ruff,
+#                          eslint, prettier, tsc, AST, leak-check.
+#   make test-api          Python tests with real DBs (postgres + redis).
+#                          Brings up Docker services, runs alembic upgrade
+#                          head, runs pytest via host venv.
+#                          ~2 min first run (image pulls), ~30s after.
+#                          Mapped to apps/api's CI 'API — test' job.
+#   make test-web          pnpm install (frozen) + build + typecheck + lint.
+#                          ~1 min. Mapped to apps/web's CI 'Web — build' job.
+#   make leak-check        private-leak-check.sh on all tracked files +
+#                          staged commit messages. Catches forbidden
+#                          identifiers that would block CI.
+#   make test-a11y         Playwright + axe-core scan. Requires
+#                          `pnpm exec playwright install --with-deps chromium`
+#                          (one-time ~200MB download).
 #
 # Variables
 #   PY            python interpreter (default: python)
@@ -45,7 +43,7 @@
 #   SKIP_DOCKER=1 skips docker-compose targets if Docker is unavailable
 # =====================================================
 
-.PHONY: help check test-api test-web leak-check test-a11y ci-local ci-local-a11y pre-push clean-deps gen-prod-env render-validate smoke-e2e
+.PHONY: help check test-api test-web leak-check test-a11y ci-local ci-local-a11y pre-push pre-push-fast install-pre-push-hook clean-deps gen-prod-env render-validate smoke-e2e
 
 PY     ?= python
 PNPM   ?= pnpm
@@ -54,14 +52,16 @@ POETRY ?= poetry
 help:
 	@echo "AI News Scraper — local verification targets"
 	@echo ""
-	@echo "  make check           Fast gates: ruff, eslint, prettier, tsc, AST, leak-check"
-	@echo "  make leak-check      private-leak-check.sh on all tracked files"
-	@echo "  make test-api        Python tests with postgres+redis (Docker + host venv)"
-	@echo "  make test-web        pnpm install (frozen) + build + typecheck + lint"
-	@echo "  make test-a11y       Playwright + axe-core scan (requires chromium)"
-	@echo "  make ci-local        Full CI parity (excludes a11y): run before pushing"
-	@echo "  make ci-local-a11y   ci-local + a11y"
-	@echo "  make pre-push        Alias for ci-local"
+	@echo "  make pre-push          Full CI parity (5/5 checks: lint, test, leak, build, a11y)"
+	@echo "  make pre-push-fast     Fast parity (4/5, no a11y): ~30-60s"
+	@echo "  make ci-local          Same as pre-push-fast"
+	@echo "  make ci-local-a11y     Same as pre-push (5/5)"
+	@echo "  make check             Fast gates only (no Docker, no DB): ruff, eslint, prettier, tsc, AST, leak-check"
+	@echo "  make leak-check        private-leak-check.sh on all tracked files"
+	@echo "  make test-api          Python tests with postgres+redis (Docker + host venv)"
+	@echo "  make test-web          pnpm install (frozen) + build + typecheck + lint"
+	@echo "  make test-a11y         Playwright + axe-core scan (requires chromium)"
+	@echo "  make install-pre-push-hook   Install .git/hooks/pre-push to gate every push"
 	@echo ""
 
 # ----- Fast local gates (no Docker) ----------------------------------------
@@ -201,17 +201,44 @@ test-a11y:
 # ----- Full CI parity ------------------------------------------------------
 
 # Mirrors what GitHub Actions runs (excluding a11y — see test-a11y).
-# Run before pushing to avoid round-trips on CI failures.
+# Use this for fast pre-push feedback (~30-60s, no chromium).
 ci-local: check test-api test-web
 	@echo ""
 	@echo "✓✓✓ CI parity check passed. Safe to push."
 
-# Full CI parity including a11y. Use this before merging a web change.
+# Full CI parity including a11y. Use this before merging a web change
+# or as the canonical pre-push gate (~5-10min, downloads chromium first run).
+# Runs all 5 workflows GitHub Actions would run:
+#   - private-leak-check (leak-check)
+#   - api-lint (ruff)
+#   - api-test (pytest + postgres)
+#   - web-build (pnpm + build + typecheck + lint)
+#   - a11y (Playwright + axe-core)
 ci-local-a11y: ci-local test-a11y
 	@echo ""
-	@echo "✓✓✓ CI parity (with a11y) check passed. Safe to push."
+	@echo "✓✓✓ Full CI parity (with a11y) passed. Safe to push."
 
-pre-push: ci-local
+# pre-push is the canonical pre-push gate — runs ALL 5 CI workflows.
+# Use `make pre-push-fast` for the 4-check version (no a11y).
+pre-push: ci-local-a11y
+
+# pre-push-fast = ci-local without a11y. ~30-60s, no chromium download.
+pre-push-fast: ci-local
+
+# Install a git pre-push hook that calls `make pre-push`. Once installed,
+# every `git push` is gated by the local CI runner. To bypass for a
+# specific push: `git push --no-verify`. To uninstall: delete the hook.
+install-pre-push-hook:
+	@echo "→ Installing pre-push hook in .git/hooks/pre-push..."
+	@echo '#!/usr/bin/env bash' > .git/hooks/pre-push
+	@echo '# Auto-installed by Makefile target `install-pre-push-hook`.' >> .git/hooks/pre-push
+	@echo '# Runs all 5 GitHub Actions workflows locally before pushing.' >> .git/hooks/pre-push
+	@echo '# Bypass with `git push --no-verify`.' >> .git/hooks/pre-push
+	@echo 'set -e' >> .git/hooks/pre-push
+	@echo 'cd "$$(git rev-parse --show-toplevel)" && make pre-push' >> .git/hooks/pre-push
+	@chmod +x .git/hooks/pre-push
+	@echo "✓ Pre-push hook installed. Every `git push` now runs `make pre-push`."
+	@echo "  Test with: git push --dry-run"
 
 # ----- Cleanup -------------------------------------------------------------
 
