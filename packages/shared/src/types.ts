@@ -9,7 +9,8 @@ export type ID = string;
 /** Curation tier for an article (Task #9). Derived from `Article.score`
  * via `tier_from_score`; mirrored from the Python `Literal[...]` in
  * `apps/api/api/schemas/article.py`. */
-export type Tier = 'must_read' | 'recommended' | 'worth_a_look' | 'low_priority';
+export type Tier =
+  "must_read" | "recommended" | "worth_a_look" | "low_priority";
 
 export interface Article {
   id: ID;
@@ -571,6 +572,13 @@ export interface BulkImportResult {
   /** Per-URL failures (parse error, network error, DB error). */
   failed: BulkImportFailure[];
 }
+
+/** OPML export (Task #10).
+ * GET /feeds/export returns OPML 2.0 XML file for all user's active feeds.
+ * Response includes Content-Disposition header for download as
+ * "ai-news-scraper-feeds.opml". No TypeScript shape needed — the response
+ * is streamed directly as application/xml.
+ */
 
 // ============================================================================
 // Topic extraction (ADR-026)

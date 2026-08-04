@@ -36,6 +36,7 @@ os.environ.setdefault("DATABASE_NULL_POOL", "1")
 from collections.abc import AsyncGenerator
 from typing import Any
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
@@ -143,3 +144,53 @@ async def auth_user(
         "token": token,
         "headers": {"Authorization": f"Bearer {token}"},
     }
+
+
+async def register_user_and_login(
+    client: AsyncClient, email: str, password: str
+) -> tuple[dict[str, Any], str]:
+    """Register a new user via HTTP, then log in via HTTP.
+
+    Returns ``(user_data, token)`` — the user dict from the register
+    response and the bearer token from the login response. Both HTTP
+    flows are exercised; intended for tests that want to assert
+    register + login work end-to-end (vs ``auth_user`` which mints
+    a JWT directly without hitting either endpoint).
+    """
+    register_resp = await client.post(
+        "/auth/register",
+        json={"email": email, "password": password},
+    )
+    assert register_resp.status_code == 201, register_resp.text
+    register_body = register_resp.json()
+    user_data = register_body["user"]
+
+    login_resp = await client.post(
+        "/auth/login",
+        json={"email": email, "password": password},
+    )
+    assert login_resp.status_code == 200, login_resp.text
+    token = login_resp.json()["token"]
+
+    return user_data, token
+
+
+# ---------------------------------------------------------------------------
+# Autouse — neutralise the per-IP register rate limit so tests that hit
+# /auth/register via HTTP (test_feeds_export.py::register_user_and_login,
+# test_feeds_bulk.py, etc.) don't trip the 5/3600 bucket on a Redis-backed
+# dev stack. Mirrors test_feeds_bulk.py::_disable_register_rate_limit.
+# CI ships without Redis (the limit fails open there already); this
+# fixture only matters for ``make test-api`` against the Compose stack.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _disable_register_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stub ``rate_limit._enforce`` to a no-op for the duration of each test."""
+    from api.middleware import rate_limit as rate_limit_module
+
+    async def _no_enforce(spec: object) -> None:
+        return None
+
+    monkeypatch.setattr(rate_limit_module, "_enforce", _no_enforce)

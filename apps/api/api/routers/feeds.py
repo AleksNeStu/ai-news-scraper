@@ -1,9 +1,11 @@
 """Feeds router — RSS subscription management."""
 
 import logging
+from datetime import datetime, timezone
 from uuid import UUID
+from xml.etree.ElementTree import Element, SubElement, tostring
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -272,3 +274,56 @@ async def poll_feed(
     feed.last_polled = datetime.now(timezone.utc)
     await db.commit()
     return new_items
+
+
+@router.get("/export", response_class=Response)
+async def export_opml(
+    user_id: UUID = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export user's subscribed feeds as OPML 2.0 XML file (Task #10).
+
+    Generates an OPML file containing all active feeds for download.
+    Response includes Content-Disposition header for file download.
+    """
+    # Fetch all active feeds for this user
+    res = await db.execute(
+        select(Feed)
+        .where(Feed.user_id == user_id, Feed.active)
+        .order_by(Feed.created_at.asc())
+    )
+    feeds = res.scalars().all()
+
+    # Build OPML XML structure
+    # Root: <opml version="2.0">
+    opml = Element("opml")
+    opml.set("version", "2.0")
+    opml.set("xmlns", "http://opml.org/spec2/opml-2.0.xml")
+
+    # Head section
+    head = SubElement(opml, "head")
+    SubElement(head, "title").text = "ai-news-scraper Feeds"
+    SubElement(head, "dateCreated").text = datetime.now(timezone.utc).isoformat()
+    SubElement(head, "docs").text = "http://opml.org/spec2/opml-2.0.xml"
+
+    # Body section with feed outlines
+    body = SubElement(opml, "body")
+    for feed in feeds:
+        outline = SubElement(body, "outline")
+        outline.set("type", "rss")
+        outline.set("text", feed.title or "Untitled")
+        outline.set("title", feed.title or "Untitled")
+        outline.set("xmlUrl", feed.feed_url)
+        if feed.description:
+            outline.set("description", feed.description)
+
+    # Serialize to XML string with declaration
+    xml_bytes = tostring(opml, encoding="utf-8", xml_declaration=True)
+
+    return Response(
+        content=xml_bytes,
+        media_type="application/xml",
+        headers={
+            "Content-Disposition": ('attachment; filename="ai-news-scraper-feeds.opml"')
+        },
+    )
