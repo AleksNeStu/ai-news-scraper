@@ -66,7 +66,9 @@ export default function LoginPage() {
         </div>
         <form action={action} className="space-y-4">
           <div>
-            <label htmlFor="login-email" className="mb-1 block text-sm text-muted-foreground">{t('emailLabel')}</label>
+            <label htmlFor="login-email" className="mb-1 block text-sm text-muted-foreground">
+              {t('emailLabel')}
+            </label>
             <input
               id="login-email"
               name="email"
@@ -78,7 +80,9 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label htmlFor="login-password" className="mb-1 block text-sm text-muted-foreground">{t('passwordLabel')}</label>
+            <label htmlFor="login-password" className="mb-1 block text-sm text-muted-foreground">
+              {t('passwordLabel')}
+            </label>
             <input
               id="login-password"
               name="password"
