@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import chromadb
+import httpx
 
 from api.config import get_settings
 
@@ -53,7 +54,7 @@ class ChromaVectorStore(BaseVectorStore):
             self._client = chromadb.HttpClient(host=self.host, port=self.port)
             self._client.heartbeat()
             self._mode = "http"
-        except Exception:
+        except (httpx.HTTPError, chromadb.errors.ChromaError, OSError):
             self._client = chromadb.PersistentClient(path=self.persist_dir)
             self._mode = "persistent"
             logger.info("ChromaDB running in persistent mode at %s", self.persist_dir)

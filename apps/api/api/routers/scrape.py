@@ -3,6 +3,9 @@
 import logging
 from uuid import UUID
 
+import chromadb
+import httpx
+import sqlalchemy
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -103,7 +106,7 @@ async def _process_one(url: str, user_id: UUID | None, db: AsyncSession) -> Arti
                     }
                 ],
             )
-        except Exception as e:
+        except (httpx.HTTPError, chromadb.errors.ChromaError, OSError) as e:
             logger.warning("ChromaDB upsert failed (article saved in PG): %s", e)
 
     return article
@@ -132,6 +135,6 @@ async def scrape_batch(
         try:
             article = await _process_one(str(url), user_id, db)
             out.append(ArticleOut.model_validate(article))
-        except Exception as e:
+        except (httpx.HTTPError, sqlalchemy.exc.SQLAlchemyError, OSError) as e:
             logger.warning("Batch scrape failed for %s: %s", url, e)
     return out

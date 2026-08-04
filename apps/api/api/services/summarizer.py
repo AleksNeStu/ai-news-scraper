@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import logging
 
+import httpx
+import openai
+
 from api.services.llm import get_llm_provider
 
 logger = logging.getLogger(__name__)
@@ -42,6 +45,6 @@ class ArticleSummarizer:
                 temperature=0.2,
             )
             return result.strip()
-        except Exception as e:
+        except (openai.OpenAIError, httpx.HTTPError, ValueError, TypeError) as e:
             logger.warning("Summarization failed: %s", e)
             return None

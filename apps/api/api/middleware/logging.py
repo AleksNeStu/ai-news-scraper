@@ -232,7 +232,7 @@ def configure_logging(level: str) -> None:
 
     numeric_level = logging.getLevelName(level.upper())
     if not isinstance(numeric_level, int):
-        raise ValueError(f"invalid log level: {level!r}")
+        raise TypeError(f"invalid log level: {level!r}")
 
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(JSONFormatter())

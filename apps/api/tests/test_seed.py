@@ -21,6 +21,7 @@ event loop.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -68,7 +69,7 @@ async def _is_db_reachable() -> bool:
         return True
     except OperationalError:
         return False
-    except Exception:
+    except (OSError, asyncio.TimeoutError):
         # Any other error (driver missing, DNS, etc.) is also a skip.
         return False
 

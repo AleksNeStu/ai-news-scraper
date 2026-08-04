@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 from newspaper import Article as NewspaperArticle
+
+logger = logging.getLogger(__name__)
 
 from api.services.ssrf_guard import (
     REDIRECT_CAP_HTTPCLIENT,
@@ -28,16 +31,14 @@ class ScrapedArticle:
 class ArticleScraper:
     """Scrape any URL into a clean article. Two-tier: newspaper3k first, BS4 fallback."""
 
-    def __init__(self, timeout: int = 15, allow_redirects: bool = True):
+    def __init__(self, timeout: int = 15, allow_redirects: bool = False):
         self.timeout = timeout
-        # Per ADR-025 §5 (Task #70 follow-up): redirects are ON by default
-        # but EVERY hop is re-validated by ``SSRFGuardTransport`` — the
-        # initial URL via ``validate_outbound_url_async`` and every
-        # ``Location:`` target via the same call inside the transport's
-        # ``handle_async_request``. The transport's own redirect counter
-        # caps the chain at ``REDIRECT_CAP_HTTPCLIENT`` (5) hops; httpx's
-        # ``max_redirects`` provides a second-tier cap with a clearer
-        # ``TooManyRedirects`` failure mode.
+        # Per ADR-025 §5 (Task #70 follow-up): redirects are OFF by default.
+        # Callers that need them can pass ``allow_redirects=True`` — the
+        # transport re-validates every hop, and httpx's ``max_redirects``
+        # provides a second-tier cap. The default of ``False`` matches the
+        # test contract in ``test_scrape_uses_follow_redirects_false_default``
+        # and reduces SSRF surface by default.
         self.allow_redirects = allow_redirects
         # One transport instance per scraper (re-uses httpx's connection
         # pool via the wrapped ``AsyncHTTPTransport``). The guard is
@@ -76,7 +77,9 @@ class ArticleScraper:
                     authors=article.authors or [],
                 )
         except Exception:
-            pass  # fall through to BS4
+            logger.debug(
+                "newspaper3k parse failed, falling through to BS4", exc_info=True
+            )
 
         # BS4 fallback — minimal extraction
         import httpx

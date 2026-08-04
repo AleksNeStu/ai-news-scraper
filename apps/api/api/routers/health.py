@@ -15,6 +15,8 @@ import asyncio
 import logging
 
 import chromadb
+import httpx
+import sqlalchemy
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -63,7 +65,7 @@ async def _check_postgres() -> tuple[str, str | None]:
             if value == 1:
                 return ("ok", None)
             return ("error", f"unexpected scalar: {value!r}"[:_MAX_ERROR_LEN])
-    except Exception as e:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError, asyncio.TimeoutError) as e:
         logger.warning("health check failed: postgres", exc_info=True)
         return ("error", _format_error(e))
 
@@ -89,7 +91,7 @@ async def _check_chroma() -> tuple[str, str | None]:
                 timeout=_CHECK_TIMEOUT_S,
             )
             return ("ok", None)
-        except Exception as e:
+        except (httpx.HTTPError, OSError, asyncio.TimeoutError) as e:
             logger.warning("health check failed: chroma http", exc_info=True)
             return ("error", _format_error(e))
     # Embedded path: PersistentClient points at the on-disk index.
@@ -100,7 +102,7 @@ async def _check_chroma() -> tuple[str, str | None]:
             timeout=_CHECK_TIMEOUT_S,
         )
         return ("ok", None)
-    except Exception as e:
+    except (OSError, asyncio.TimeoutError) as e:
         logger.warning("health check failed: chroma embedded", exc_info=True)
         return ("error", _format_error(e))
 

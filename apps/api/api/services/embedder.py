@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import logging
 
+import httpx
+import openai
+
 from api.services.llm import get_llm_provider
 
 logger = logging.getLogger(__name__)
@@ -32,6 +35,6 @@ class ArticleEmbedder:
             if not vectors:
                 return None
             return vectors[0]
-        except Exception as e:
+        except (openai.OpenAIError, httpx.HTTPError, ValueError, TypeError) as e:
             logger.warning("Embedding failed: %s", e)
             return None

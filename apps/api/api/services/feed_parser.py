@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 
 import feedparser
+import httpx
 
 from api.config import get_settings
 from api.exceptions import SSRFError
@@ -52,7 +53,7 @@ class FeedParser:
             return None
         try:
             parsed = feedparser.parse(feed_url, agent=self.user_agent)
-        except Exception as e:
+        except (feedparser.NonXMLContentType, httpx.HTTPError, OSError) as e:
             logger.warning("feedparser failed for %s: %s", feed_url, e)
             return None
         if not parsed or not parsed.entries:
