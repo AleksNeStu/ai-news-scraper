@@ -88,7 +88,38 @@ jobs:
       # Apply DB migrations before pytest so integration tests that
       # INSERT into real tables don't fail with "relation does not exist".
       # Migrations live in apps/api/alembic/versions/ and are idempotent.
-      - run: python -m poetry run alembic upgrade head
+      - name: Run alembic upgrade head (fail loudly)
+        run: |
+          set -euo pipefail
+          python -m poetry run alembic upgrade head || {
+            echo "::error::alembic upgrade head failed — see logs above"
+            exit 1
+          }
+          # Diagnostic: log redacted DATABASE_URL and the alembic_version row
+          # so Cluster 7 (test_share 500 with 'relation users does not exist')
+          # can be diagnosed from the CI log alone.
+          python -m poetry run python -c "
+          from urllib.parse import quote
+          from api.config import get_settings
+          from sqlalchemy import create_engine, text
+          url = get_settings().database_url
+          # Redact password
+          if '://' in url and '@' in url:
+            scheme, rest = url.split('://', 1)
+            userinfo, hostpart = rest.split('@', 1)
+            if ':' in userinfo:
+              user, _ = userinfo.split(':', 1)
+              redacted = f'{scheme}://{user}:***@{hostpart}'
+            else:
+              redacted = url
+          else:
+            redacted = url
+          print(f'::notice title=alembic DATABASE_URL::resolves to {redacted!r}')
+          eng = create_engine(url)
+          with eng.connect() as conn:
+            row = conn.execute(text('SELECT version_num FROM alembic_version')).first()
+            print(f'::notice title=alembic version::row={row!r}')
+          "
       - run: python -m poetry run pytest -v --tb=short
 
   web-build:
