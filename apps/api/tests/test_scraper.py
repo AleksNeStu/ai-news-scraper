@@ -10,7 +10,7 @@ BEFORE ``NewspaperArticle(url)`` is constructed.
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -105,8 +105,11 @@ async def test_scrape_opt_in_allow_redirects_true():
 async def test_scrape_public_url_passes_guard(monkeypatch):
     """A public URL must NOT raise SSRFError at the guard stage.
 
-    Mocks newspaper3k to raise so we don't need real network I/O —
-    the test is about the guard firing, not the downstream path.
+    Mocks both the SSRF guard's DNS resolution (socket.getaddrinfo)
+    AND the BS4 fallback's httpx call so we never touch real network.
+    newspaper3k is monkey-patched to raise so the BS4 fallback path
+    is exercised and we can prove the guard's pre-redirect validation
+    does not block a public IP.
     """
 
     class _FailingArticle:
@@ -126,6 +129,18 @@ async def test_scrape_public_url_passes_guard(monkeypatch):
         patch(
             "socket.getaddrinfo",
             side_effect=_mock_getaddrinfo(["93.184.216.34"]),
+        ),
+        # Mock httpx.AsyncClient.get to return a fake 200 so the BS4
+        # fallback path doesn't try real network. newspaper3k raises
+        # above so this code path is never actually executed; the
+        # mock is just defensive.
+        patch(
+            "httpx.AsyncClient.get",
+            return_value=Mock(
+                status_code=200,
+                text="<html><body>test</body></html>",
+                raise_for_status=lambda: None,
+            ),
         ),
         # Must NOT raise SSRFError. Whether it raises something else
         # (RuntimeError from the failing Article) is out of scope; we
