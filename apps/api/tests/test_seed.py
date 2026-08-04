@@ -36,7 +36,11 @@ from tests.conftest import TestAsyncSessionLocal, test_engine
 # Path to the seed file relative to repo root. Tests run from the
 # apps/api/ directory by default; resolve against this file so the
 # path is stable regardless of cwd.
-SEED_SQL_PATH = Path(__file__).resolve().parents[2] / "scripts" / "seed.sql"
+# Path to the seed file relative to repo root. Tests run from the
+# apps/api/ directory by default; resolve against this file so the
+# path is stable regardless of cwd. parents[1] = apps/api/ (this
+# file lives in apps/api/tests/, so 1 level up).
+SEED_SQL_PATH = Path(__file__).resolve().parents[1] / "scripts" / "seed.sql"
 
 
 # Tables that the seed file populates. Each ``ON CONFLICT DO NOTHING``
