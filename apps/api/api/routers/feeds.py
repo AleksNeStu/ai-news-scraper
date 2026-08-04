@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime, timezone
+from typing import Annotated
 from uuid import UUID
 from xml.etree.ElementTree import Element, SubElement, tostring
 
@@ -32,8 +33,8 @@ router = APIRouter(prefix="/feeds", tags=["feeds"])
 
 @router.get("", response_model=FeedListResponse)
 async def list_feeds(
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     rows = (
         await db.execute(
@@ -63,8 +64,8 @@ async def list_feeds(
 @router.post("", response_model=FeedOut, status_code=status.HTTP_201_CREATED)
 async def add_feed(
     payload: FeedCreate,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Validate the feed URL by attempting a parse
     parser = FeedParser()
@@ -97,8 +98,8 @@ async def add_feed(
 @router.delete("/{feed_id}", status_code=204)
 async def delete_feed(
     feed_id: UUID,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     res = await db.execute(
         select(Feed).where(Feed.id == feed_id, Feed.user_id == user_id)
@@ -113,8 +114,8 @@ async def delete_feed(
 @router.post("/bulk", response_model=BulkImportResult)
 async def bulk_import_feeds(
     payload: BulkImportRequest,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> BulkImportResult:
     """Bulk-import RSS feeds.
 
@@ -232,8 +233,8 @@ async def bulk_import_feeds(
 @router.post("/{feed_id}/poll", response_model=list[FeedItemOut])
 async def poll_feed(
     feed_id: UUID,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Manually trigger a poll of a single feed. Returns the new items found."""
     from datetime import datetime, timezone
@@ -281,8 +282,8 @@ async def poll_feed(
 
 @router.get("/export", response_class=Response)
 async def export_opml(
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Export user's subscribed feeds as OPML 2.0 XML file (Task #10).
 

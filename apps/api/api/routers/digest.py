@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 from datetime import date as _date
 from datetime import datetime, timezone
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, status
@@ -90,8 +91,8 @@ def _parse_date(raw: str) -> _date:
 
 @router.get("/today", response_model=DigestOut)
 async def get_today_digest(
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DigestOut:
     """Return today's digest (UTC date) for the caller, or 404."""
     today = datetime.now(timezone.utc).date()
@@ -112,10 +113,10 @@ async def get_today_digest(
 
 @router.get("", response_model=DigestListResponse)
 async def list_digests(
-    cursor: datetime | None = Query(default=None),
-    limit: int = Query(default=30, ge=1, le=100),
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    cursor: Annotated[datetime | None, Query(default=None)],
+    limit: Annotated[int, Query(default=30, ge=1, le=100)],
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DigestListResponse:
     """List the user's digests newest-first with cursor pagination."""
     stmt = select(Digest).where(Digest.user_id == user_id)
@@ -138,8 +139,8 @@ async def list_digests(
 @router.get("/{for_date}", response_model=DigestOut)
 async def get_digest_by_date(
     for_date: _date,
-    user_id: UUID = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DigestOut:
     """Return the digest for a specific UTC date, or 404."""
     res = await db.execute(
@@ -160,8 +161,8 @@ async def get_digest_by_date(
 @router.post("/{digest_id}/unsubscribe", response_model=UnsubscribeResponse)
 async def unsubscribe_endpoint(
     digest_id: UUID,
-    token: str = Form(...),  # application/x-www-form-urlencoded (RFC 8058 §3.2)
-    db: AsyncSession = Depends(get_db),
+    token: Annotated[str, Form(...)],  # application/x-www-form-urlencoded (RFC 8058 §3.2)
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UnsubscribeResponse:
     """RFC 8058 §3.2 one-click unsubscribe.
 
