@@ -16,7 +16,7 @@ import pytest
 
 from api.exceptions import SSRFError
 from api.services import ssrf_guard
-from api.services.scraper import ArticleScraper
+from api.services.scraper import ArticleScraper, ScrapedArticle
 
 
 @pytest.fixture(autouse=True)
@@ -49,10 +49,13 @@ async def test_scrape_loopback_url_raises_ssrf_error():
 async def test_scrape_metadata_url_raises_ssrf_error():
     """The AWS metadata IP must raise at the guard, not during fetch."""
     scraper = ArticleScraper()
-    with patch(
-        "socket.getaddrinfo",
-        side_effect=_mock_getaddrinfo(["169.254.169.254"]),
-    ), pytest.raises(SSRFError):
+    with (
+        patch(
+            "socket.getaddrinfo",
+            side_effect=_mock_getaddrinfo(["169.254.169.254"]),
+        ),
+        pytest.raises(SSRFError),
+    ):
         await scraper.scrape("http://metadata.aws.example/")
 
 
@@ -76,10 +79,13 @@ async def test_scrape_non_http_scheme_raises_ssrf_error():
 async def test_scrape_rfc1918_raises_ssrf_error():
     """RFC1918 ranges must reject."""
     scraper = ArticleScraper()
-    with patch(
-        "socket.getaddrinfo",
-        side_effect=_mock_getaddrinfo(["10.0.0.1"]),
-    ), pytest.raises(SSRFError):
+    with (
+        patch(
+            "socket.getaddrinfo",
+            side_effect=_mock_getaddrinfo(["10.0.0.1"]),
+        ),
+        pytest.raises(SSRFError),
+    ):
         await scraper.scrape("http://internal.example/")
 
 
@@ -107,9 +113,10 @@ async def test_scrape_public_url_passes_guard(monkeypatch):
 
     Mocks both the SSRF guard's DNS resolution (socket.getaddrinfo)
     AND the BS4 fallback's httpx call so we never touch real network.
-    newspaper3k is monkey-patched to raise so the BS4 fallback path
-    is exercised and we can prove the guard's pre-redirect validation
-    does not block a public IP.
+    newspaper3k is monkey-patched to raise so the production code
+    swallows the RuntimeError, the BS4 fallback path runs with the
+    mocked async GET, and we can prove the guard's pre-redirect
+    validation does not block a public IP.
     """
 
     class _FailingArticle:
@@ -131,9 +138,9 @@ async def test_scrape_public_url_passes_guard(monkeypatch):
             side_effect=_mock_getaddrinfo(["93.184.216.34"]),
         ),
         # Mock httpx.AsyncClient.get to return a fake 200 so the BS4
-        # fallback path doesn't try real network. newspaper3k raises
-        # above so this code path is never actually executed; the
-        # mock is just defensive.
+        # fallback path doesn't try real network. The production code
+        # swallows newspaper3k's RuntimeError and falls through here;
+        # the BS4 path returns a ScrapedArticle with the canned body.
         patch(
             "httpx.AsyncClient.get",
             return_value=Mock(
@@ -142,9 +149,11 @@ async def test_scrape_public_url_passes_guard(monkeypatch):
                 raise_for_status=lambda: None,
             ),
         ),
-        # Must NOT raise SSRFError. Whether it raises something else
-        # (RuntimeError from the failing Article) is out of scope; we
-        # only care that the guard let the URL through.
-        pytest.raises(RuntimeError, match="nope"),
     ):
-        await scraper.scrape("http://example.com/article")
+        result = await scraper.scrape("http://example.com/article")
+    # Guard let the URL through AND the BS4 fallback produced an
+    # article — proves the test's actual intent (guard pass-through,
+    # not RuntimeError propagation).
+    assert isinstance(result, ScrapedArticle)
+    assert result.body is not None
+    assert "test" in result.body
