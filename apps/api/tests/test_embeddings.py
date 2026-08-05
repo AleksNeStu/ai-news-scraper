@@ -109,11 +109,11 @@ async def test_list_providers_requires_auth(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_list_providers_shape(auth_user: dict[str, Any], client: AsyncClient) -> None:
+async def test_list_providers_shape(
+    auth_user: dict[str, Any], client: AsyncClient
+) -> None:
     """Authenticated → 200; every entry has the documented fields."""
-    resp = await client.get(
-        "/embeddings/providers", headers=auth_user["headers"]
-    )
+    resp = await client.get("/embeddings/providers", headers=auth_user["headers"])
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert "providers" in body
@@ -137,9 +137,7 @@ async def test_list_providers_no_key_leak(
     auth_user: dict[str, Any], client: AsyncClient
 ) -> None:
     """No key-like field name anywhere in the response body (ADR §22.5)."""
-    resp = await client.get(
-        "/embeddings/providers", headers=auth_user["headers"]
-    )
+    resp = await client.get("/embeddings/providers", headers=auth_user["headers"])
     assert resp.status_code == 200
     body_str = str(resp.json()).lower()
     for forbidden in ("api_key", "apikey", "secret", "password", "token"):
@@ -155,9 +153,7 @@ async def test_list_providers_marks_deepseek_unsupported(
     auth_user: dict[str, Any], client: AsyncClient
 ) -> None:
     """DeepSeek entry surfaces ``supports_embed: false`` (ADR §22.4)."""
-    resp = await client.get(
-        "/embeddings/providers", headers=auth_user["headers"]
-    )
+    resp = await client.get("/embeddings/providers", headers=auth_user["headers"])
     providers = {p["id"]: p for p in resp.json()["providers"]}
     assert "deepseek" in providers
     assert providers["deepseek"]["supports_embed"] is False
@@ -347,7 +343,7 @@ async def test_similarity_cat_kitten_higher_than_cat_dog(
     """
     cat = [1.0, 0.0, 0.0]
     kitten = [1.0, 0.0, 0.0]  # identical to cat
-    dog = [0.0, 1.0, 0.0]    # orthogonal to cat
+    dog = [0.0, 1.0, 0.0]  # orthogonal to cat
 
     # Sequence: first call (text_a, text_b) for cat/kitten; second for cat/dog.
     fake = _FakeEmbeddings([cat, kitten, cat, dog])
@@ -404,7 +400,14 @@ async def test_similarity_mismatched_lengths_returns_500(
                 return [[0.1] * 4]
             return [[0.1] * 5]
 
-    monkeypatch.setattr(svc, "_instantiate", lambda spec, settings: _DriftyProvider())
+    # Bind a single instance outside the lambda so call_count persists
+    # across the two embed_text invocations (similarity handler calls
+    # embed_text once per text_a/text_b). Without this, the lambda
+    # would create a fresh _DriftyProvider() for the second call,
+    # resetting call_count to 0, so both calls return [[0.1]*4] —
+    # no dim drift, response 200 instead of 500.
+    _drifty = _DriftyProvider()
+    monkeypatch.setattr(svc, "_instantiate", lambda spec, settings: _drifty)
 
     resp = await client.post(
         "/embeddings/similarity",
