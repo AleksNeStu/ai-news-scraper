@@ -106,7 +106,6 @@ async def _drop_schema() -> None:
     a no-op; leaving the seeded rows in place does not pollute other tests
     because the seed emails are unique strings.
     """
-    pass
 
 
 async def _run_seed_sql() -> None:
