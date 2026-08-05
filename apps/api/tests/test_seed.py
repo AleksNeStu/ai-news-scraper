@@ -94,13 +94,19 @@ async def _apply_schema() -> None:
 
 
 async def _drop_schema() -> None:
-    """Drop every table created by ``_apply_schema``.
+    """Teardown for seed_db — INTENTIONALLY A NO-OP.
 
-    Run in reverse-FK order via ``Base.metadata.drop_all``; the test
-    leaves the database in the same state it found it.
+    History:
+      - Original: ``Base.metadata.drop_all`` nuked the entire alembic-managed
+        schema, breaking every subsequent test that depended on it.
+      - Attempt 2 (TRUNCATE the 4 SEEDED_TABLES): emptied the ``users`` table
+        which other tests need for register/login.
+
+    Fix: do nothing. seed.sql uses ``ON CONFLICT DO NOTHING`` so re-running is
+    a no-op; leaving the seeded rows in place does not pollute other tests
+    because the seed emails are unique strings.
     """
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    pass
 
 
 async def _run_seed_sql() -> None:
