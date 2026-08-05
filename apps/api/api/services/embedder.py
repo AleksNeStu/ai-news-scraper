@@ -35,6 +35,12 @@ class ArticleEmbedder:
             if not vectors:
                 return None
             return vectors[0]
-        except (openai.OpenAIError, httpx.HTTPError, ValueError, TypeError) as e:
+        except (
+            openai.OpenAIError,
+            httpx.HTTPError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+        ) as e:
             logger.warning("Embedding failed: %s", e)
             return None

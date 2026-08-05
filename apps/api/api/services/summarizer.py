@@ -45,6 +45,12 @@ class ArticleSummarizer:
                 temperature=0.2,
             )
             return result.strip()
-        except (openai.OpenAIError, httpx.HTTPError, ValueError, TypeError) as e:
+        except (
+            openai.OpenAIError,
+            httpx.HTTPError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+        ) as e:
             logger.warning("Summarization failed: %s", e)
             return None
