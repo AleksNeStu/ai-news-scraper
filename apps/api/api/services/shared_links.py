@@ -49,6 +49,10 @@ class ShareNotFound(ShareError):
 class ShareExpired(ShareError):
     """The token matched a row whose ``expires_at`` is in the past."""
 
+    def __init__(self, token: str, *, expires_at: datetime | None = None) -> None:
+        super().__init__(token)
+        self.expires_at = expires_at
+
 
 # --- Token + mint helpers ----------------------------------------------------
 
@@ -90,9 +94,7 @@ async def mint_share(
     # explicit check lets us raise the project's NotFoundError (which
     # the global handler maps to a 404 problem+json) instead of a 500
     # from the FK violation.
-    article = await session.scalar(
-        select(Article).where(Article.id == article_id)
-    )
+    article = await session.scalar(select(Article).where(Article.id == article_id))
     if article is None:
         raise NotFoundError(detail="Article not found")
 
@@ -157,9 +159,7 @@ async def resolve_share(
     if row.expires_at <= now:
         raise ShareExpired(token, expires_at=row.expires_at)
 
-    article = await session.scalar(
-        select(Article).where(Article.id == row.article_id)
-    )
+    article = await session.scalar(select(Article).where(Article.id == row.article_id))
     # The article must exist because the FK is ON DELETE CASCADE. If
     # somehow we got here without one (e.g. a DB-level inconsistency
     # during a migration), surface a NotFoundError so the global
