@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -120,7 +121,7 @@ async def test_post_share_requires_auth(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_post_share_happy_path(client: AsyncClient) -> None:
     """Mint a share → 201 + body matches the ``ShareResponse`` schema."""
-    user = await _register_user(client, "share-happy@example.com")
+    user = await _register_user(client, f"share-happy-{uuid.uuid4().hex[:8]}@example.com")
     article_id = await _make_article(user["user_id"])
 
     resp = await client.post(
@@ -149,7 +150,7 @@ async def test_post_share_ttl_days_above_365_returns_422(
     client: AsyncClient,
 ) -> None:
     """``ttl_days=10000`` violates the Pydantic ``le=365`` cap → 422."""
-    user = await _register_user(client, "share-cap@example.com")
+    user = await _register_user(client, f"share-cap-{uuid.uuid4().hex[:8]}@example.com")
     article_id = await _make_article(user["user_id"])
 
     resp = await client.post(
@@ -165,7 +166,7 @@ async def test_post_share_token_hash_persisted_sha256(
     client: AsyncClient,
 ) -> None:
     """The DB stores ``sha256(token)``; raw token never round-trips."""
-    user = await _register_user(client, "share-hash@example.com")
+    user = await _register_user(client, f"share-hash-{uuid.uuid4().hex[:8]}@example.com")
     article_id = await _make_article(user["user_id"])
 
     resp = await client.post(
@@ -195,7 +196,7 @@ async def test_post_share_unknown_article_returns_404(
     client: AsyncClient,
 ) -> None:
     """POST with an article_id that does not exist → 404 (ADR-021 §21.9)."""
-    user = await _register_user(client, "share-missing-art@example.com")
+    user = await _register_user(client, f"share-missing-art-{uuid.uuid4().hex[:8]}@example.com")
 
     resp = await client.post(
         "/share",
@@ -210,7 +211,7 @@ async def test_post_share_token_is_urlsafe_base64_43_chars(
     client: AsyncClient,
 ) -> None:
     """Token entropy: 43 chars of ``[A-Za-z0-9_-]`` (ADR-021 §21.1)."""
-    user = await _register_user(client, "share-entropy@example.com")
+    user = await _register_user(client, f"share-entropy-{uuid.uuid4().hex[:8]}@example.com")
     article_id = await _make_article(user["user_id"])
 
     resp = await client.post(
@@ -233,7 +234,7 @@ async def test_article_delete_cascades_shared_link(
     client: AsyncClient,
 ) -> None:
     """Deleting the source article removes every share row in one statement."""
-    user = await _register_user(client, "share-cascade@example.com")
+    user = await _register_user(client, f"share-cascade-{uuid.uuid4().hex[:8]}@example.com")
     article_id = await _make_article(user["user_id"])
 
     # Mint two shares of the same article.
@@ -296,9 +297,13 @@ async def test_post_share_rate_limited_returns_429(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """When the share_create bucket is full, POST /share returns 429
-    with a Retry-After header. Mirrors the ``rl_429_client`` pattern in
-    ``tests/test_auth.py::test_register_rate_limited_after_5_calls``.
+    with a Retry-After header. The register + article setup must run BEFORE
+    the rate-limit monkeypatch — otherwise /auth/register itself would
+    return 429 and the assertion below would fail on setup.
     """
+    user = await _register_user(client, f"share-rl-{uuid.uuid4().hex[:8]}@example.com")
+    article_id = await _make_article(user["user_id"])
+
     from api.middleware import rate_limit as rate_limit_module
 
     async def _always_429(spec: object) -> None:
@@ -309,9 +314,6 @@ async def test_post_share_rate_limited_returns_429(
         )
 
     monkeypatch.setattr(rate_limit_module, "_enforce", _always_429)
-
-    user = await _register_user(client, "share-rl@example.com")
-    article_id = await _make_article(user["user_id"])
 
     resp = await client.post(
         "/share",

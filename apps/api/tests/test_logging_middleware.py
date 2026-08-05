@@ -293,7 +293,10 @@ def test_configure_logging_is_idempotent() -> None:
 def test_configure_logging_rejects_invalid_level() -> None:
     """An invalid level string raises at config time, not on first log."""
     reset_logging_for_tests()
-    with pytest.raises(ValueError, match="invalid log level"):
+    # Per the BLE001 → TypeError narrowing fix in apps/api/api/middleware/logging.py,
+    # the invalid-level guard now raises TypeError (the level name is
+    # a type error, not a value error).
+    with pytest.raises(TypeError, match="invalid log level"):
         configure_logging("BANANA")
     reset_logging_for_tests()
 
