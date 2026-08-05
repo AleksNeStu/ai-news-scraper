@@ -214,7 +214,12 @@ async def test_embed_deepseek_422(
     # so the test does not hit the real DeepSeek endpoint.
     import api.services.llm.deepseek as ds_module
 
-    async def _raise_notimpl(texts, *, model=None):
+    # NOTE: ``self`` is required in the signature. Class-level monkeypatch
+    # turns the function into a bound method when accessed via
+    # ``instance.embed(...)``, so Python passes ``self`` as the first
+    # positional arg. Without it, the call raises TypeError and the
+    # service-layer except-NotImplementedError never fires.
+    async def _raise_notimpl(self, texts, *, model=None):
         raise NotImplementedError("DeepSeek has no native embedding model")
 
     monkeypatch.setattr(ds_module.DeepSeekProvider, "embed", _raise_notimpl)

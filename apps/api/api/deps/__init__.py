@@ -32,8 +32,22 @@ def _extract_token(
     request: Request,
     bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
 ) -> str:
-    """Pull the JWT from the Authorization header or the auth cookie."""
-    if bearer is not None and bearer.scheme.lower() == "bearer":
+    """Pull the JWT from the Authorization header or the auth cookie.
+
+    Authorization header wins when present — even if the bearer scheme
+    is malformed (e.g. tampered JWT), we do NOT fall back to the
+    cookie jar. The header is an explicit signal of intent: tests
+    asserting Bearer-only authentication (e.g.
+    ``test_me_with_tampered_jwt_returns_401``) rely on this. Cookie
+    auth is the browser-flow fallback when no header is sent.
+    """
+    if bearer is not None:
+        if bearer.scheme.lower() != "bearer":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication scheme",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         return bearer.credentials
     cookie_token = request.cookies.get(AUTH_COOKIE_NAME)
     if cookie_token:
