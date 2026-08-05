@@ -18,7 +18,7 @@ class ExtractedTopic(BaseModel):
     pattern is the second line of defence.
     """
 
-    tag: str = Field(..., pattern=r"^[a-z0-9][a-z0-9-]{0,62}$")
+    tag: str = Field(..., pattern=r"^[a-z0-9][a-z0-9-]{0,63}$")
     confidence: float = Field(..., ge=0.0, le=1.0)
 
 
