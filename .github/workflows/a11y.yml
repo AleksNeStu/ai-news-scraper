@@ -101,10 +101,10 @@ jobs:
     name: axe-core (nightly, staging)
     runs-on: ubuntu-latest
     # Only on scheduled runs. PR scan (a11y-pr) handles dispatch + push.
-    # The staging job requires a real STAGING_URL — running it via
-    # workflow_dispatch in CI would always fail because no staging
-    # deploy exists in the Actions environment.
-    if: github.event_name == 'schedule'
+    # The staging job requires a real STAGING_URL — when the variable
+    # is unset (no staging deploy in the Actions environment) the job
+    # is skipped instead of failing against an unresolvable placeholder.
+    if: github.event_name == 'schedule' && vars.STAGING_URL
     defaults:
       run:
         working-directory: apps/web
@@ -123,7 +123,7 @@ jobs:
       - name: axe-core scan (staging)
         run: pnpm exec playwright test e2e/a11y.spec.ts --reporter=list
         env:
-          BASE_URL: ${{ vars.STAGING_URL || 'https://staging.ai-news-search.example.com' }}
+          BASE_URL: ${{ vars.STAGING_URL }}
       - name: Upload axe report
         if: always()
         uses: actions/upload-artifact@v7
