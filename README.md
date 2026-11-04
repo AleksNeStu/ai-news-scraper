@@ -7,6 +7,12 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python%203.12-009688)](https://fastapi.tiangolo.com)
 [![ChromaDB](https://img.shields.io/badge/vector-ChromaDB-orange)](https://www.trychroma.com)
 
+
+---
+
+> **NestLab** — an AI automation studio in Poland (EU). We build our own products and take on a
+> limited number of client contracts each year.
+> [Workflow automation, custom AI software and EU AI Act readiness](https://nestlab.tech/services?utm_source=github&utm_medium=referral&utm_campaign=product_showcase&utm_content=readme)
 ---
 
 ## What is this?
