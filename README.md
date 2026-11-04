@@ -5,6 +5,7 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Next.js 15](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python%203.12-009688)](https://fastapi.tiangolo.com)
+[![CI](https://github.com/AleksNeStu/ai-news-scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/AleksNeStu/ai-news-scraper/actions/workflows/ci.yml)
 [![ChromaDB](https://img.shields.io/badge/vector-ChromaDB-orange)](https://www.trychroma.com)
 
 
